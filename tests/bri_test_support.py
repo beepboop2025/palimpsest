@@ -13,9 +13,7 @@ from pathlib import Path
 from core import newswire
 
 
-LEGACY_REGISTRY_SHA256 = (
-    "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14"
-)
+LEGACY_REGISTRY_SHA256 = newswire.LEGACY_SOURCE_REGISTRY_SHA256
 
 
 def write_active_registry_wire(destination: Path, *, root: Path) -> Path:

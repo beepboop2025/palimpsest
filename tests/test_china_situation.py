@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -106,23 +105,8 @@ def _social_receipts(registry, successful_source):
 
 
 def _synthetic_cgtn_wire():
-    source = replace(
-        next(
-            source
-            for source in newswire.load_source_registry().sources
-            if source.id == "cgtn-china"
-        ),
-        declared_scan_ids=(),
-        declared_economic_ids=(),
-    )
-    registry = newswire.SourceRegistry(
-        schema_version=newswire.REGISTRY_SCHEMA_VERSION,
-        window_hours=168,
-        max_items_per_source=128,
-        max_events=2048,
-        sources=(source,),
-        sha256="0" * 64,
-    )
+    registry = newswire.load_source_registry()
+    source = next(source for source in registry.sources if source.id == "cgtn-china")
     rss = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<rss version="2.0"><channel><item>'
@@ -132,9 +116,14 @@ def _synthetic_cgtn_wire():
         '<pubDate>Tue, 25 Aug 2026 10:00:00 +0000</pubDate>'
         '</item></channel></rss>'
     ).encode()
+    def fetch(url: str, **_kwargs: object) -> bytes:
+        if url == source.feed_url:
+            return rss
+        raise RuntimeError("synthetic source unavailable")
+
     return newswire.collect_newswire(
         registry,
-        lambda _url, **_kwargs: rss,
+        fetch,
         now=datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc),
     )
 
@@ -238,7 +227,9 @@ def test_social_url_index_excludes_outside_remit_events(inputs):
 def test_cgtn_rss_and_telegram_keep_one_publisher_lineage():
     wire = _synthetic_cgtn_wire()
     analyses = event_analysis.build_event_analyses(
-        wire, {"schema_version": "palimpsest-news.v1", "stories": []}
+        wire,
+        {"schema_version": "palimpsest-news.v1", "stories": []},
+        allow_missing_collectors=True,
     )
     event = wire["events"][0]
     reference = event["evidence_refs"][0]

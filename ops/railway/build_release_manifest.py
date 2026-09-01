@@ -67,6 +67,13 @@ CRITICAL_PATHS = (
     "docs/HETZNER-RAILWAY-CONTINUOUS-PUBLICATION.md",
     "index.html",
     "llms.txt",
+    "news/index.html",
+    "news/feed.json",
+    "news/feed.xml",
+    "news/instruments/feed.json",
+    "news/instruments/feed.xml",
+    "news/china/analysis/feed.json",
+    "news/china/analysis/feed.xml",
     "news/china/english/feed.json",
     "news/china/english/feed.xml",
     "news/china/english/generated-manifest.json",
@@ -118,6 +125,7 @@ CRITICAL_PATHS = (
     "readings/china-situation-latest.json",
     "readings/evidence-lake-metrics-latest.json",
     "readings/evidence-lake-metrics-producer-receipt.json",
+    "readings/newsroom-latest.json",
     "readings/newswire-latest.json",
     "readings/osint-china-latest.json",
     "readings/publication-freshness-attestation-latest.json",
@@ -167,6 +175,13 @@ class ManifestError(ValueError):
     pass
 
 
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+UTC_CLOCK_RE = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+)
+MEASUREMENT_CLAIMS = frozenset({"finding", "integrity", "method", "observation"})
+
+
 def _sha256_file(path: Path) -> tuple[str, int]:
     digest = hashlib.sha256()
     size = 0
@@ -184,6 +199,88 @@ def _validate_timestamp(value: str) -> None:
         datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError as exc:
         raise ManifestError("built_at must be an RFC 3339 UTC timestamp") from exc
+
+
+def _strict_json(path: Path, label: str) -> Any:
+    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in rows:
+            if key in result:
+                raise ManifestError(f"{label} contains a duplicate JSON key")
+            result[key] = value
+        return result
+
+    try:
+        return json.loads(
+            path.read_bytes().decode("utf-8", "strict"),
+            object_pairs_hook=pairs,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ManifestError(f"{label} contains non-finite {value}")
+            ),
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ManifestError(f"{label} is not strict JSON") from exc
+
+
+def _measurement_evidence_paths(root: Path) -> tuple[str, ...]:
+    newsroom_path = root / "readings/newsroom-latest.json"
+    newsroom = _strict_json(newsroom_path, "structured newsroom")
+    if (
+        not isinstance(newsroom, dict)
+        or newsroom.get("schema_version") != "palimpsest-news.v1"
+        or not isinstance(newsroom.get("stories"), list)
+        or any(not isinstance(story, dict) for story in newsroom["stories"])
+    ):
+        raise ManifestError("structured newsroom cannot declare measurement evidence")
+
+    identities: dict[str, tuple[str, int]] = {}
+    for story in newsroom["stories"]:
+        claims = story.get("claims")
+        if (
+            story.get("status") != "live"
+            or not isinstance(claims, list)
+            or len(claims) != 1
+            or not isinstance(claims[0], dict)
+            or claims[0].get("type") not in MEASUREMENT_CLAIMS
+        ):
+            continue
+        evidence = story.get("evidence")
+        input_proof = evidence.get("input") if isinstance(evidence, dict) else None
+        filename = input_proof.get("filename") if isinstance(input_proof, dict) else None
+        digest = input_proof.get("sha256") if isinstance(input_proof, dict) else None
+        size = input_proof.get("bytes") if isinstance(input_proof, dict) else None
+        published_at = story.get("published_at")
+        if (
+            not isinstance(evidence, dict)
+            or set(evidence) != {"input", "source_timestamp", "url"}
+            or not isinstance(input_proof, dict)
+            or set(input_proof) != {"bytes", "filename", "sha256"}
+            or not isinstance(filename, str)
+            or re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,126}\.json", filename) is None
+            or evidence.get("url")
+            != f"https://palimpsest.info/readings/{filename}"
+            or not isinstance(digest, str)
+            or SHA256_RE.fullmatch(digest) is None
+            or type(size) is not int
+            or size < 1
+            or not isinstance(published_at, str)
+            or UTC_CLOCK_RE.fullmatch(published_at) is None
+            or evidence.get("source_timestamp") != published_at
+        ):
+            raise ManifestError("live measurement has invalid evidence identity")
+        relative = f"readings/{filename}"
+        prior = identities.setdefault(relative, (digest, size))
+        if prior != (digest, size):
+            raise ManifestError("live measurements disagree about one evidence identity")
+        artifact = root / relative
+        if not artifact.is_file() or artifact.is_symlink():
+            raise ManifestError(f"live measurement evidence is missing: {relative}")
+        actual_digest, actual_size = _sha256_file(artifact)
+        if (actual_digest, actual_size) != (digest, size):
+            raise ManifestError(
+                f"live measurement evidence bytes differ from newsroom: {relative}"
+            )
+    return tuple(sorted(identities))
 
 
 def build_manifest(root: Path, source_commit: str, built_at: str) -> dict[str, Any]:
@@ -209,7 +306,9 @@ def build_manifest(root: Path, source_commit: str, built_at: str) -> dict[str, A
     if not file_rows:
         raise ManifestError("publication bundle is empty")
     by_path = {relative: (size, digest) for relative, size, digest in file_rows}
-    missing = [relative for relative in CRITICAL_PATHS if relative not in by_path]
+    dynamic_critical_paths = _measurement_evidence_paths(root)
+    critical_paths = tuple(dict.fromkeys((*CRITICAL_PATHS, *dynamic_critical_paths)))
+    missing = [relative for relative in critical_paths if relative not in by_path]
     if missing:
         raise ManifestError(
             "publication bundle is missing critical paths: " + ", ".join(missing)
@@ -238,7 +337,7 @@ def build_manifest(root: Path, source_commit: str, built_at: str) -> dict[str, A
         "tree_sha256": tree.hexdigest(),
         "critical_files": {
             relative: {"bytes": by_path[relative][0], "sha256": by_path[relative][1]}
-            for relative in CRITICAL_PATHS
+            for relative in critical_paths
         },
     }
 

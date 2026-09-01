@@ -13,11 +13,11 @@ opening the website.
 | --- | --- | --- | --- |
 | Live AI eval findings | `/journal/feed.xml` | `/journal/feed.json` | Palimpsest result |
 | AI eval methods journal | `/evals/feed.xml` | `/evals/feed.json` | Palimpsest method article |
-| Instrument measurements | `/news/instruments/feed.xml` | `/news/instruments/feed.json` | Palimpsest measurement |
-| Source index plus measurements | `/news/feed.xml` | `/news/feed.json` | Explicitly mixed |
+| Instrument records | `/news/instruments/feed.xml` | `/news/instruments/feed.json` | Palimpsest measurement or availability notice |
+| Source index plus instrument records | `/news/feed.xml` | `/news/feed.json` | Explicitly mixed |
 | China publisher source index | `/news/china/feed.xml` | `/news/china/feed.json` | Publisher source record with Palimpsest context |
 | China situation synthesis | `/news/china/situation/feed.xml` | `/news/china/situation/feed.json` | Reports, social observations, and measurements with relations preserved |
-| China censorship analysis | `/news/china/analysis/feed.xml` | `/news/china/analysis/feed.json` | Palimpsest analysis |
+| China censorship analysis | `/news/china/analysis/feed.xml` | `/news/china/analysis/feed.json` | Palimpsest analysis or availability notice |
 | Reviewed Telegram context | `/news/china/whispers/feed.xml` | `/news/china/whispers/feed.json` | Unverified context |
 
 ## Required item labels
@@ -32,6 +32,9 @@ a stable `_palimpsest.kind` value.
   named evidence and falsifiers.
 - `[Palimpsest measurement]`: an output from a named Palimpsest instrument. It
   includes the current result, receipt, status, and limitation.
+- `[Palimpsest availability]`: a no-result instrument record. It says why a
+  current result is unavailable and retains the receipt, edition-time status,
+  and limitation. It must not be read as zero, normal, safe, or unchanged.
 - `[Palimpsest analysis]`: bounded Palimpsest interpretation with citation and
   revision metadata.
 - `[Source report]` or `[Corroborated source report]`: a publisher report kept
@@ -43,6 +46,14 @@ a stable `_palimpsest.kind` value.
 - `[Situation synthesis]`: a deterministic projection that places attributed
   reporting, exact-link social context, and declared Observatory measurements
   together. It preserves each input's relation and does not imply verification.
+
+The China censorship analysis pair is never silently removed. When the active
+source policy does not permit the public values required for a cross-instrument
+finding, both formats contain one current `[Palimpsest availability]` item. Its
+feed and item clocks match the newsroom edition exactly; it contains no prior
+finding, metric, value, or revision prose. The reader page and feed item link to
+the public rights receipt so “unavailable” cannot be mistaken for zero, normal,
+safe, unchanged, or a directional result.
 
 ## Transport and identity requirements
 

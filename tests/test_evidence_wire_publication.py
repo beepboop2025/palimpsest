@@ -7,12 +7,14 @@ network-only mutable heads, and identical race-safe workflow build graphs.
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 import shlex
 from pathlib import Path
 
 from core import newswire as newswire_model
+from tests.bri_test_support import write_active_registry_wire
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -244,7 +246,11 @@ def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
     assert "managed publication graph changed during replay" in rebuild
 
 
-def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():
+def test_public_wire_contract_has_registry_schema_latest_and_bounded_history(
+    tmp_path: Path,
+):
+    from jsonschema import Draft202012Validator
+
     registry = _json("config/news_sources.json")
     schema = _json("protocol/newswire-v1.schema.json")
     latest = _json("readings/newswire-latest.json")
@@ -262,6 +268,14 @@ def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():
         len(registry["sources"]),
         len(registry["sources"]) + len(newswire_model._RETIRED_SOURCE_TOMBSTONES),
     }
+    digest_branches = {
+        branch["properties"]["source_registry_sha256"]["const"]
+        for branch in schema["oneOf"]
+    }
+    assert digest_branches == {
+        newswire_model.ACTIVE_SOURCE_REGISTRY_SHA256,
+        newswire_model.LEGACY_SOURCE_REGISTRY_SHA256,
+    }
     assert latest["schema_version"] == "palimpsest-newswire.v1"
     assert (
         latest["source_registry"] == "https://palimpsest.info/config/news_sources.json"
@@ -272,8 +286,9 @@ def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():
     if receipt_ids == active_ids:
         assert latest["source_registry_sha256"] == newswire_model.load_source_registry().sha256
     else:
-        assert latest["source_registry_sha256"] == (
-            "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14"
+        assert (
+            latest["source_registry_sha256"]
+            == newswire_model.LEGACY_SOURCE_REGISTRY_SHA256
         )
         assert latest["generated_at"] == "2026-08-30T08:45:26Z"
         assert receipt_ids - active_ids == set(
@@ -288,6 +303,40 @@ def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():
             assert receipts[source_id]["feed_url"] == feed_url
             assert receipts[source_id]["accepted_items"] == 0
             assert receipts[source_id]["status"] == "stale"
+
+    validator = Draft202012Validator(schema)
+    assert validator.is_valid(latest)
+    active_path = write_active_registry_wire(
+        tmp_path / "newswire-latest.json", root=ROOT
+    )
+    active = json.loads(active_path.read_text(encoding="utf-8"))
+    assert validator.is_valid(active)
+
+    unknown_digest = copy.deepcopy(latest)
+    unknown_digest["source_registry_sha256"] = "f" * 64
+    assert not validator.is_valid(unknown_digest)
+
+    nonzero_retired = copy.deepcopy(latest)
+    retired_row = next(
+        row
+        for row in nonzero_retired["coverage"]["sources"]
+        if row["source_id"] in newswire_model._RETIRED_SOURCE_TOMBSTONES
+    )
+    retired_row["accepted_items"] = 1
+    assert not validator.is_valid(nonzero_retired)
+
+    retired_in_active = copy.deepcopy(active)
+    active_row = next(
+        row
+        for row in retired_in_active["coverage"]["sources"]
+        if row["accepted_items"] == 0
+    )
+    retired_id = next(iter(newswire_model._RETIRED_SOURCE_TOMBSTONES))
+    active_row["source_id"] = retired_id
+    active_row["feed_url"] = newswire_model._RETIRED_SOURCE_TOMBSTONES[
+        retired_id
+    ][0]
+    assert not validator.is_valid(retired_in_active)
     assert latest["n_items"] == len(latest["items"])
     assert latest["n_events"] == len(latest["events"])
     assert (ROOT / "readings" / "newswire-versions.jsonl").is_file()

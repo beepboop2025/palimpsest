@@ -41,14 +41,20 @@ readonly PUBLIC_ORIGIN="${PALIMPSEST_PUBLIC_ORIGIN:-https://www.palimpsest.info}
 readonly RAILWAY_BIN="${PALIMPSEST_RAILWAY_BIN:-/usr/bin/railway}"
 readonly RAILWAY_NODE_OPTIONS="${PALIMPSEST_RAILWAY_NODE_OPTIONS:---jitless}"
 readonly PYTHON_BIN="${PALIMPSEST_PYTHON_BIN:-/usr/bin/python3}"
+readonly TIMEOUT_BIN="${PALIMPSEST_TIMEOUT_BIN:-/usr/bin/timeout}"
 
 readonly WIRE_FILE="$LIVE_WIRE_ROOT/newswire-latest.json"
 readonly LEDGER_FILE="$LIVE_WIRE_ROOT/newswire-versions.jsonl"
 readonly WIRE_STATUS_FILE="${PALIMPSEST_NEWSWIRE_STATUS_FILE:-$LIVE_WIRE_ROOT/newswire-status.json}"
 readonly NEWSWIRE_LOCK_FILE="${PALIMPSEST_NEWSWIRE_LOCK_FILE:-$LIVE_WIRE_ROOT/newswire.lock}"
 readonly WIRE_FRESHNESS_BUDGET_SECONDS=1800
-readonly DEPLOY_RESERVE_SECONDS=300
+readonly MAX_MUTATION_TO_RECEIPT_SECONDS=720
 readonly DESIRED_LIVE_MARGIN_SECONDS=300
+readonly RAILWAY_UPLOAD_TIMEOUT_SECONDS=90
+readonly RAILWAY_COMMAND_TIMEOUT_SECONDS=20
+readonly ORIGIN_REQUEST_TIMEOUT_SECONDS=15
+readonly POST_MUTATION_POLL_SECONDS=5
+readonly RECEIPT_COMMIT_RESERVE_SECONDS=10
 readonly SUCCESS_RECEIPT="$STATE_ROOT/latest-success.json"
 readonly PENDING_CANDIDATE="$STATE_ROOT/pending-candidate.json"
 readonly PENDING_PREPARATION="$STATE_ROOT/pending-preparation.json"
@@ -105,18 +111,63 @@ candidate_tmp=""
 preparation_tmp=""
 release_manifest_tmp=""
 receipt_tmp=""
+mutation_proof_deadline_epoch=0
 
 log() {
   printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
 }
 
 origin_release_sha() {
-  local origin="$1" cache_buster
+  local origin="$1" max_time="${2:-30}" cache_buster
   cache_buster="$(date +%s%N)"
-  curl -fsS --proto '=https' --max-redirs 0 --max-time 30 \
+  curl -fsS --proto '=https' --max-redirs 0 --max-time "$max_time" \
     "$origin/railway-release.json?edition=$cache_buster" \
     | jq -r '.source_commit // empty' 2>/dev/null \
     || true
+}
+
+bounded_deadline_timeout() {
+  local ceiling="$1" reserve="${2:-0}" now remaining usable
+  [[ "$mutation_proof_deadline_epoch" =~ ^[1-9][0-9]*$ \
+    && "$ceiling" =~ ^[1-9][0-9]*$ \
+    && "$reserve" =~ ^[0-9]+$ ]] || {
+    log "mutation proof deadline is not initialized" >&2
+    return 1
+  }
+  now="$(date +%s)"
+  remaining=$((mutation_proof_deadline_epoch - now))
+  usable=$((remaining - reserve))
+  (( usable > 0 )) || {
+    log "mutation-to-receipt freshness deadline expired; exact candidate reconciliation is required" >&2
+    return 1
+  }
+  if (( usable < ceiling )); then
+    printf '%s\n' "$usable"
+  else
+    printf '%s\n' "$ceiling"
+  fi
+}
+
+bounded_deadline_sleep() {
+  local ceiling="$1" reserve="${2:-0}" remaining
+  remaining="$(bounded_deadline_timeout "$ceiling" "$reserve")" || return 1
+  sleep "$remaining"
+}
+
+run_with_deadline() {
+  local ceiling="$1" reserve="$2" timeout_seconds
+  shift 2
+  timeout_seconds="$(bounded_deadline_timeout "$ceiling" "$reserve")" \
+    || return 1
+  "$TIMEOUT_BIN" --signal=TERM --kill-after=5s "${timeout_seconds}s" "$@"
+}
+
+curl_with_deadline() {
+  local ceiling="$1" reserve="$2" timeout_seconds
+  shift 2
+  timeout_seconds="$(bounded_deadline_timeout "$ceiling" "$reserve")" \
+    || return 1
+  curl --max-time "$timeout_seconds" "$@"
 }
 
 sha256_file() {
@@ -270,35 +321,41 @@ PY
 }
 
 require_pre_mutation_freshness_reserve() {
-  local wire_clock="$1" remaining
-  remaining="$("$PYTHON_BIN" -I -S - "$wire_clock" \
-    "$WIRE_FRESHNESS_BUDGET_SECONDS" "$DEPLOY_RESERVE_SECONDS" \
+  local wire_clock="$1" result remaining deadline
+  result="$("$PYTHON_BIN" -I -S - "$wire_clock" \
+    "$WIRE_FRESHNESS_BUDGET_SECONDS" "$MAX_MUTATION_TO_RECEIPT_SECONDS" \
     "$DESIRED_LIVE_MARGIN_SECONDS" <<'PY'
 import sys
 from datetime import UTC, datetime, timedelta
 
 wire = datetime.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
-budget, deploy, margin = map(int, sys.argv[2:5])
-if min(budget, deploy, margin) < 1 or deploy + margin >= budget:
+budget, mutation, margin = map(int, sys.argv[2:5])
+if min(budget, mutation, margin) < 1 or mutation + margin >= budget:
     raise SystemExit("publication freshness reserve constants are invalid")
 now = datetime.now(UTC)
 if wire > now + timedelta(seconds=120):
     raise SystemExit("captured newswire clock is implausibly future-dated")
 remaining = int((wire + timedelta(seconds=budget) - now).total_seconds())
-required = deploy + margin
+required = mutation + margin
 if remaining < required:
     raise SystemExit(
-        "captured newswire lacks the 300-second deployment reserve plus "
-        "300-second desired live margin"
+        "captured newswire lacks the declared mutation-to-receipt bound plus "
+        "the desired live margin"
     )
-print(remaining)
+proof_deadline = min(
+    now + timedelta(seconds=mutation),
+    wire + timedelta(seconds=budget - margin),
+)
+print(remaining, int(proof_deadline.timestamp()), sep="\t")
 PY
 )"
-  [[ "$remaining" =~ ^[0-9]+$ ]] || {
-    log "pre-mutation freshness reserve did not return whole seconds" >&2
+  IFS=$'\t' read -r remaining deadline <<<"$result"
+  [[ "$remaining" =~ ^[0-9]+$ && "$deadline" =~ ^[1-9][0-9]*$ ]] || {
+    log "pre-mutation freshness reserve did not return a bounded deadline" >&2
     return 1
   }
-  log "pre-mutation freshness reserve accepted: ${remaining}s remain"
+  mutation_proof_deadline_epoch="$deadline"
+  log "pre-mutation freshness reserve accepted: ${remaining}s remain; receipt proof deadline=$deadline"
 }
 
 validate_live_freshness_proofs() {
@@ -390,6 +447,8 @@ for label, proof in proofs.items():
     checked_at = clock(proof.get("checked_at"), f"{label} checked_at")
     if checked_at > now + timedelta(seconds=120):
         raise SystemExit(f"{label} freshness proof is implausibly future-dated")
+    if checked_at < now - timedelta(seconds=120):
+        raise SystemExit(f"{label} freshness proof is a cached or delayed response")
     checked.append(checked_at)
     for name, generated, budget in (
         ("wire", expected_wire, 1800),
@@ -413,6 +472,2207 @@ for label, proof in proofs.items():
 if abs((checked[0] - checked[1]).total_seconds()) > 120:
     raise SystemExit("provider and public freshness proofs are not contemporaneous")
 PY
+}
+
+validate_release_freshness_attestation() {
+  local wire_path="$1" attestation_path="$2" expected_release="$3"
+  local expected_wire="$4"
+  "$PYTHON_BIN" -I -S - "$wire_path" "$attestation_path" \
+    "$expected_release" "$expected_wire" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+CLOCK = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+TOP_KEYS = {
+    "artifacts",
+    "attested_at",
+    "limitations",
+    "mode",
+    "publication_allowed",
+    "publication_sha",
+    "rights_status",
+    "schema_version",
+}
+
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("publication freshness attestation contains a duplicate key")
+        value[key] = item
+    return value
+
+
+def document(path):
+    try:
+        raw = path.read_bytes()
+        value = json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=strict_object,
+            parse_constant=lambda item: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON value: {item}")
+            ),
+        )
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"publication freshness input is not strict JSON: {path.name}") from exc
+    if not isinstance(value, dict):
+        raise SystemExit(f"publication freshness input is not an object: {path.name}")
+    return raw, value
+
+
+def clock(value, label):
+    if not isinstance(value, str) or CLOCK.fullmatch(value) is None:
+        raise SystemExit(f"{label} is not a strict UTC clock")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError as exc:
+        raise SystemExit(f"{label} is not a valid UTC clock") from exc
+
+
+wire_path, attestation_path = map(Path, sys.argv[1:3])
+expected_release, expected_wire = sys.argv[3:5]
+_wire_raw, wire = document(wire_path)
+attestation_raw, attestation = document(attestation_path)
+canonical_wire = (
+    json.dumps(
+        wire,
+        allow_nan=False,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    + "\n"
+).encode("utf-8")
+canonical_attestation = (
+    json.dumps(
+        attestation,
+        allow_nan=False,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    + "\n"
+).encode("utf-8")
+if attestation_raw != canonical_attestation:
+    raise SystemExit("publication freshness attestation is not canonical JSON")
+if set(attestation) != TOP_KEYS or (
+    attestation.get("schema_version")
+    != "palimpsest.publication-freshness-attestation.v1"
+    or attestation.get("publication_sha") != expected_release
+    or attestation.get("mode") != "rights-suppressed"
+    or attestation.get("publication_allowed") is not False
+):
+    raise SystemExit("publication freshness attestation identity is invalid")
+attested_at = clock(attestation.get("attested_at"), "publication freshness attested_at")
+wire_at = clock(expected_wire, "expected private wire generated_at")
+artifacts = attestation.get("artifacts")
+if not isinstance(artifacts, dict) or set(artifacts) != {"newswire", "china_situation"}:
+    raise SystemExit("publication freshness artifact inventory is invalid")
+newswire = artifacts.get("newswire")
+if not isinstance(newswire, dict) or newswire != {
+    "canonical_sha256": hashlib.sha256(canonical_wire).hexdigest(),
+    "generated_at": expected_wire,
+    "path": "readings/newswire-latest.json",
+    "schema_version": "palimpsest-newswire.v1",
+}:
+    raise SystemExit("publication freshness attestation does not bind the private wire")
+situation = artifacts.get("china_situation")
+if (
+    not isinstance(situation, dict)
+    or set(situation)
+    != {"canonical_sha256", "generated_at", "inputs", "path", "schema_version"}
+    or situation.get("path") != "readings/china-situation-latest.json"
+    or situation.get("schema_version") != "palimpsest-china-situation.v1"
+    or not isinstance(situation.get("canonical_sha256"), str)
+    or SHA256.fullmatch(situation["canonical_sha256"]) is None
+    or situation.get("inputs")
+    != {
+        "newswire_canonical_sha256": newswire["canonical_sha256"],
+        "newswire_generated_at": expected_wire,
+    }
+):
+    raise SystemExit("publication freshness attestation has broken causal lineage")
+situation_at = clock(
+    situation.get("generated_at"), "attested China situation generated_at"
+)
+if not wire_at <= situation_at <= attested_at:
+    raise SystemExit("publication freshness attestation clocks are not causally ordered")
+rights = attestation.get("rights_status")
+if (
+    not isinstance(rights, dict)
+    or set(rights) != {"bytes", "path", "sha256"}
+    or rights.get("path") != "readings/china-publication-rights-latest.json"
+    or type(rights.get("bytes")) is not int
+    or rights["bytes"] < 1
+    or not isinstance(rights.get("sha256"), str)
+    or SHA256.fullmatch(rights["sha256"]) is None
+):
+    raise SystemExit("publication freshness rights identity is invalid")
+print(newswire["canonical_sha256"])
+PY
+}
+
+validate_structured_newsroom() {
+  local newsroom_path="$1" expected_wire_generated_at="$2" \
+    manifest_built_at="$3" timeout_seconds="${4:-}" command
+  if [[ -n "$timeout_seconds" ]]; then
+    [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
+      log "structured newsroom timeout is invalid" >&2
+      return 1
+    }
+    command=("$TIMEOUT_BIN" --signal=TERM --kill-after=5s "${timeout_seconds}s" \
+      "$PYTHON_BIN" -I -S - "$newsroom_path" "$expected_wire_generated_at" \
+      "$manifest_built_at")
+  else
+    command=("$PYTHON_BIN" -I -S - "$newsroom_path" \
+      "$expected_wire_generated_at" "$manifest_built_at")
+  fi
+  "${command[@]}" <<'PY'
+import hashlib
+import json
+import math
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+RIGHTS_URL = "https://palimpsest.info/readings/china-publication-rights-latest.json"
+RESTRICTED = {
+    "board-alarm",
+    "event-flags",
+    "coverage-guard",
+    "forecast-ledger",
+    "cross-layer",
+    "china-econ",
+    "cny-fix-gap",
+    "data-darkness",
+}
+LABELS = {
+    "board-alarm": "Board alarm",
+    "event-flags": "Event flags",
+    "coverage-guard": "Coverage guard",
+    "forecast-ledger": "Forecast ledger",
+    "cross-layer": "Cross-layer comparison",
+    "china-econ": "China money-market benchmarks",
+    "cny-fix-gap": "Yuan-fix comparison",
+    "data-darkness": "Official-data availability",
+}
+SLUGS = {
+    "board-alarm": "board-alarm",
+    "event-flags": "event-flags",
+    "coverage-guard": "coverage-guard",
+    "forecast-ledger": "forecast-ledger",
+    "cross-layer": "cross-layer-lead-lag",
+    "china-econ": "china-money-market-benchmarks",
+    "cny-fix-gap": "cny-fix-gap",
+    "data-darkness": "official-data-darkness",
+}
+IDENTITY_ROWS = (
+    ("board-alarm", "board-alarm", "command", 1, "analysis", "lead", ("event-flags", "coverage-guard", "vantage-fusion")),
+    ("event-flags", "event-flags", "command", 2, "methodology", "high", ("board-alarm", "forecast-ledger", "coverage-guard")),
+    ("coverage-guard", "coverage-guard", "command", 3, "methodology", "high", ("board-alarm", "event-flags", "ddti")),
+    ("forecast-ledger", "forecast-ledger", "command", 4, "methodology", "standard", ("event-flags", "cross-layer")),
+    ("cross-layer", "cross-layer-lead-lag", "command", 5, "methodology", "background", ("forecast-ledger", "board-alarm")),
+    ("ddti", "deletion-directive-term-index", "attention", 1, "measurement", "high", ("gdelt", "weibo-hotsearch", "silence-index", "coverage-guard")),
+    ("gdelt", "global-coverage-cross-signal", "attention", 2, "measurement", "standard", ("ddti", "silence-index", "weibo-hotsearch")),
+    ("weibo-hotsearch", "weibo-hot-search-join", "attention", 3, "measurement", "high", ("ddti", "gdelt", "silence-index")),
+    ("silence-index", "silence-index", "attention", 4, "analysis", "high", ("ddti", "gdelt", "weibo-hotsearch")),
+    ("blocklist", "platform-blocklist-archaeology", "attention", 5, "measurement", "standard", ("ddti", "net4people")),
+    ("net4people", "community-blocking-log", "attention", 6, "measurement", "standard", ("ooni-gfw", "circumvention-demand", "vantage-fusion")),
+    ("public-deletion-ledgers", "public-deletion-ledgers", "attention", 7, "measurement", "standard", ("ddti", "undertext", "wayback")),
+    ("undertext", "undertext-differential-fusion", "attention", 8, "analysis", "high", ("wayback", "weibo-hotsearch", "ddti")),
+    ("research-corpus", "research-corpus-metadata", "attention", 9, "measurement", "standard", ("github-refuge", "wayback")),
+    ("peer-context", "attributed-peer-context", "attention", 10, "analysis", "background", ("greatfire-context", "ooni-gfw", "public-deletion-ledgers")),
+    ("ooni-gfw", "ooni-great-firewall-index", "network", 1, "measurement", "lead", ("in-path-interference", "censored-planet", "inside-view", "vantage-fusion")),
+    ("in-path-interference", "in-path-interference", "network", 2, "measurement", "high", ("ooni-gfw", "inside-view", "vantage-fusion")),
+    ("censored-planet", "censored-planet-china-interference", "network", 3, "measurement", "high", ("ooni-gfw", "inside-view", "vantage-fusion")),
+    ("inside-view", "inside-china-view", "network", 4, "measurement", "lead", ("ooni-gfw", "in-path-interference", "censored-planet", "vantage-fusion")),
+    ("ioda-outages", "ioda-china-outage-monitor", "network", 5, "measurement", "high", ("ooni-gfw", "vantage-fusion")),
+    ("circumvention-demand", "circumvention-demand", "network", 6, "measurement", "standard", ("net4people", "ooni-gfw", "vantage-fusion")),
+    ("vantage-fusion", "network-vantage-fusion", "network", 7, "analysis", "lead", ("ooni-gfw", "censored-planet", "inside-view", "net4people")),
+    ("bleedthrough", "bleedthrough-injector-tomography", "network", 8, "measurement", "background", ("in-path-interference", "vantage-fusion")),
+    ("greatfire-context", "greatfire-attributed-verdicts", "network", 9, "measurement", "background", ("ooni-gfw", "peer-context", "public-deletion-ledgers")),
+    ("erasure-observatory", "erasure-observatory", "erasure", 1, "analysis", "lead", ("wayback", "baike-redaction", "github-refuge", "app-storefront", "apple-censorship")),
+    ("wayback", "wayback-reconstruction", "erasure", 2, "measurement", "high", ("erasure-observatory", "baike-redaction", "anchors")),
+    ("baike-redaction", "baike-redaction", "erasure", 3, "measurement", "background", ("wayback", "erasure-observatory")),
+    ("github-refuge", "github-refuge-watch", "erasure", 4, "measurement", "standard", ("erasure-observatory", "wayback", "anchors")),
+    ("app-storefront", "app-storefront-panel", "erasure", 5, "measurement", "high", ("apple-censorship", "erasure-observatory")),
+    ("apple-censorship", "apple-censorship-corpus", "erasure", 6, "measurement", "high", ("app-storefront", "erasure-observatory")),
+    ("baike-public-snapshot", "baike-public-snapshot", "erasure", 7, "measurement", "background", ("baike-redaction", "wayback", "erasure-observatory")),
+    ("china-econ", "china-money-market-benchmarks", "economy", 1, "measurement", "standard", ("cny-fix-gap", "stock-connect", "data-darkness", "believability")),
+    ("cny-fix-gap", "cny-fix-gap", "economy", 2, "measurement", "high", ("china-econ", "stock-connect", "data-darkness")),
+    ("stock-connect", "stock-connect", "economy", 3, "measurement", "standard", ("china-econ", "cny-fix-gap")),
+    ("data-darkness", "official-data-darkness", "economy", 4, "analysis", "high", ("china-econ", "cny-fix-gap", "believability")),
+    ("believability", "believability-read", "economy", 5, "analysis", "background", ("china-econ", "data-darkness")),
+    ("generative-firewall", "generative-firewall-index", "models", 1, "measurement", "lead", ("board-alarm", "forecast-ledger")),
+    ("anchors", "integrity-anchors", "integrity", 1, "integrity", "high", ("wayback", "github-refuge", "erasure-observatory")),
+    ("nemesis", "private-runtime-bridge", "nemesis", 1, "intelligence", "background", ("ddti", "china-econ", "board-alarm")),
+)
+IDENTITY = {
+    signal_id: {
+        "slug": slug,
+        "section": section,
+        "order": order,
+        "type": story_type,
+        "priority": priority,
+        "related_signal_ids": list(related),
+    }
+    for signal_id, slug, section, order, story_type, priority, related in IDENTITY_ROWS
+}
+EXPECTED_ORDER = tuple(row[0] for row in IDENTITY_ROWS)
+EDITORIAL = {
+    signal_id: {
+        key: value for key, value in IDENTITY[signal_id].items() if key != "slug"
+    }
+    for signal_id in RESTRICTED
+}
+SECTION_IDENTITIES = {
+    "command": (1, "The Board"),
+    "attention": (2, "Attention and Narrative"),
+    "network": (3, "Network and Circumvention"),
+    "erasure": (4, "Erasure and Distribution"),
+    "economy": (5, "Economic Undertext"),
+    "models": (6, "Generative Firewall"),
+    "integrity": (7, "Integrity and Witnessing"),
+    "nemesis": (8, "Intelligence Bridge"),
+}
+NULL_METRIC = {
+    "label": None,
+    "value": None,
+    "unit": None,
+    "denominator": {"label": None, "value": None},
+}
+MEASUREMENT_CLAIMS = {"finding", "integrity", "method", "observation"}
+UNAVAILABLE_STATUSES = {"corrupt", "degraded", "missing", "stale"}
+MAX_SAFE_INTEGER = 9_007_199_254_740_991
+MAX_MEASUREMENT_EVIDENCE = 64 * 1024 * 1024
+UTC_CLOCK = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+TOP_FIELDS = {
+    "coverage",
+    "feed_id",
+    "generated_at",
+    "headline",
+    "method",
+    "n_stories",
+    "schema_version",
+    "scope",
+    "sections",
+    "source",
+    "source_commit",
+    "stories",
+    "title",
+    "url",
+}
+STORY_FIELDS = {
+    "claim_fingerprint",
+    "claims",
+    "dek",
+    "evidence",
+    "headline",
+    "id",
+    "limitations",
+    "method",
+    "metric",
+    "modified_at",
+    "order",
+    "priority",
+    "published_at",
+    "related_signal_ids",
+    "section",
+    "signal_id",
+    "slug",
+    "status",
+    "type",
+    "url",
+}
+
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("structured newsroom contains a duplicate key")
+        value[key] = item
+    return value
+
+
+def clock(value, label):
+    if not isinstance(value, str) or UTC_CLOCK.fullmatch(value) is None:
+        raise SystemExit(f"{label} is not a strict UTC whole-second clock")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError as exc:
+        raise SystemExit(f"{label} is invalid") from exc
+
+
+def nonempty(value, label, maximum):
+    if (
+        type(value) is not str
+        or not value.strip()
+        or len(value) > maximum
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        raise SystemExit(f"{label} is not bounded non-empty text")
+    return value
+
+
+def story_kind(story, generated_at):
+    signal_id = story.get("signal_id")
+    label = signal_id if isinstance(signal_id, str) else "unknown"
+    identity = IDENTITY.get(signal_id)
+    if (
+        set(story) != STORY_FIELDS
+        or identity is None
+        or story.get("id") != f"palimpsest-news:{signal_id}"
+        or story.get("slug") != identity["slug"]
+        or story.get("url")
+        != f"https://palimpsest.info/news/{identity['slug']}/"
+        or type(story.get("order")) is not int
+        or {
+            key: story.get(key)
+            for key in (
+                "section",
+                "order",
+                "type",
+                "priority",
+                "related_signal_ids",
+            )
+        }
+        != {key: value for key, value in identity.items() if key != "slug"}
+    ):
+        raise SystemExit(f"structured newsroom story identity is invalid: {label}")
+    nonempty(story.get("headline"), f"story {label} headline", 160)
+    nonempty(story.get("dek"), f"story {label} dek", 1000)
+    published = clock(story.get("published_at"), f"story {label} published_at")
+    modified = clock(story.get("modified_at"), f"story {label} modified_at")
+    edition = clock(generated_at, "structured newsroom generated_at")
+    if published != modified or published > edition:
+        raise SystemExit(f"structured newsroom story timestamps are invalid: {label}")
+
+    claims = story.get("claims")
+    metric = story.get("metric")
+    evidence = story.get("evidence")
+    method = story.get("method")
+    limitations = story.get("limitations")
+    if (
+        not isinstance(claims, list)
+        or len(claims) != 1
+        or not isinstance(claims[0], dict)
+        or set(claims[0]) != {"statement", "type"}
+        or not isinstance(metric, dict)
+        or set(metric) != {"denominator", "label", "unit", "value"}
+        or not isinstance(metric.get("denominator"), dict)
+        or set(metric["denominator"]) != {"label", "value"}
+        or not isinstance(evidence, dict)
+        or set(evidence) != {"input", "source_timestamp", "url"}
+        or not isinstance(evidence.get("input"), dict)
+        or set(evidence["input"]) != {"bytes", "filename", "sha256"}
+        or not isinstance(method, dict)
+        or set(method) != {"summary", "version"}
+        or not isinstance(limitations, list)
+        or not 1 <= len(limitations) <= 9
+        or any(type(item) is not str for item in limitations)
+        or len(limitations) != len(set(limitations))
+    ):
+        raise SystemExit(f"structured newsroom story shape is invalid: {label}")
+    nonempty(claims[0].get("statement"), f"story {label} claim", 1000)
+    nonempty(method.get("summary"), f"story {label} method", 8192)
+    method_version = method.get("version")
+    if not (
+        method_version is None
+        or type(method_version) is int
+        and 1 <= method_version <= MAX_SAFE_INTEGER
+        or type(method_version) is str
+        and 1 <= len(method_version) <= 100
+        and not any(
+            ord(character) < 32 or ord(character) == 127
+            for character in method_version
+        )
+    ):
+        raise SystemExit(f"structured newsroom method version is invalid: {label}")
+    for limitation in limitations:
+        nonempty(limitation, f"story {label} limitation", 1000)
+
+    source = evidence["input"]
+    filename = source.get("filename")
+    source_sha = source.get("sha256")
+    source_bytes = source.get("bytes")
+    source_timestamp = evidence.get("source_timestamp")
+    rights_evidence = (
+        signal_id in RESTRICTED
+        and evidence.get("url") == RIGHTS_URL
+        and source_sha is None
+        and source_bytes is None
+        and source_timestamp is None
+    )
+    if (
+        type(filename) is not str
+        or re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,126}\.json", filename) is None
+        or not rights_evidence
+        and (
+            evidence.get("url")
+            != f"https://palimpsest.info/readings/{filename}"
+            or (source_sha is None) != (source_bytes is None)
+            or source_sha is not None
+            and (
+                type(source_sha) is not str
+                or re.fullmatch(r"[0-9a-f]{64}", source_sha) is None
+                or type(source_bytes) is not int
+                or not 0 <= source_bytes <= MAX_SAFE_INTEGER
+            )
+            or source_timestamp is not None
+            and clock(source_timestamp, f"story {label} source_timestamp")
+            != published
+            or source_timestamp is None
+            and published != edition
+            or story.get("status") == "missing"
+            and (source_sha is not None or source_bytes is not None or source_timestamp is not None)
+        )
+    ):
+        raise SystemExit(f"structured newsroom story evidence is invalid: {label}")
+
+    claim_type = claims[0]["type"]
+    if (
+        claim_type in MEASUREMENT_CLAIMS
+        and story.get("status") == "live"
+        and (
+            evidence.get("url")
+            != f"https://palimpsest.info/readings/{filename}"
+            or type(source_sha) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", source_sha) is None
+            or type(source_bytes) is not int
+            or not 1 <= source_bytes <= min(
+                MAX_SAFE_INTEGER, MAX_MEASUREMENT_EVIDENCE
+            )
+            or type(source_timestamp) is not str
+            or source_timestamp != story.get("published_at")
+        )
+    ):
+        raise SystemExit(
+            f"structured newsroom measurement evidence is invalid: {label}"
+        )
+    claim_core = {
+        "claim_type": claim_type,
+        "metric": metric,
+        "signal_id": signal_id,
+        "statement": claims[0]["statement"],
+        "status": story.get("status"),
+    }
+    expected_fingerprint = "sha256:" + hashlib.sha256(
+        json.dumps(
+            claim_core,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    if story.get("claim_fingerprint") != expected_fingerprint:
+        raise SystemExit(f"structured newsroom story fingerprint is invalid: {label}")
+
+    if (
+        claim_type == "availability"
+        and story.get("status") in UNAVAILABLE_STATUSES
+        and metric == NULL_METRIC
+    ):
+        if len(limitations) < 2:
+            raise SystemExit(
+                f"structured newsroom availability limitations are invalid: {label}"
+            )
+        if signal_id not in RESTRICTED:
+            serialized = json.dumps(story, ensure_ascii=False, sort_keys=True).casefold()
+            for marker in (
+                RIGHTS_URL.casefold(),
+                "rights-restricted-availability-v1",
+                "public value publication is restricted",
+                "active china economic source policy",
+            ):
+                if marker in serialized:
+                    raise SystemExit(
+                        f"ordinary availability carries a rights-only marker: {label}"
+                    )
+        return "availability"
+    metric_label = metric.get("label")
+    metric_unit = metric.get("unit")
+    denominator_label = metric["denominator"].get("label")
+    denominator_value = metric["denominator"].get("value")
+    if (
+        claim_type in MEASUREMENT_CLAIMS
+        and story.get("status") == "live"
+        and type(metric_label) is str
+        and type(metric_unit) is str
+        and isinstance(metric.get("value"), (int, float))
+        and not isinstance(metric["value"], bool)
+        and math.isfinite(metric["value"])
+        and -MAX_SAFE_INTEGER <= metric["value"] <= MAX_SAFE_INTEGER
+        and (
+            denominator_label is None or type(denominator_label) is str
+        )
+        and (
+            denominator_value is None
+            or type(denominator_value) is int
+            and 0 <= denominator_value <= MAX_SAFE_INTEGER
+        )
+    ):
+        nonempty(metric_label, f"story {label} metric label", 1000)
+        nonempty(metric_unit, f"story {label} metric unit", 1000)
+        if denominator_label is not None:
+            nonempty(denominator_label, f"story {label} denominator label", 1000)
+        return "measurement"
+    raise SystemExit(f"structured newsroom record has ambiguous result semantics: {label}")
+
+
+try:
+    document = json.loads(
+        Path(sys.argv[1]).read_bytes().decode("utf-8", "strict"),
+        object_pairs_hook=strict_object,
+        parse_constant=lambda item: (_ for _ in ()).throw(
+            ValueError(f"non-finite JSON value: {item}")
+        ),
+    )
+except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+    raise SystemExit("structured newsroom is not strict JSON") from exc
+if not isinstance(document, dict) or set(document) != TOP_FIELDS or (
+    document.get("schema_version") != "palimpsest-news.v1"
+    or type(document.get("n_stories")) is not int
+    or document.get("n_stories") != 39
+    or document.get("feed_id") != "palimpsest-china-newsroom"
+    or document.get("title") != "Palimpsest China Newsroom"
+    or document.get("url") != "https://palimpsest.info/news/"
+    or document.get("source")
+    != "https://palimpsest.info/readings/osint-china-latest.json"
+    or type(document.get("source_commit")) is not str
+    or re.fullmatch(r"[0-9a-f]{40}", document["source_commit"]) is None
+    or type(document.get("headline")) is not str
+    or not document["headline"].strip()
+    or type(document.get("method")) is not str
+    or not document["method"].strip()
+    or type(document.get("scope")) is not str
+    or not document["scope"].strip()
+):
+    raise SystemExit("structured newsroom identity is invalid")
+nonempty(document["headline"], "structured newsroom headline", 1000)
+nonempty(document["method"], "structured newsroom method", 8192)
+nonempty(document["scope"], "structured newsroom scope", 8192)
+newsroom_at = clock(document.get("generated_at"), "structured newsroom generated_at")
+wire_at = clock(sys.argv[2], "private wire generated_at")
+manifest_at = clock(sys.argv[3], "release manifest built_at")
+if not wire_at <= newsroom_at <= manifest_at:
+    raise SystemExit("structured newsroom clocks are not causally ordered")
+sections = document.get("sections")
+if (
+    not isinstance(sections, list)
+    or len(sections) != len(SECTION_IDENTITIES)
+    or any(
+        not isinstance(section, dict)
+        or set(section) != {"dek", "id", "order", "title"}
+        or section.get("id") not in SECTION_IDENTITIES
+        or type(section.get("order")) is not int
+        or (section.get("order"), section.get("title"))
+        != SECTION_IDENTITIES[section["id"]]
+        or type(section.get("dek")) is not str
+        or not section["dek"].strip()
+        for section in sections
+    )
+    or [section["id"] for section in sections]
+    != [
+        section_id
+        for section_id, _identity in sorted(
+            SECTION_IDENTITIES.items(), key=lambda row: row[1][0]
+        )
+    ]
+):
+    raise SystemExit("structured newsroom section inventory is invalid")
+for section in sections:
+    nonempty(section["dek"], f"section {section['id']} dek", 1000)
+rows = document.get("stories")
+if not isinstance(rows, list) or len(rows) != 39 or not all(
+    isinstance(row, dict) for row in rows
+):
+    raise SystemExit("structured newsroom lacks its exact story inventory")
+stories = {row.get("signal_id"): row for row in rows}
+if (
+    len(stories) != 39
+    or tuple(row.get("signal_id") for row in rows) != EXPECTED_ORDER
+):
+    raise SystemExit("structured newsroom signal inventory is invalid")
+
+kinds = [story_kind(story, document["generated_at"]) for story in rows]
+measurement_count = kinds.count("measurement")
+availability_count = kinds.count("availability")
+
+for signal_id in RESTRICTED:
+    story = stories.get(signal_id)
+    evidence = story.get("evidence") if isinstance(story, dict) else None
+    source = evidence.get("input") if isinstance(evidence, dict) else None
+    statement = (
+        f"No current finding is published for {LABELS[signal_id]} because public "
+        "value publication is restricted by the active source policy."
+    )
+    claim_core = {
+        "claim_type": "availability",
+        "metric": NULL_METRIC,
+        "signal_id": signal_id,
+        "statement": statement,
+        "status": "degraded",
+    }
+    claim_fingerprint = "sha256:" + hashlib.sha256(
+        json.dumps(
+            claim_core,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    if (
+        not isinstance(story, dict)
+        or set(story) != STORY_FIELDS
+        or story.get("id") != f"palimpsest-news:{signal_id}"
+        or story.get("slug") != SLUGS[signal_id]
+        or story.get("url") != f"https://palimpsest.info/news/{SLUGS[signal_id]}/"
+        or story.get("headline") != f"{LABELS[signal_id]}: public value unavailable"
+        or story.get("dek")
+        != (
+            "This route remains available, but its current result is withheld until "
+            "the source policy records an effective public-value grant."
+        )
+        or story.get("status") != "degraded"
+        or story.get("metric") != NULL_METRIC
+        or story.get("claims")
+        != [{"type": "availability", "statement": statement}]
+        or story.get("claim_fingerprint") != claim_fingerprint
+        or story.get("published_at") != document["generated_at"]
+        or story.get("modified_at") != document["generated_at"]
+        or {
+            key: story.get(key)
+            for key in ("section", "order", "type", "priority", "related_signal_ids")
+        }
+        != EDITORIAL[signal_id]
+        or story.get("method")
+        != {
+            "summary": (
+                "Availability-only public projection under the active China "
+                "economic source policy"
+            ),
+            "version": 1,
+        }
+        or story.get("limitations")
+        != [
+            "Current finding withheld: public value publication is restricted",
+            "Availability is not a zero, a normal reading, or evidence of direction.",
+        ]
+        or evidence
+        != {
+            "url": RIGHTS_URL,
+            "input": {
+                "filename": f"{signal_id}-latest.json",
+                "sha256": None,
+                "bytes": None,
+            },
+            "source_timestamp": None,
+        }
+        or not isinstance(source, dict)
+    ):
+        raise SystemExit(
+            f"structured newsroom has an unsafe rights availability record: {signal_id}"
+        )
+if measurement_count + availability_count != 39:
+    raise SystemExit("structured newsroom record counts do not close")
+coverage = document.get("coverage")
+status_counts = {
+    status: sum(story["status"] == status for story in rows)
+    for status in ("live", "degraded", "stale", "missing", "corrupt")
+}
+if (
+    not isinstance(coverage, dict)
+    or set(coverage) != {"counts", "live", "reporting", "status", "total"}
+    or any(
+        type(coverage.get(key)) is not int
+        for key in ("live", "reporting", "total")
+    )
+    or not isinstance(coverage.get("counts"), dict)
+    or any(type(value) is not int or value < 0 for value in coverage["counts"].values())
+    or coverage.get("total") != 39
+    or coverage.get("live") != measurement_count
+    or coverage.get("reporting")
+    != status_counts["live"] + status_counts["degraded"] + status_counts["stale"]
+    or coverage.get("status") != "degraded"
+    or coverage.get("counts") != status_counts
+):
+    raise SystemExit("structured newsroom coverage is not bound to its stories")
+print(measurement_count, availability_count, sep="\t")
+PY
+}
+
+measurement_evidence_inventory() {
+  local newsroom_path="$1" timeout_seconds="${2:-}" command
+  if [[ -n "$timeout_seconds" ]]; then
+    [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
+      log "measurement evidence inventory timeout is invalid" >&2
+      return 1
+    }
+    command=("$TIMEOUT_BIN" --signal=TERM --kill-after=5s "${timeout_seconds}s" \
+      "$PYTHON_BIN" -I -S - "$newsroom_path")
+  else
+    command=("$PYTHON_BIN" -I -S - "$newsroom_path")
+  fi
+  "${command[@]}" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+MEASUREMENT_CLAIMS = {"finding", "integrity", "method", "observation"}
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+FILENAME = re.compile(r"^[a-z0-9][a-z0-9.-]{0,126}\.json$")
+UTC_CLOCK = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+)
+MAX_SAFE_INTEGER = 9_007_199_254_740_991
+MAX_MEASUREMENT_EVIDENCE = 64 * 1024 * 1024
+
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("measurement evidence newsroom has a duplicate JSON key")
+        value[key] = item
+    return value
+
+
+try:
+    document = json.loads(
+        Path(sys.argv[1]).read_bytes().decode("utf-8", "strict"),
+        object_pairs_hook=strict_object,
+        parse_constant=lambda item: (_ for _ in ()).throw(
+            ValueError(f"non-finite JSON value: {item}")
+        ),
+    )
+except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+    raise SystemExit("measurement evidence newsroom is not strict JSON") from exc
+stories = document.get("stories") if isinstance(document, dict) else None
+if not isinstance(stories, list):
+    raise SystemExit("measurement evidence newsroom story inventory is invalid")
+
+inventory = {}
+for story in stories:
+    claims = story.get("claims") if isinstance(story, dict) else None
+    if (
+        not isinstance(claims, list)
+        or len(claims) != 1
+        or not isinstance(claims[0], dict)
+        or claims[0].get("type") not in MEASUREMENT_CLAIMS
+        or story.get("status") != "live"
+    ):
+        continue
+    signal_id = story.get("signal_id")
+    evidence = story.get("evidence")
+    source = evidence.get("input") if isinstance(evidence, dict) else None
+    if not isinstance(signal_id, str) or not signal_id or not isinstance(source, dict):
+        raise SystemExit("measurement evidence story identity is invalid")
+    filename = source.get("filename")
+    digest = source.get("sha256")
+    size = source.get("bytes")
+    published_at = story.get("published_at")
+    if (
+        not isinstance(filename, str)
+        or FILENAME.fullmatch(filename) is None
+        or not isinstance(digest, str)
+        or SHA256.fullmatch(digest) is None
+        or type(size) is not int
+        or not 1 <= size <= min(MAX_SAFE_INTEGER, MAX_MEASUREMENT_EVIDENCE)
+        or not isinstance(published_at, str)
+        or UTC_CLOCK.fullmatch(published_at) is None
+        or evidence.get("source_timestamp") != published_at
+        or evidence.get("url")
+        != f"https://palimpsest.info/readings/{filename}"
+    ):
+        raise SystemExit(
+            f"measurement evidence claim is invalid: {signal_id}"
+        )
+    relative = f"readings/{filename}"
+    identity = (digest, size)
+    if relative in inventory and inventory[relative] != identity:
+        raise SystemExit(
+            f"measurement evidence path has conflicting claims: {relative}"
+        )
+    inventory[relative] = identity
+
+for relative in sorted(inventory):
+    digest, size = inventory[relative]
+    print(relative, digest, size, sep="\t")
+PY
+}
+
+validate_measurement_evidence_local() {
+  local newsroom_path="$1" manifest_path="$2" release_root="$3"
+  local expected_count="$4" timeout_seconds="${5:-}" inventory inventory_count
+  local relative story_sha256 story_bytes
+  local manifest_identity manifest_sha256 manifest_bytes
+  [[ "$expected_count" =~ ^[0-9]+$ ]] || {
+    log "measurement evidence expected count is invalid" >&2
+    return 1
+  }
+  inventory="$(measurement_evidence_inventory "$newsroom_path" \
+    "$timeout_seconds")" || return 1
+  if [[ -z "$inventory" ]]; then
+    inventory_count=0
+  else
+    inventory_count="$(awk 'END { print NR }' <<<"$inventory")"
+  fi
+  [[ "$inventory_count" == "$expected_count" ]] || {
+    log "measurement evidence inventory count differs from the newsroom" >&2
+    return 1
+  }
+  [[ -z "$inventory" ]] && return 0
+  while IFS=$'\t' read -r relative story_sha256 story_bytes; do
+    [[ -n "$relative" && "$story_sha256" =~ ^[0-9a-f]{64}$ \
+      && "$story_bytes" =~ ^[1-9][0-9]*$ ]] || {
+      log "measurement evidence inventory row is invalid" >&2
+      return 1
+    }
+    manifest_identity="$(manifest_artifact_identity "$manifest_path" \
+      "$relative")" || {
+      log "$relative measurement evidence is absent from the release manifest" >&2
+      return 1
+    }
+    IFS=$'\t' read -r manifest_sha256 manifest_bytes \
+      <<<"$manifest_identity"
+    [[ "$manifest_sha256" == "$story_sha256" \
+      && "$manifest_bytes" == "$story_bytes" ]] || {
+      log "$relative manifest identity differs from its newsroom evidence claim" >&2
+      return 1
+    }
+    validate_manifest_bound_local "$manifest_path" "$relative" \
+      "$release_root/$relative" || return 1
+  done <<<"$inventory"
+}
+
+prove_live_measurement_evidence() {
+  local newsroom_path="$1" manifest_path="$2" local_root="$3" prefix="$4"
+  local nonce="$5" reserve="$6" expected_count="$7" timeout_seconds="${8:-}"
+  local inventory inventory_count
+  local relative story_sha256 story_bytes manifest_identity manifest_sha256
+  local manifest_bytes suffix provider_path public_path local_path
+  [[ "$expected_count" =~ ^[0-9]+$ ]] || {
+    log "measurement evidence expected count is invalid" >&2
+    return 1
+  }
+  inventory="$(measurement_evidence_inventory "$newsroom_path" \
+    "$timeout_seconds")" || return 1
+  if [[ -z "$inventory" ]]; then
+    inventory_count=0
+  else
+    inventory_count="$(awk 'END { print NR }' <<<"$inventory")"
+  fi
+  [[ "$inventory_count" == "$expected_count" ]] || {
+    log "measurement evidence inventory count differs from the newsroom" >&2
+    return 1
+  }
+  [[ -z "$inventory" ]] && return 0
+  while IFS=$'\t' read -r relative story_sha256 story_bytes; do
+    [[ -n "$relative" && "$story_sha256" =~ ^[0-9a-f]{64}$ \
+      && "$story_bytes" =~ ^[1-9][0-9]*$ ]] || {
+      log "measurement evidence inventory row is invalid" >&2
+      return 1
+    }
+    manifest_identity="$(manifest_artifact_identity "$manifest_path" \
+      "$relative")" || {
+      log "$relative measurement evidence is absent from the release manifest" >&2
+      return 1
+    }
+    IFS=$'\t' read -r manifest_sha256 manifest_bytes \
+      <<<"$manifest_identity"
+    [[ "$manifest_sha256" == "$story_sha256" \
+      && "$manifest_bytes" == "$story_bytes" ]] || {
+      log "$relative manifest identity differs from its newsroom evidence claim" >&2
+      return 1
+    }
+    suffix="${relative//\//-}"
+    provider_path="$work_root/${prefix}-provider-$suffix"
+    public_path="$work_root/${prefix}-public-$suffix"
+    fetch_live_artifact_pair "$relative" "$provider_path" "$public_path" \
+      "$nonce" "$story_bytes" "$reserve" "application/json" || return 1
+    local_path=""
+    [[ -z "$local_root" ]] || local_path="$local_root/$relative"
+    validate_manifest_bound_pair "$manifest_path" "$relative" \
+      "$provider_path" "$public_path" "$local_path" || return 1
+  done <<<"$inventory"
+}
+
+validate_newsroom_feeds() {
+  local newsroom_path="$1" combined_json_path="$2" combined_rss_path="$3" \
+    instrument_json_path="$4" instrument_rss_path="$5" wire_path="$6" \
+    timeout_seconds="${7:-}" command
+  if [[ -n "$timeout_seconds" ]]; then
+    [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
+      log "newsroom feed timeout is invalid" >&2
+      return 1
+    }
+    command=("$TIMEOUT_BIN" --signal=TERM --kill-after=5s "${timeout_seconds}s" \
+      "$PYTHON_BIN" -I -S - "$newsroom_path" "$combined_json_path" \
+      "$combined_rss_path" "$instrument_json_path" "$instrument_rss_path" \
+      "$wire_path")
+  else
+    command=("$PYTHON_BIN" -I -S - "$newsroom_path" "$combined_json_path" \
+      "$combined_rss_path" "$instrument_json_path" "$instrument_rss_path" \
+      "$wire_path")
+  fi
+  "${command[@]}" <<'PY'
+import email.utils
+import hashlib
+import json
+import re
+import sys
+import xml.etree.ElementTree as ET
+from datetime import UTC, datetime
+from pathlib import Path
+
+RIGHTS_URL = "https://palimpsest.info/readings/china-publication-rights-latest.json"
+RESTRICTED = {
+    "board-alarm",
+    "event-flags",
+    "coverage-guard",
+    "forecast-ledger",
+    "cross-layer",
+    "china-econ",
+    "cny-fix-gap",
+    "data-darkness",
+}
+JSON_FEED_FIELDS = {
+    "authors",
+    "description",
+    "feed_url",
+    "home_page_url",
+    "items",
+    "language",
+    "title",
+    "version",
+}
+JSON_ITEM_FIELDS = {
+    "_palimpsest",
+    "attachments",
+    "content_text",
+    "date_modified",
+    "date_published",
+    "external_url",
+    "id",
+    "summary",
+    "tags",
+    "title",
+    "url",
+}
+SOURCE_REPORT_DESKS = {
+    "economy": "Economy",
+    "politics": "Politics & law",
+    "rights": "Rights",
+    "security": "Security",
+    "censorship": "Censorship",
+    "connectivity": "Connectivity & networks",
+    "technology": "Technology",
+}
+
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("newsroom feed proof contains a duplicate JSON key")
+        value[key] = item
+    return value
+
+
+def load_json(path, label):
+    try:
+        value = json.loads(
+            Path(path).read_bytes().decode("utf-8", "strict"),
+            object_pairs_hook=strict_object,
+            parse_constant=lambda item: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON value: {item}")
+            ),
+        )
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"{label} is not strict JSON") from exc
+    if not isinstance(value, dict):
+        raise SystemExit(f"{label} is not a JSON object")
+    return value
+
+
+def revision_id(story):
+    raw = json.dumps(
+        story,
+        allow_nan=False,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return "storyv-" + hashlib.sha256(raw).hexdigest()[:24]
+
+
+def instrument_json_item(story, section_title):
+    availability = story["claims"][0]["type"] == "availability"
+    restricted = story["signal_id"] in RESTRICTED
+    kind = "availability" if availability else "measurement"
+    attachment = {
+        "url": story["evidence"]["url"],
+        "mime_type": "application/json",
+        "title": (
+            "china-publication-rights-latest.json"
+            if restricted
+            else story["evidence"]["input"]["filename"]
+        ),
+    }
+    if story["evidence"]["input"]["bytes"] is not None:
+        attachment["size_in_bytes"] = story["evidence"]["input"]["bytes"]
+    metadata = {
+        "kind": f"instrument_{kind}",
+        "revision_id": revision_id(story),
+        "verification_status": (
+            "public_value_unavailable"
+            if restricted
+            else (
+                "current_result_unavailable"
+                if availability
+                else "palimpsest_measurement"
+            )
+        ),
+    }
+    if restricted:
+        metadata.update(
+            {
+                "signal_id": story["signal_id"],
+                "publication_disposition": "rights-restricted-availability-v1",
+                "value_state": "withheld",
+            }
+        )
+    result_label = "Availability" if availability else "Result"
+    return {
+        "id": story["id"] + ":" + story["claim_fingerprint"],
+        "url": story["url"],
+        "external_url": story["evidence"]["url"],
+        "title": f"[Palimpsest {kind}] {story['headline']}",
+        "summary": (
+            f"Palimpsest {kind}"
+            + (" notice" if availability else "")
+            + f". {story['dek']}"
+        ),
+        "content_text": "\n\n".join(
+            [
+                f"ITEM TYPE: PALIMPSEST {kind.upper()}",
+                f"{result_label}: {story['claims'][0]['statement']}",
+                "Limit: " + " ".join(story["limitations"]),
+                "Evidence: " + story["evidence"]["url"],
+            ]
+        ),
+        "date_published": story["published_at"],
+        "date_modified": story["modified_at"],
+        "tags": [
+            f"palimpsest-{kind}",
+            section_title,
+            story["signal_id"],
+            story["status"],
+        ],
+        "attachments": [attachment],
+        "_palimpsest": metadata,
+    }
+
+
+def rss_clock(value):
+    if not isinstance(value, str) or re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", value
+    ) is None:
+        raise SystemExit("newsroom feed contains an invalid UTC clock")
+    parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    return email.utils.format_datetime(parsed, usegmt=True)
+
+
+def rss_items(path, label):
+    try:
+        raw = Path(path).read_bytes()
+    except OSError as exc:
+        raise SystemExit(f"{label} cannot be read") from exc
+    if b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
+        raise SystemExit(f"{label} contains a prohibited XML declaration")
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise SystemExit(f"{label} is not strict XML") from exc
+    channels = root.findall("channel")
+    if root.tag != "rss" or root.attrib != {"version": "2.0"} or len(channels) != 1:
+        raise SystemExit(f"{label} root identity is invalid")
+    return channels[0], channels[0].findall("item")
+
+
+def only(item, tag, label):
+    rows = item.findall(tag)
+    if len(rows) != 1:
+        raise SystemExit(f"{label} has an invalid {tag} inventory")
+    return rows[0]
+
+
+def validate_rss_channel(
+    channel,
+    items,
+    *,
+    label,
+    title,
+    link,
+    description,
+    self_url,
+    expected_build_at,
+):
+    channel_title = only(channel, "title", label)
+    channel_link = only(channel, "link", label)
+    channel_description = only(channel, "description", label)
+    language = only(channel, "language", label)
+    last_build = only(channel, "lastBuildDate", label)
+    atom = channel.findall("{http://www.w3.org/2005/Atom}link")
+    try:
+        build_at = email.utils.parsedate_to_datetime(last_build.text or "")
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"{label} build clock is invalid") from exc
+    if build_at.tzinfo is None:
+        raise SystemExit(f"{label} build clock has no timezone")
+    if (
+        len(list(channel)) != 6 + len(items)
+        or (channel_title.text or "") != title
+        or (channel_link.text or "") != link
+        or (channel_description.text or "") != description
+        or (language.text or "") != "en"
+        or build_at.astimezone(UTC) != expected_build_at
+        or len(atom) != 1
+        or atom[0].attrib
+        != {"href": self_url, "rel": "self", "type": "application/rss+xml"}
+    ):
+        raise SystemExit(f"{label} channel identity is invalid")
+
+
+def xml_record(element):
+    return (
+        element.tag,
+        tuple(sorted(element.attrib.items())),
+        element.text or "",
+        tuple(xml_record(child) for child in element),
+    )
+
+
+def validate_instrument_rss(item, story, label):
+    availability = story["claims"][0]["type"] == "availability"
+    restricted = story["signal_id"] in RESTRICTED
+    item_type = "Palimpsest availability" if availability else "Palimpsest measurement"
+    result_label = "Availability" if availability else "Result"
+    expected_description = (
+        f"Item type: {item_type}. {result_label}: "
+        + story["claims"][0]["statement"]
+        + " Limit: "
+        + " ".join(story["limitations"])
+        + " Evidence: "
+        + story["evidence"]["url"]
+    )
+    title = only(item, "title", label)
+    link = only(item, "link", label)
+    guid = only(item, "guid", label)
+    published = only(item, "pubDate", label)
+    description = only(item, "description", label)
+    categories = item.findall("category")
+    source = only(item, "source", label)
+    namespace = "{https://palimpsest.info/ns/publication/1.0}"
+    kind = item.findall(namespace + "kind")
+    signal = item.findall(namespace + "signal")
+    disposition = item.findall(namespace + "publicationDisposition")
+    value_state = item.findall(namespace + "valueState")
+    if (
+        (title.text or "") != f"[{item_type}] {story['headline']}"
+        or (link.text or "") != story["url"]
+        or guid.attrib != {"isPermaLink": "false"}
+        or (guid.text or "") != story["id"] + ":" + story["claim_fingerprint"]
+        or (published.text or "") != rss_clock(story["published_at"])
+        or (description.text or "") != expected_description
+        or len(categories) != 1
+        or (categories[0].text or "") != story["section"]
+        or source.attrib != {"url": story["evidence"]["url"]}
+        or (source.text or "") != story["signal_id"]
+        or [(row.text or "") for row in kind]
+        != (["instrument_availability"] if availability else [])
+        or [(row.text or "") for row in signal]
+        != ([story["signal_id"]] if availability else [])
+        or [(row.text or "") for row in disposition]
+        != (["rights-restricted-availability-v1"] if restricted else [])
+        or [(row.text or "") for row in value_state]
+        != (["withheld"] if restricted else [])
+        or len(list(item)) != 7 + (2 if availability else 0) + (2 if restricted else 0)
+    ):
+        raise SystemExit(f"{label} does not bind its structured story")
+
+
+def json_feed(path, label):
+    document = load_json(path, label)
+    if (
+        set(document) != JSON_FEED_FIELDS
+        or document.get("version") != "https://jsonfeed.org/version/1.1"
+        or document.get("language") != "en"
+        or document.get("authors")
+        != [{"name": "Palimpsest Observatory", "url": "https://palimpsest.info/"}]
+        or not isinstance(document.get("description"), str)
+        or not isinstance(document.get("items"), list)
+    ):
+        raise SystemExit(f"{label} identity is invalid")
+    return document
+
+
+def wire_source_item(event, index):
+    label = f"private wire event {index}"
+    if not isinstance(event, dict):
+        raise SystemExit(f"{label} is not an object")
+    event_id = event.get("event_id")
+    version_id = event.get("version_id")
+    headline = event.get("headline")
+    url = event.get("url")
+    published_at = event.get("published_at")
+    updated_at = event.get("updated_at")
+    desk = event.get("desk")
+    strength = event.get("evidence_strength")
+    groups = event.get("evidence_groups")
+    refs = event.get("evidence_refs")
+    topics = event.get("topics")
+    if (
+        not isinstance(event_id, str)
+        or re.fullmatch(r"event-[0-9a-f]{24}", event_id) is None
+        or not isinstance(version_id, str)
+        or re.fullmatch(r"eventv-[0-9a-f]{24}", version_id) is None
+        or not isinstance(headline, str)
+        or not headline.strip()
+        or url != f"https://palimpsest.info/news/wire/{event_id}/"
+        or not isinstance(published_at, str)
+        or not isinstance(updated_at, str)
+        or desk not in SOURCE_REPORT_DESKS
+        or not isinstance(strength, str)
+        or not strength
+        or not isinstance(groups, list)
+        or not groups
+        or any(not isinstance(group, dict) or not group for group in groups)
+        or not isinstance(refs, list)
+        or not refs
+        or not isinstance(topics, list)
+        or any(not isinstance(topic, str) or not topic for topic in topics)
+    ):
+        raise SystemExit(f"{label} cannot be projected canonically")
+    rss_clock(published_at)
+    rss_clock(updated_at)
+    published = datetime.strptime(published_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=UTC
+    )
+    updated = datetime.strptime(updated_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=UTC
+    )
+    if updated < published:
+        raise SystemExit(f"{label} clocks are out of order")
+    for ref in refs:
+        if (
+            not isinstance(ref, dict)
+            or not isinstance(ref.get("source_name"), str)
+            or not ref["source_name"].strip()
+            or not isinstance(ref.get("title"), str)
+            or not ref["title"].strip()
+            or not isinstance(ref.get("url"), str)
+            or not ref["url"].startswith("https://")
+        ):
+            raise SystemExit(f"{label} evidence reference is invalid")
+    group_count = len(groups)
+    if group_count > 1:
+        title_prefix = "[Corroborated source report] "
+        boundary = (
+            f"{group_count} independent publisher groups reported related facts. "
+            "That is corroborated reporting, not proof of truth, intent, impact or "
+            "causation."
+        )
+        source_label = (
+            f"Source report · {group_count} independent publisher groups"
+        )
+        verification_tag = "multiple-independent-source-groups"
+        verification_status = "multiple_independent_source_groups"
+    else:
+        title_prefix = "[Source report] "
+        boundary = (
+            "This record indexes one publisher group. Palimpsest has not "
+            "independently verified or refuted the publisher's claims."
+        )
+        source_label = (
+            "Single-source report · not independently verified by Palimpsest"
+        )
+        verification_tag = "not-independently-verified"
+        verification_status = "not_independently_verified"
+    publishers = ", ".join(
+        dict.fromkeys(ref["source_name"] for ref in refs)
+    )
+    tags = list(
+        dict.fromkeys(
+            [
+                "source-report",
+                verification_tag,
+                SOURCE_REPORT_DESKS[desk],
+                strength,
+                *topics,
+            ]
+        )
+    )
+    return {
+        "id": event_id,
+        "url": url,
+        "external_url": refs[0]["url"],
+        "title": title_prefix + headline,
+        "summary": boundary,
+        "content_text": "\n\n".join(
+            [
+                "ITEM TYPE: " + source_label,
+                "Published by: " + publishers,
+                (
+                    "Palimpsest adds: source grouping, timestamps, topic "
+                    "classification and a revision record."
+                ),
+                "Verification status: " + boundary,
+                "Read the original: " + refs[0]["url"],
+            ]
+        ),
+        "date_published": published_at,
+        "date_modified": updated_at,
+        "tags": tags,
+        "attachments": [
+            {
+                "url": ref["url"],
+                "mime_type": "text/html",
+                "title": f"{ref['source_name']}: {ref['title']}",
+            }
+            for ref in refs
+        ],
+        "_palimpsest": {
+            "kind": "publisher_source_record",
+            "version_id": version_id,
+            "evidence_strength": strength,
+            "independent_groups": group_count,
+            "verification_status": verification_status,
+        },
+    }
+
+
+def validate_source_tail(json_items, xml_items):
+    if len(json_items) != len(xml_items):
+        raise SystemExit("combined JSON/RSS source-report tails differ")
+    metadata_fields = {
+        "evidence_strength",
+        "independent_groups",
+        "kind",
+        "verification_status",
+        "version_id",
+    }
+    for index, (json_item, rss_item) in enumerate(zip(json_items, xml_items)):
+        label = f"combined source-report item {index}"
+        metadata = json_item.get("_palimpsest") if isinstance(json_item, dict) else None
+        attachments = json_item.get("attachments") if isinstance(json_item, dict) else None
+        tags = json_item.get("tags") if isinstance(json_item, dict) else None
+        if (
+            not isinstance(json_item, dict)
+            or set(json_item) != JSON_ITEM_FIELDS
+            or not isinstance(metadata, dict)
+            or set(metadata) != metadata_fields
+            or metadata.get("kind") != "publisher_source_record"
+            or type(metadata.get("independent_groups")) is not int
+            or metadata["independent_groups"] < 1
+            or not isinstance(attachments, list)
+            or not attachments
+            or any(
+                not isinstance(row, dict)
+                or set(row) != {"mime_type", "title", "url"}
+                or row.get("mime_type") != "text/html"
+                or not isinstance(row.get("title"), str)
+                or ": " not in row["title"]
+                or not all(part.strip() for part in row["title"].split(": ", 1))
+                or not isinstance(row.get("url"), str)
+                or not row["url"].startswith("https://")
+                for row in attachments
+            )
+            or not isinstance(tags, list)
+            or len(tags) < 4
+            or tags[0] != "source-report"
+            or not all(isinstance(value, str) and value for value in tags)
+            or len(tags) != len(set(tags))
+            or not all(
+                isinstance(json_item.get(key), str) and json_item[key]
+                for key in (
+                    "content_text",
+                    "date_modified",
+                    "date_published",
+                    "external_url",
+                    "id",
+                    "summary",
+                    "title",
+                    "url",
+                )
+            )
+        ):
+            raise SystemExit(f"{label} JSON shape is invalid")
+        if any(
+            re.fullmatch(
+                r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+                json_item[key],
+            )
+            is None
+            for key in ("date_published", "date_modified")
+        ):
+            raise SystemExit(f"{label} JSON clocks are invalid")
+        published_at = datetime.strptime(
+            json_item["date_published"], "%Y-%m-%dT%H:%M:%SZ"
+        ).replace(tzinfo=UTC)
+        modified_at = datetime.strptime(
+            json_item["date_modified"], "%Y-%m-%dT%H:%M:%SZ"
+        ).replace(tzinfo=UTC)
+        independent_groups = metadata["independent_groups"]
+        if independent_groups > 1:
+            title_prefix = "[Corroborated source report] "
+            source_label = (
+                f"Source report · {independent_groups} independent publisher groups"
+            )
+            boundary = (
+                f"{independent_groups} independent publisher groups reported related "
+                "facts. That is corroborated reporting, not proof of truth, intent, "
+                "impact or causation."
+            )
+            verification_tag = "multiple-independent-source-groups"
+            verification_status = "multiple_independent_source_groups"
+        else:
+            title_prefix = "[Source report] "
+            source_label = "Single-source report · not independently verified by Palimpsest"
+            boundary = (
+                "This record indexes one publisher group. Palimpsest has not "
+                "independently verified or refuted the publisher's claims."
+            )
+            verification_tag = "not-independently-verified"
+            verification_status = "not_independently_verified"
+        publishers = ", ".join(
+            dict.fromkeys(row["title"].split(": ", 1)[0] for row in attachments)
+        )
+        expected_content = "\n\n".join(
+            [
+                "ITEM TYPE: " + source_label,
+                "Published by: " + publishers,
+                (
+                    "Palimpsest adds: source grouping, timestamps, topic "
+                    "classification and a revision record."
+                ),
+                "Verification status: " + boundary,
+                "Read the original: " + json_item["external_url"],
+            ]
+        )
+        if (
+            modified_at < published_at
+            or re.fullmatch(r"event-[0-9a-f]{24}", json_item["id"]) is None
+            or not isinstance(metadata.get("version_id"), str)
+            or re.fullmatch(r"eventv-[0-9a-f]{24}", metadata["version_id"])
+            is None
+            or not isinstance(metadata.get("evidence_strength"), str)
+            or not metadata["evidence_strength"]
+            or metadata.get("verification_status") != verification_status
+            or tags[1] != verification_tag
+            or tags[3] != metadata["evidence_strength"]
+            or json_item["external_url"] != attachments[0]["url"]
+            or json_item["summary"] != boundary
+            or json_item["content_text"] != expected_content
+            or not json_item["title"].startswith(title_prefix)
+            or not json_item["title"][len(title_prefix) :].strip()
+            or not json_item["url"].startswith(
+                "https://palimpsest.info/news/wire/event-"
+            )
+        ):
+            raise SystemExit(f"{label} JSON source contract is invalid")
+        title = only(rss_item, "title", label)
+        link = only(rss_item, "link", label)
+        guid = only(rss_item, "guid", label)
+        published = only(rss_item, "pubDate", label)
+        description = only(rss_item, "description", label)
+        categories = rss_item.findall("category")
+        source = only(rss_item, "source", label)
+        desk = (categories[1].text or "") if len(categories) == 2 else ""
+        expected_description = (
+            "Item type: "
+            + source_label
+            + ". Published by: "
+            + publishers
+            + ". Palimpsest adds source grouping, timestamps, topic "
+            "classification and a revision record. Verification status: "
+            + boundary
+            + " Read original: "
+            + json_item["external_url"]
+        )
+        if (
+            len(list(rss_item)) != 8
+            or (title.text or "") != json_item.get("title")
+            or (link.text or "") != json_item.get("url")
+            or guid.attrib != {"isPermaLink": "false"}
+            or (guid.text or "") != json_item.get("id")
+            or (published.text or "") != rss_clock(json_item.get("date_published"))
+            or (description.text or "") != expected_description
+            or len(categories) != 2
+            or (categories[0].text or "") != "source-report"
+            or desk not in SOURCE_REPORT_DESKS
+            or tags[2] != SOURCE_REPORT_DESKS.get(desk)
+            or source.attrib != {"url": json_item.get("external_url")}
+            or (source.text or "") != attachments[0]["title"].split(": ", 1)[0]
+        ):
+            raise SystemExit(f"{label} is not cross-bound between JSON and RSS")
+
+
+newsroom = load_json(sys.argv[1], "structured newsroom for feed proof")
+wire = load_json(sys.argv[6], "private wire for source-tail proof")
+stories = newsroom.get("stories")
+sections = newsroom.get("sections")
+if not isinstance(stories, list) or len(stories) != 39 or not isinstance(sections, list):
+    raise SystemExit("structured newsroom feed input is invalid")
+events = wire.get("events")
+n_events = wire.get("n_events")
+if (
+    not isinstance(events, list)
+    or type(n_events) is not int
+    or n_events < 0
+    or n_events != len(events)
+):
+    raise SystemExit("private wire event count is invalid")
+expected_source_tail = [wire_source_item(event, index) for index, event in enumerate(events)]
+section_titles = {section["id"]: section["title"] for section in sections}
+expected_items = [
+    instrument_json_item(story, section_titles[story["section"]]) for story in stories
+]
+availability_count = sum(
+    story["claims"][0]["type"] == "availability" for story in stories
+)
+measurement_count = len(stories) - availability_count
+instrument_description = (
+    f"{measurement_count} Palimpsest measurements and {availability_count} "
+    "explicit no-result availability notices, each with a receipt, edition-time "
+    "state and limitation attached."
+)
+combined_description = (
+    f"{measurement_count} Palimpsest measurements and {availability_count} "
+    "availability notices, followed by clearly labeled publisher source records. "
+    "Source reports remain attributed and are not independently verified unless "
+    "the item states otherwise."
+)
+combined_json = json_feed(sys.argv[2], "combined JSON Feed")
+instrument_json = json_feed(sys.argv[4], "instrument JSON Feed")
+if (
+    instrument_json.get("title") != "Palimpsest instrument records"
+    or instrument_json.get("home_page_url")
+    != "https://palimpsest.info/news/#instruments"
+    or instrument_json.get("feed_url")
+    != "https://palimpsest.info/news/instruments/feed.json"
+    or instrument_json.get("description") != instrument_description
+    or instrument_json["items"] != expected_items
+    or combined_json.get("title") != "Palimpsest source index + instrument records"
+    or combined_json.get("home_page_url") != "https://palimpsest.info/news/"
+    or combined_json.get("feed_url") != "https://palimpsest.info/news/feed.json"
+    or combined_json.get("description") != combined_description
+    or combined_json["items"][:39] != instrument_json["items"]
+):
+    raise SystemExit("JSON feeds do not bind the exact newsroom instrument prefix")
+
+combined_channel, combined_rss = rss_items(sys.argv[3], "combined RSS")
+instrument_channel, instrument_rss = rss_items(sys.argv[5], "instrument RSS")
+if len(instrument_rss) != 39 or len(combined_rss) < 39:
+    raise SystemExit("newsroom RSS channel identity is invalid")
+newsroom_at = datetime.strptime(
+    newsroom["generated_at"], "%Y-%m-%dT%H:%M:%SZ"
+).replace(tzinfo=UTC)
+wire_at = datetime.strptime(
+    wire["generated_at"], "%Y-%m-%dT%H:%M:%SZ"
+).replace(tzinfo=UTC)
+validate_rss_channel(
+    instrument_channel,
+    instrument_rss,
+    label="instrument RSS",
+    title="Palimpsest instrument records",
+    link="https://palimpsest.info/news/#instruments",
+    description=(
+        f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "explicit no-result availability notices, each with its receipt, "
+        "edition-time state and limitation."
+    ),
+    self_url="https://palimpsest.info/news/instruments/feed.xml",
+    expected_build_at=newsroom_at,
+)
+validate_rss_channel(
+    combined_channel,
+    combined_rss,
+    label="combined RSS",
+    title="Palimpsest source index + instrument records",
+    link="https://palimpsest.info/news/",
+    description=(
+        f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "availability notices, followed by clearly labeled publisher source "
+        "records. Source reports remain attributed and are not independently "
+        "verified unless stated."
+    ),
+    self_url="https://palimpsest.info/news/feed.xml",
+    expected_build_at=max(newsroom_at, wire_at),
+)
+for index, (item, story) in enumerate(zip(instrument_rss, stories)):
+    validate_instrument_rss(item, story, f"instrument RSS item {index}")
+for index, (item, story) in enumerate(zip(combined_rss[:39], stories)):
+    validate_instrument_rss(item, story, f"combined RSS instrument item {index}")
+if [xml_record(item) for item in combined_rss[:39]] != [
+    xml_record(item) for item in instrument_rss
+]:
+    raise SystemExit("combined RSS instrument prefix differs from instrument RSS")
+source_tail = combined_json["items"][39:]
+if len(source_tail) != n_events or source_tail != expected_source_tail:
+    raise SystemExit("combined source-report tail differs from the private wire projection")
+validate_source_tail(source_tail, combined_rss[39:])
+canonical_tail = (
+    json.dumps(
+        expected_source_tail,
+        allow_nan=False,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    + b"\n"
+)
+print(n_events, hashlib.sha256(canonical_tail).hexdigest(), sep="\t")
+PY
+}
+
+validate_denied_china_analysis_feeds() {
+  local json_path="$1" rss_path="$2" generated_at="$3"
+  local timeout_seconds="${4:-}" command
+  if [[ -n "$timeout_seconds" ]]; then
+    [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
+      log "denied China-analysis feed timeout is invalid" >&2
+      return 1
+    }
+    command=("$TIMEOUT_BIN" --signal=TERM --kill-after=5s "${timeout_seconds}s" \
+      "$PYTHON_BIN" -I -S - "$json_path" "$rss_path" "$generated_at")
+  else
+    command=("$PYTHON_BIN" -I -S - "$json_path" "$rss_path" "$generated_at")
+  fi
+  "${command[@]}" <<'PY'
+import email.utils
+import json
+import re
+import sys
+import xml.etree.ElementTree as ET
+from datetime import UTC, datetime
+from pathlib import Path
+
+SITE = "https://palimpsest.info"
+RIGHTS_URL = f"{SITE}/readings/china-publication-rights-latest.json"
+IDENTITY = "palimpsest-news:china-censorship-analysis:availability"
+TITLE = "[Palimpsest availability] China censorship analysis: public finding unavailable"
+DESCRIPTION = (
+    "Availability updates for Palimpsest's China censorship analysis. No current "
+    "cross-instrument finding is published while required public values are restricted."
+)
+SUMMARY = (
+    "No current cross-instrument finding is published because the active source "
+    "policy does not allow the required public values."
+)
+MEANING = (
+    "This is not a zero, normal, safe, unchanged, or directional reading. Publisher "
+    "source reports remain available separately and are not treated as Palimpsest "
+    "measurements."
+)
+RSS_DESCRIPTION = (
+    "Palimpsest availability notice. "
+    + SUMMARY
+    + " "
+    + MEANING
+    + " Evidence: "
+    + RIGHTS_URL
+)
+UTC_CLOCK = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+)
+
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("denied China-analysis feed has a duplicate JSON key")
+        value[key] = item
+    return value
+
+
+generated_at = sys.argv[3]
+if UTC_CLOCK.fullmatch(generated_at) is None:
+    raise SystemExit("denied China-analysis feed clock is invalid")
+try:
+    generated = datetime.strptime(generated_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=UTC
+    )
+except ValueError as exc:
+    raise SystemExit("denied China-analysis feed clock is invalid") from exc
+try:
+    document = json.loads(
+        Path(sys.argv[1]).read_bytes().decode("utf-8", "strict"),
+        object_pairs_hook=strict_object,
+        parse_constant=lambda item: (_ for _ in ()).throw(
+            ValueError(f"non-finite JSON value: {item}")
+        ),
+    )
+except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+    raise SystemExit("denied China-analysis JSON Feed is not strict JSON") from exc
+expected = {
+    "version": "https://jsonfeed.org/version/1.1",
+    "title": "Palimpsest China Censorship Analysis",
+    "home_page_url": f"{SITE}/news/china/analysis/",
+    "feed_url": f"{SITE}/news/china/analysis/feed.json",
+    "description": DESCRIPTION,
+    "items": [
+        {
+            "id": IDENTITY,
+            "url": f"{SITE}/news/china/analysis/",
+            "title": TITLE,
+            "summary": SUMMARY,
+            "content_text": "\n\n".join(
+                [
+                    "ITEM TYPE: PALIMPSEST AVAILABILITY",
+                    "Availability: " + SUMMARY,
+                    "What this means: " + MEANING,
+                    "Evidence: " + RIGHTS_URL,
+                ]
+            ),
+            "date_published": generated_at,
+            "date_modified": generated_at,
+            "authors": [
+                {
+                    "name": "Palimpsest China Desk",
+                    "url": f"{SITE}/news/china/analysis/",
+                }
+            ],
+            "tags": [
+                "palimpsest-availability",
+                "China",
+                "censorship",
+                "rights-restricted",
+            ],
+            "attachments": [
+                {
+                    "url": RIGHTS_URL,
+                    "mime_type": "application/json",
+                    "title": "china-publication-rights-latest.json",
+                }
+            ],
+            "_palimpsest": {
+                "kind": "china_censorship_analysis_availability",
+                "publication_disposition": "rights-restricted-availability-v1",
+                "value_state": "withheld",
+                "verification_status": "public_finding_unavailable",
+            },
+        }
+    ],
+    "language": "en",
+}
+if document != expected:
+    raise SystemExit("denied China-analysis JSON Feed is not canonical availability")
+
+try:
+    raw = Path(sys.argv[2]).read_bytes()
+except OSError as exc:
+    raise SystemExit("denied China-analysis RSS cannot be read") from exc
+if b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
+    raise SystemExit("denied China-analysis RSS contains a prohibited declaration")
+try:
+    root = ET.fromstring(raw)
+except ET.ParseError as exc:
+    raise SystemExit("denied China-analysis RSS is not strict XML") from exc
+channels = root.findall("channel")
+if root.tag != "rss" or root.attrib != {"version": "2.0"} or len(channels) != 1:
+    raise SystemExit("denied China-analysis RSS root identity is invalid")
+channel = channels[0]
+
+
+def only(parent, tag, label):
+    values = parent.findall(tag)
+    if len(values) != 1:
+        raise SystemExit(f"denied China-analysis RSS {label} inventory is invalid")
+    return values[0]
+
+
+rss_clock = email.utils.format_datetime(generated, usegmt=True)
+items = channel.findall("item")
+atom = channel.findall("{http://www.w3.org/2005/Atom}link")
+if (
+    len(list(channel)) != 7
+    or (only(channel, "title", "channel title").text or "")
+    != "Palimpsest China Censorship Analysis"
+    or (only(channel, "link", "channel link").text or "")
+    != f"{SITE}/news/china/analysis/"
+    or (only(channel, "description", "channel description").text or "")
+    != DESCRIPTION
+    or (only(channel, "language", "channel language").text or "") != "en"
+    or (only(channel, "lastBuildDate", "channel clock").text or "") != rss_clock
+    or len(atom) != 1
+    or atom[0].attrib
+    != {
+        "href": f"{SITE}/news/china/analysis/feed.xml",
+        "rel": "self",
+        "type": "application/rss+xml",
+    }
+    or len(items) != 1
+):
+    raise SystemExit("denied China-analysis RSS channel identity is invalid")
+item = items[0]
+guid = only(item, "guid", "item guid")
+categories = item.findall("category")
+source = only(item, "source", "item source")
+namespace = "{https://palimpsest.info/ns/publication/1.0}"
+if (
+    len(list(item)) != 11
+    or (only(item, "title", "item title").text or "") != TITLE
+    or (only(item, "link", "item link").text or "")
+    != f"{SITE}/news/china/analysis/"
+    or guid.attrib != {"isPermaLink": "false"}
+    or (guid.text or "") != IDENTITY
+    or (only(item, "pubDate", "item clock").text or "") != rss_clock
+    or (only(item, "description", "item description").text or "")
+    != RSS_DESCRIPTION
+    or [(row.text or "") for row in categories]
+    != ["palimpsest-availability", "China censorship analysis"]
+    or source.attrib != {"url": RIGHTS_URL}
+    or (source.text or "") != "china-publication-rights"
+    or (only(item, namespace + "kind", "item kind").text or "")
+    != "china_censorship_analysis_availability"
+    or (
+        only(item, namespace + "publicationDisposition", "item disposition").text
+        or ""
+    )
+    != "rights-restricted-availability-v1"
+    or (only(item, namespace + "valueState", "item value state").text or "")
+    != "withheld"
+):
+    raise SystemExit("denied China-analysis RSS item is not canonical availability")
+PY
+}
+
+validate_newsroom_html() {
+  local html_path="$1" measurement_count="$2" availability_count="$3" \
+    timeout_seconds="${4:-}" command
+  if [[ -n "$timeout_seconds" ]]; then
+    [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
+      log "newsroom HTML timeout is invalid" >&2
+      return 1
+    }
+    command=("$TIMEOUT_BIN" --signal=TERM --kill-after=5s "${timeout_seconds}s" \
+      "$PYTHON_BIN" -I -S - "$html_path" "$measurement_count" \
+      "$availability_count")
+  else
+    command=("$PYTHON_BIN" -I -S - "$html_path" "$measurement_count" \
+      "$availability_count")
+  fi
+  "${command[@]}" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+try:
+    measurement_count, availability_count = map(int, sys.argv[2:4])
+except ValueError as exc:
+    raise SystemExit("newsroom HTML counts are invalid") from exc
+if measurement_count < 0 or availability_count < 0:
+    raise SystemExit("newsroom HTML counts are invalid")
+try:
+    text = Path(sys.argv[1]).read_bytes().decode("utf-8", "strict")
+except (OSError, UnicodeError) as exc:
+    raise SystemExit("newsroom HTML is not bounded UTF-8") from exc
+
+expected = (str(measurement_count), str(availability_count))
+strong_counts = re.findall(
+    r"<strong>([0-9]+)</strong> measurements · "
+    r"<strong>([0-9]+)</strong> availability notices in this edition",
+    text,
+)
+plain_counts = re.findall(
+    r"(?<![0-9])([0-9]+) measurements · "
+    r"([0-9]+) availability notices ·",
+    text,
+)
+if (
+    text.count("<strong>Edition generated</strong>") != 1
+    or strong_counts != [expected]
+    or plain_counts != [expected]
+):
+    raise SystemExit("newsroom HTML is not exactly bound to its structured counts")
+if "measurements live" in text:
+    raise SystemExit(
+        "newsroom HTML falsely labels snapshot measurements as continuously live"
+    )
+PY
+}
+
+manifest_artifact_identity() {
+  local manifest_path="$1" relative_path="$2"
+  jq -er --arg path "$relative_path" '
+    .critical_files[$path] |
+    select(
+      type == "object" and
+      keys == ["bytes","sha256"] and
+      (.sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+      (.bytes | type == "number" and . >= 1 and floor == .)
+    ) |
+    [.sha256, (.bytes | tostring)] | @tsv
+  ' "$manifest_path"
+}
+
+validate_manifest_bound_local() {
+  local manifest_path="$1" relative_path="$2" artifact_path="$3"
+  local identity expected_sha256 expected_bytes
+  identity="$(manifest_artifact_identity "$manifest_path" "$relative_path")" \
+    || return 1
+  IFS=$'\t' read -r expected_sha256 expected_bytes <<<"$identity"
+  [[ -f "$artifact_path" && ! -L "$artifact_path" \
+    && "$(sha256_file "$artifact_path")" == "$expected_sha256" \
+    && "$(stat -c '%s' "$artifact_path")" == "$expected_bytes" ]] || {
+    log "$relative_path is not byte-bound to the release manifest" >&2
+    return 1
+  }
+}
+
+validate_manifest_bound_pair() {
+  local manifest_path="$1" relative_path="$2" provider_path="$3"
+  local public_path="$4" local_path="${5:-}" identity expected_sha256
+  local expected_bytes
+  identity="$(manifest_artifact_identity "$manifest_path" "$relative_path")" \
+    || return 1
+  IFS=$'\t' read -r expected_sha256 expected_bytes <<<"$identity"
+  [[ -f "$provider_path" && ! -L "$provider_path" \
+    && -f "$public_path" && ! -L "$public_path" \
+    && -s "$provider_path" && -s "$public_path" ]] || {
+    log "$relative_path live proof is not a regular non-empty artifact pair" >&2
+    return 1
+  }
+  cmp -s "$provider_path" "$public_path" || {
+    log "provider and public $relative_path artifacts are not byte-identical" >&2
+    return 1
+  }
+  if [[ -n "$local_path" ]]; then
+    [[ -f "$local_path" && ! -L "$local_path" ]] || {
+      log "local $relative_path artifact is unsafe" >&2
+      return 1
+    }
+    cmp -s "$provider_path" "$local_path" || {
+      log "live $relative_path differs from the local manifested release" >&2
+      return 1
+    }
+  fi
+  for artifact_path in "$provider_path" "$public_path"; do
+    [[ "$(sha256_file "$artifact_path")" == "$expected_sha256" \
+      && "$(stat -c '%s' "$artifact_path")" == "$expected_bytes" ]] || {
+      log "live $relative_path is not byte-bound to the release manifest" >&2
+      return 1
+    }
+  done
+  if [[ -n "$local_path" ]]; then
+    validate_manifest_bound_local "$manifest_path" "$relative_path" \
+      "$local_path" || return 1
+  fi
+}
+
+fetch_live_artifact_pair() {
+  local url_path="$1" provider_path="$2" public_path="$3" nonce="$4"
+  local maximum="$5" reserve="$6" accept="${7:-application/octet-stream}"
+  local provider_http public_http
+  provider_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+    "$reserve" -sS --proto '=https' --max-redirs 0 \
+    --header "Accept: $accept" --max-filesize "$maximum" \
+    -o "$provider_path" -w '%{http_code}' \
+    "$PROVIDER_ORIGIN/$url_path?receipt=$nonce")" || return 1
+  public_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+    "$reserve" -sS --proto '=https' --max-redirs 0 \
+    --header "Accept: $accept" --max-filesize "$maximum" \
+    -o "$public_path" -w '%{http_code}' \
+    "$PUBLIC_ORIGIN/$url_path?receipt=$nonce")" || return 1
+  [[ "$provider_http" == 200 && "$public_http" == 200 \
+    && -s "$provider_path" && -s "$public_path" \
+    && "$(stat -c '%s' "$provider_path")" -le "$maximum" \
+    && "$(stat -c '%s' "$public_path")" -le "$maximum" ]] || {
+    log "provider and public $url_path did not return bounded HTTP 200 artifacts" >&2
+    return 1
+  }
+}
+
+validate_durable_release_manifest() {
+  local manifest_path="$1" expected_release="$2" expected_tree="$3"
+  local expected_sha256="$4"
+  [[ "$manifest_path" == "$RELEASE_MANIFEST_ROOT/$expected_release.json" \
+    && -f "$manifest_path" && ! -L "$manifest_path" \
+    && "$(stat -c '%a' "$manifest_path")" == 600 \
+    && "$(sha256_file "$manifest_path")" == "$expected_sha256" ]] || {
+    log "unchanged release manifest anchor is unsafe or changed" >&2
+    return 1
+  }
+  jq -e --arg release "$expected_release" --arg tree "$expected_tree" '
+    type == "object" and
+    keys == ["built_at","critical_files","deployment_source","file_count","github_required","schema_version","source_commit","state","total_bytes","tree_sha256"] and
+    .schema_version == "palimpsest.railway-static-release.v1" and
+    .source_commit == $release and .tree_sha256 == $tree and
+    .state == "artifact_ready" and .deployment_source == "local-git-archive" and
+    .github_required == false and
+    (.built_at | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")) and
+    (.critical_files | type == "object") and
+    (.file_count | type == "number" and . >= 1 and floor == .) and
+    (.total_bytes | type == "number" and . >= 1 and floor == .)
+  ' "$manifest_path" >/dev/null || {
+    log "unchanged release manifest anchor has an invalid identity" >&2
+    return 1
+  }
+}
+
+prove_unchanged_live_release() {
+  local manifest_path="$1" expected_release="$2" expected_tree="$3"
+  local expected_manifest_sha256="$4" expected_wire="$5"
+  local nonce manifest_built_at counts measurement_count availability_count
+  local provider_manifest public_manifest provider_freshness public_freshness
+  local provider_attestation public_attestation provider_newsroom public_newsroom
+  local provider_html public_html relative url_path accept suffix provider_path
+  local public_path provider_wire_sha256 public_wire_sha256 final_nonce
+  local final_provider_manifest final_public_manifest newsroom_generated_at
+
+  validate_durable_release_manifest "$manifest_path" "$expected_release" \
+    "$expected_tree" "$expected_manifest_sha256" || return 1
+  manifest_built_at="$(jq -er '.built_at' "$manifest_path")" || return 1
+  nonce="$(date +%s%N)-unchanged"
+  provider_manifest="$work_root/unchanged-provider-railway-release.json"
+  public_manifest="$work_root/unchanged-public-railway-release.json"
+  fetch_live_artifact_pair "railway-release.json" "$provider_manifest" \
+    "$public_manifest" "$nonce" 16777216 0 "application/json" || return 1
+  if ! cmp -s "$provider_manifest" "$manifest_path" \
+    || ! cmp -s "$public_manifest" "$manifest_path"; then
+    log "unchanged live manifests differ from the durable release anchor" >&2
+    return 1
+  fi
+
+  provider_freshness="$work_root/unchanged-provider-freshness.json"
+  public_freshness="$work_root/unchanged-public-freshness.json"
+  fetch_live_artifact_pair "freshness" "$provider_freshness" \
+    "$public_freshness" "$nonce" 65536 0 "application/json" || return 1
+  validate_live_freshness_proofs "$provider_freshness" "$public_freshness" \
+    "$manifest_path" "$expected_release" "$expected_tree" "$expected_wire" \
+    || return 1
+
+  provider_attestation="$work_root/unchanged-provider-attestation.json"
+  public_attestation="$work_root/unchanged-public-attestation.json"
+  fetch_live_artifact_pair \
+    "readings/publication-freshness-attestation-latest.json" \
+    "$provider_attestation" "$public_attestation" "$nonce" 1048576 0 \
+    "application/json" || return 1
+  validate_manifest_bound_pair "$manifest_path" \
+    "readings/publication-freshness-attestation-latest.json" \
+    "$provider_attestation" "$public_attestation" || return 1
+  provider_wire_sha256="$(validate_release_freshness_attestation \
+    "$snapshot_wire" "$provider_attestation" "$expected_release" \
+    "$expected_wire")" || return 1
+  public_wire_sha256="$(validate_release_freshness_attestation \
+    "$snapshot_wire" "$public_attestation" "$expected_release" \
+    "$expected_wire")" || return 1
+  [[ "$provider_wire_sha256" =~ ^[0-9a-f]{64}$ \
+    && "$provider_wire_sha256" == "$public_wire_sha256" ]] || {
+    log "unchanged live attestations do not bind the same private wire" >&2
+    return 1
+  }
+
+  provider_newsroom="$work_root/unchanged-provider-newsroom.json"
+  public_newsroom="$work_root/unchanged-public-newsroom.json"
+  fetch_live_artifact_pair "readings/newsroom-latest.json" \
+    "$provider_newsroom" "$public_newsroom" "$nonce" 16777216 0 \
+    "application/json" || return 1
+  validate_manifest_bound_pair "$manifest_path" "readings/newsroom-latest.json" \
+    "$provider_newsroom" "$public_newsroom" || return 1
+  counts="$(validate_structured_newsroom "$public_newsroom" "$expected_wire" \
+    "$manifest_built_at")" || return 1
+  IFS=$'\t' read -r measurement_count availability_count <<<"$counts"
+  [[ "$measurement_count" =~ ^[0-9]+$ \
+    && "$availability_count" =~ ^[0-9]+$ \
+    && $((measurement_count + availability_count)) -eq 39 ]] || {
+    log "unchanged live newsroom does not close its 39-record inventory" >&2
+    return 1
+  }
+  newsroom_generated_at="$(jq -er '.generated_at | select(type == "string")' \
+    "$public_newsroom")" || return 1
+  prove_live_measurement_evidence "$public_newsroom" "$manifest_path" "" \
+    "unchanged" "$nonce" 0 "$measurement_count" || return 1
+
+  provider_html="$work_root/unchanged-provider-news-index.html"
+  public_html="$work_root/unchanged-public-news-index.html"
+  fetch_live_artifact_pair "news/" "$provider_html" "$public_html" "$nonce" \
+    16777216 0 "text/html" || return 1
+  validate_manifest_bound_pair "$manifest_path" "news/index.html" \
+    "$provider_html" "$public_html" || return 1
+  validate_newsroom_html "$public_html" "$measurement_count" \
+    "$availability_count" || return 1
+
+  for relative in \
+    news/feed.json news/feed.xml \
+    news/instruments/feed.json news/instruments/feed.xml; do
+    suffix="${relative//\//-}"
+    provider_path="$work_root/unchanged-provider-$suffix"
+    public_path="$work_root/unchanged-public-$suffix"
+    if [[ "$relative" == *.json ]]; then
+      accept="application/feed+json"
+    else
+      accept="application/rss+xml"
+    fi
+    fetch_live_artifact_pair "$relative" "$provider_path" "$public_path" \
+      "$nonce" 16777216 0 "$accept" || return 1
+    validate_manifest_bound_pair "$manifest_path" "$relative" \
+      "$provider_path" "$public_path" || return 1
+  done
+  validate_newsroom_feeds "$public_newsroom" \
+    "$work_root/unchanged-public-news-feed.json" \
+    "$work_root/unchanged-public-news-feed.xml" \
+    "$work_root/unchanged-public-news-instruments-feed.json" \
+    "$work_root/unchanged-public-news-instruments-feed.xml" \
+    "$snapshot_wire" >/dev/null || return 1
+
+  for relative in \
+    news/china/analysis/feed.json news/china/analysis/feed.xml; do
+    suffix="${relative//\//-}"
+    provider_path="$work_root/unchanged-provider-$suffix"
+    public_path="$work_root/unchanged-public-$suffix"
+    if [[ "$relative" == *.json ]]; then
+      accept="application/feed+json"
+    else
+      accept="application/rss+xml"
+    fi
+    fetch_live_artifact_pair "$relative" "$provider_path" "$public_path" \
+      "$nonce" 1048576 0 "$accept" || return 1
+    validate_manifest_bound_pair "$manifest_path" "$relative" \
+      "$provider_path" "$public_path" || return 1
+  done
+  validate_denied_china_analysis_feeds \
+    "$work_root/unchanged-public-news-china-analysis-feed.json" \
+    "$work_root/unchanged-public-news-china-analysis-feed.xml" \
+    "$newsroom_generated_at" || return 1
+
+  final_nonce="$(date +%s%N)-unchanged-final"
+  final_provider_manifest="$work_root/unchanged-final-provider-manifest.json"
+  final_public_manifest="$work_root/unchanged-final-public-manifest.json"
+  fetch_live_artifact_pair "railway-release.json" "$final_provider_manifest" \
+    "$final_public_manifest" "$final_nonce" 16777216 0 "application/json" \
+    || return 1
+  if ! cmp -s "$final_provider_manifest" "$manifest_path" \
+    || ! cmp -s "$final_public_manifest" "$manifest_path"; then
+    log "unchanged live manifest changed during semantic proof" >&2
+    return 1
+  fi
+  bounded_deadline_timeout 1 0 >/dev/null || return 1
 }
 
 validate_installed_transition_artifact() {
@@ -1349,6 +3609,10 @@ persist_release_bundle() {
 cleanup() {
   local status=$?
   trap - EXIT HUP INT TERM
+  if (( status != 0 )) \
+    && [[ -f "$PENDING_CANDIDATE" && ! -L "$PENDING_CANDIDATE" ]]; then
+    log "candidate remains fail-closed in $PENDING_CANDIDATE; run the exact root reconciler before any later publication" >&2
+  fi
   if [[ -n "$work_root" && "$work_root" == "$STATE_ROOT"/work.* && -d "$work_root" ]]; then
     chmod -R u+w "$work_root" 2>/dev/null || true
     rm -rf --one-file-system -- "$work_root"
@@ -1397,8 +3661,8 @@ exec 9<"$LOCK_FILE"
   exit 1
 }
 if ! flock -n 9; then
-  log "publisher already active; coalescing this capture"
-  exit 0
+  log "publisher already active; retry this capture after the current run" >&2
+  exit 75
 fi
 [[ "$(stat -c '%d:%i' "$LOCK_FILE")" == "$lock_identity" ]] || {
   log "publication lock pathname changed while locking" >&2
@@ -1424,7 +3688,8 @@ for required in \
   "$NEWSWIRE_LOCK_FILE" \
   "$DATA_LOCK_FILE" \
   "$RAILWAY_BIN" \
-  "$PYTHON_BIN"; do
+  "$PYTHON_BIN" \
+  "$TIMEOUT_BIN"; do
   [[ -e "$required" ]] || { log "required path missing: $required" >&2; exit 1; }
 done
 
@@ -1515,8 +3780,6 @@ receipt_provider_origin=""
 receipt_public_origin=""
 receipt_direct_path=""
 receipt_host_deployed_sha=""
-provider_receipt_sha=""
-public_receipt_sha=""
 if [[ -f "$SUCCESS_RECEIPT" ]]; then
   receipt_sha256="$(sha256_file "$SUCCESS_RECEIPT")"
   receipt_schema="$(jq -r '.schema_version // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
@@ -1539,10 +3802,6 @@ if [[ -f "$SUCCESS_RECEIPT" ]]; then
   receipt_public_origin="$(jq -r '.origins.public // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
   receipt_direct_path="$(jq -r '.github_actions_used | if . == false then "direct" else "invalid" end' "$SUCCESS_RECEIPT" 2>/dev/null)"
   receipt_host_deployed_sha="$(jq -r '.host_deployed_sha // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
-  if [[ "$receipt_release_sha" =~ ^[0-9a-f]{40}$ ]]; then
-    provider_receipt_sha="$(origin_release_sha "$PROVIDER_ORIGIN")"
-    public_receipt_sha="$(origin_release_sha "$PUBLIC_ORIGIN")"
-  fi
 fi
 
 if [[ "$receipt_schema" == "palimpsest.hetzner-railway-publication.v2" ]]; then
@@ -1746,19 +4005,26 @@ flock -u 7
 log "captured immutable snapshot $snapshot_manifest_sha256 from $wire_status_fresh_sources fresh sources"
 
 if [[ "$receipt_input_sha" == "$input_sha256" ]]; then
+  # Even a byte-identical capture cannot be declared current once its semantic
+  # wire clock lacks enough reserve for a complete two-origin proof.  This is
+  # deliberately before every unchanged-input success exit.
+  require_pre_mutation_freshness_reserve "$wire_generated_at"
+  receipt_manifest_path="$RELEASE_MANIFEST_ROOT/$receipt_release_sha.json"
   if [[ "$receipt_release_sha" =~ ^[0-9a-f]{40}$ ]] \
     && [[ "$receipt_base_sha" == "$base_sha" ]] \
     && [[ "$receipt_base_pin_sha256" == "$base_pin_sha256" ]] \
+    && [[ "$receipt_wire_generated_at" == "$wire_generated_at" ]] \
     && [[ "$receipt_bundle_path" == "$RELEASE_BUNDLE_ROOT/$receipt_release_sha.bundle" ]] \
     && [[ -f "$receipt_bundle_path" && ! -L "$receipt_bundle_path" ]] \
     && [[ "$(stat -c '%a' "$receipt_bundle_path")" == 600 ]] \
     && [[ "$(sha256_file "$receipt_bundle_path")" == "$receipt_bundle_sha256" ]] \
-    && [[ "$provider_receipt_sha" == "$receipt_release_sha" ]] \
-    && [[ "$public_receipt_sha" == "$receipt_release_sha" ]]; then
+    && prove_unchanged_live_release "$receipt_manifest_path" \
+      "$receipt_release_sha" "$receipt_tree_sha256" \
+      "$receipt_manifest_sha256" "$wire_generated_at"; then
     log "capture $wire_generated_at is already live at $receipt_release_sha; skipping duplicate deployment"
     exit 0
   fi
-  log "unchanged capture is not proven on both origins; rebuilding for self-healing"
+  log "unchanged capture lacks exact durable and two-origin semantic proof; rebuilding for self-healing"
 fi
 
 log "building capture $wire_generated_at from base $base_sha"
@@ -1956,10 +4222,84 @@ release_sha="$(git rev-parse HEAD)"
 log "rights-scrubbing local release $release_sha"
 PALIMPSEST_RAILWAY_PYTHON="$PYTHON_BIN" \
   /usr/bin/bash "$checkout/ops/railway/build-static-bundle.sh" "$release_sha" "$release"
-cmp -s "$snapshot_wire" "$release/readings/newswire-latest.json" || {
-  log "rights-clean release wire differs from the authenticated snapshot" >&2
+release_freshness_attestation="$release/readings/publication-freshness-attestation-latest.json"
+wire_canonical_sha256="$(validate_release_freshness_attestation \
+  "$snapshot_wire" "$release_freshness_attestation" "$release_sha" \
+  "$wire_generated_at")"
+[[ "$wire_canonical_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+  log "rights-suppressed release lacks the exact private-wire attestation" >&2
   exit 1
 }
+release_newsroom="$release/readings/newsroom-latest.json"
+release_manifest_built_at="$(jq -er '
+  .built_at | select(type == "string")
+' "$release/railway-release.json")"
+IFS=$'\t' read -r newsroom_measurement_count newsroom_availability_count \
+  <<<"$(validate_structured_newsroom "$release_newsroom" \
+    "$wire_generated_at" "$release_manifest_built_at")"
+[[ "$newsroom_measurement_count" =~ ^[0-9]+$ \
+  && "$newsroom_availability_count" =~ ^[0-9]+$ \
+  && $((newsroom_measurement_count + newsroom_availability_count)) -eq 39 ]] || {
+  log "structured newsroom did not return a closed 39-record result inventory" >&2
+  exit 1
+}
+newsroom_manifest_sha256="$(jq -er '
+    .critical_files["readings/newsroom-latest.json"].sha256 |
+    select(type == "string" and test("^[0-9a-f]{64}$"))
+  ' "$release/railway-release.json")"
+newsroom_manifest_bytes="$(jq -er '
+    .critical_files["readings/newsroom-latest.json"].bytes |
+    select(type == "number" and . >= 1 and floor == .)
+  ' "$release/railway-release.json")"
+release_news_html="$release/news/index.html"
+news_html_manifest_sha256="$(jq -er '
+    .critical_files["news/index.html"].sha256 |
+    select(type == "string" and test("^[0-9a-f]{64}$"))
+  ' "$release/railway-release.json")"
+news_html_manifest_bytes="$(jq -er '
+    .critical_files["news/index.html"].bytes |
+    select(type == "number" and . >= 1 and floor == .)
+  ' "$release/railway-release.json")"
+[[ -f "$release_newsroom" && ! -L "$release_newsroom" \
+    && "$(sha256_file "$release_newsroom")" == "$newsroom_manifest_sha256" \
+    && "$(stat -c '%s' "$release_newsroom")" == "$newsroom_manifest_bytes" \
+    && -f "$release_news_html" && ! -L "$release_news_html" \
+    && "$(sha256_file "$release_news_html")" == "$news_html_manifest_sha256" \
+    && "$(stat -c '%s' "$release_news_html")" == "$news_html_manifest_bytes" ]] || {
+  log "local newsroom JSON or HTML is not bound to the pre-mutation release manifest" >&2
+  exit 1
+}
+validate_newsroom_html "$release_news_html" "$newsroom_measurement_count" \
+  "$newsroom_availability_count"
+validate_measurement_evidence_local "$release_newsroom" \
+  "$release/railway-release.json" "$release" "$newsroom_measurement_count"
+for newsroom_feed_relative in \
+  news/feed.json news/feed.xml \
+  news/instruments/feed.json news/instruments/feed.xml; do
+  validate_manifest_bound_local "$release/railway-release.json" \
+    "$newsroom_feed_relative" "$release/$newsroom_feed_relative"
+done
+IFS=$'\t' read -r news_source_tail_count news_source_tail_sha256 \
+  <<<"$(validate_newsroom_feeds "$release_newsroom" \
+    "$release/news/feed.json" "$release/news/feed.xml" \
+    "$release/news/instruments/feed.json" \
+    "$release/news/instruments/feed.xml" "$snapshot_wire")"
+[[ "$news_source_tail_count" =~ ^[0-9]+$ \
+  && "$news_source_tail_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+  log "local newsroom feeds did not return a private-wire source-tail proof" >&2
+  exit 1
+}
+for denied_analysis_feed_relative in \
+  news/china/analysis/feed.json news/china/analysis/feed.xml; do
+  validate_manifest_bound_local "$release/railway-release.json" \
+    "$denied_analysis_feed_relative" "$release/$denied_analysis_feed_relative"
+done
+release_newsroom_generated_at="$(jq -er \
+  '.generated_at | select(type == "string")' "$release_newsroom")"
+validate_denied_china_analysis_feeds \
+  "$release/news/china/analysis/feed.json" \
+  "$release/news/china/analysis/feed.xml" "$release_newsroom_generated_at"
+log "structured newsroom contains ${newsroom_measurement_count} measurements and ${newsroom_availability_count} availability notices; four newsroom feeds and two denied-analysis feeds are exactly bound"
 require_pre_mutation_freshness_reserve "$wire_generated_at"
 
 # The generated Git object must remain recoverable after cleanup. Verify the
@@ -1972,6 +4312,11 @@ candidate_submission_id="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
 }
 write_preparation_journal
 persist_release_manifest_anchor
+[[ "$(jq -er '.built_at | select(type == "string")' \
+  "$release_manifest_path")" == "$release_manifest_built_at" ]] || {
+  log "durable release manifest changed its authenticated build clock" >&2
+  exit 1
+}
 persist_release_bundle
 
 # This is the last read-only boundary before Railway can change.  Preserve the
@@ -1979,15 +4324,37 @@ persist_release_bundle
 # rollback target from a mutable deployment list.
 capture_predecessor_rollback_evidence
 
+# Preparation, durable bundle creation, and predecessor capture can take a
+# material fraction of the wire budget. Compute the final absolute deadline at
+# the last read-only boundary and persist that exact value in the candidate so
+# a later reconciler can enforce the same window without inventing clock skew.
+require_pre_mutation_freshness_reserve "$wire_generated_at"
+receipt_deadline_at="$("$PYTHON_BIN" -I -S - "$mutation_proof_deadline_epoch" <<'PY'
+import sys
+from datetime import UTC, datetime
+
+print(
+    datetime.fromtimestamp(int(sys.argv[1]), UTC)
+    .replace(microsecond=0)
+    .isoformat()
+    .replace("+00:00", "Z")
+)
+PY
+)"
+
 message="palimpsest-hetzner-${release_sha:0:12}-${input_sha256:0:12}-${candidate_submission_id}"
 candidate_prepared_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 candidate_tmp="$(mktemp "$STATE_ROOT/.pending-candidate.XXXXXX")"
 jq -n \
   --arg prepared_at "$candidate_prepared_at" \
+  --arg receipt_deadline_at "$receipt_deadline_at" \
   --arg message "$message" \
   --arg submission_id "$candidate_submission_id" \
   --arg input_sha256 "$input_sha256" \
   --arg wire_generated_at "$wire_generated_at" \
+  --arg wire_canonical_sha256 "$wire_canonical_sha256" \
+  --argjson news_source_tail_count "$news_source_tail_count" \
+  --arg news_source_tail_sha256 "$news_source_tail_sha256" \
   --arg host_deployed_sha "$host_deployed_sha" \
   --arg base_sha "$base_sha" \
   --arg base_pin_path "$base_pin_path" \
@@ -2031,7 +4398,7 @@ jq -n \
   --arg base_pin_kind "$base_pin_kind" \
   --arg release_bundle_metadata_path "$release_bundle_metadata_path" \
   --arg release_bundle_metadata_sha256 "$release_bundle_metadata_sha256" \
-  '{schema_version:"palimpsest.direct-publication-candidate.v1",status:"mutation_unresolved",prepared_at:$prepared_at,message:$message,submission_id:$submission_id,input_sha256:$input_sha256,wire_generated_at:$wire_generated_at,host_deployed_sha:$host_deployed_sha,base_sha:$base_sha,publication_base:{path:$base_pin_path,kind:$base_pin_kind,sha256:$base_pin_sha256},release_sha:$release_sha,release_manifest:{path:$release_manifest_path,sha256:$release_manifest_sha256,bytes:$release_manifest_bytes,tree_sha256:$release_manifest_tree_sha256,file_count:$release_manifest_file_count,total_bytes:$release_manifest_total_bytes},release_bundle:{path:$release_bundle_path,sha256:$release_bundle_sha256,bytes:$release_bundle_bytes,metadata_path:$release_bundle_metadata_path,metadata_sha256:$release_bundle_metadata_sha256},predecessor:{receipt_sha256:$predecessor_receipt_sha256,archive_path:$predecessor_archive_path,schema_version:$predecessor_schema,base_sha:$predecessor_base_sha,release_sha:$predecessor_release_sha,deployment_id:$predecessor_deployment_id,input_sha256:$predecessor_input_sha256,wire_generated_at:$predecessor_wire_generated_at,manifest_sha256:$predecessor_manifest_sha256,tree_sha256:$predecessor_tree_sha256},rollback_evidence:{schema_version:"palimpsest.direct-publication-rollback-evidence.v1",captured_at:$rollback_captured_at,provider_manifest:{path:$predecessor_provider_manifest_path,sha256:$predecessor_provider_manifest_sha256,bytes:$predecessor_provider_manifest_bytes},public_manifest:{path:$predecessor_public_manifest_path,sha256:$predecessor_public_manifest_sha256,bytes:$predecessor_public_manifest_bytes},topology:{path:$predecessor_topology_path,sha256:$predecessor_topology_sha256,bytes:$predecessor_topology_bytes,project_id:$project_id,environment_id:$environment_id,service_id:$service_id,deployment_id:$predecessor_deployment_id,image_digest:$predecessor_image_digest,reason:$predecessor_deployment_reason,created_at:$predecessor_deployment_created_at}}}' \
+  '{schema_version:"palimpsest.direct-publication-candidate.v2",status:"mutation_unresolved",prepared_at:$prepared_at,receipt_deadline_at:$receipt_deadline_at,message:$message,submission_id:$submission_id,input_sha256:$input_sha256,wire_generated_at:$wire_generated_at,wire_canonical_sha256:$wire_canonical_sha256,news_source_tail:{count:$news_source_tail_count,sha256:$news_source_tail_sha256},host_deployed_sha:$host_deployed_sha,base_sha:$base_sha,publication_base:{path:$base_pin_path,kind:$base_pin_kind,sha256:$base_pin_sha256},release_sha:$release_sha,release_manifest:{path:$release_manifest_path,sha256:$release_manifest_sha256,bytes:$release_manifest_bytes,tree_sha256:$release_manifest_tree_sha256,file_count:$release_manifest_file_count,total_bytes:$release_manifest_total_bytes},release_bundle:{path:$release_bundle_path,sha256:$release_bundle_sha256,bytes:$release_bundle_bytes,metadata_path:$release_bundle_metadata_path,metadata_sha256:$release_bundle_metadata_sha256},predecessor:{receipt_sha256:$predecessor_receipt_sha256,archive_path:$predecessor_archive_path,schema_version:$predecessor_schema,base_sha:$predecessor_base_sha,release_sha:$predecessor_release_sha,deployment_id:$predecessor_deployment_id,input_sha256:$predecessor_input_sha256,wire_generated_at:$predecessor_wire_generated_at,manifest_sha256:$predecessor_manifest_sha256,tree_sha256:$predecessor_tree_sha256},rollback_evidence:{schema_version:"palimpsest.direct-publication-rollback-evidence.v1",captured_at:$rollback_captured_at,provider_manifest:{path:$predecessor_provider_manifest_path,sha256:$predecessor_provider_manifest_sha256,bytes:$predecessor_provider_manifest_bytes},public_manifest:{path:$predecessor_public_manifest_path,sha256:$predecessor_public_manifest_sha256,bytes:$predecessor_public_manifest_bytes},topology:{path:$predecessor_topology_path,sha256:$predecessor_topology_sha256,bytes:$predecessor_topology_bytes,project_id:$project_id,environment_id:$environment_id,service_id:$service_id,deployment_id:$predecessor_deployment_id,image_digest:$predecessor_image_digest,reason:$predecessor_deployment_reason,created_at:$predecessor_deployment_created_at}}}' \
   >"$candidate_tmp"
 chmod 0600 "$candidate_tmp"
 [[ ! -e "$PENDING_CANDIDATE" && ! -L "$PENDING_CANDIDATE" ]] || {
@@ -2052,7 +4419,9 @@ upload_error_log="$STATE_ROOT/last-upload.stderr"
 log "submitting one Railway deployment: $message"
 (
   cd "$release"
-  env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+  run_with_deadline "$RAILWAY_UPLOAD_TIMEOUT_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+    env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
     "$railway_token_name=$railway_token_value" \
     "$RAILWAY_BIN" up --detach --json --yes --no-gitignore \
     --project "$PROJECT_ID" \
@@ -2067,8 +4436,11 @@ deployment_status=""
 deployment_image_digest=""
 deployment_reason=""
 deployment_created_at=""
-for _ in $(seq 1 120); do
-  inventory="$(env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+while bounded_deadline_timeout "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" >/dev/null; do
+  inventory="$(run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+    env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
     "$railway_token_name=$railway_token_value" \
     "$RAILWAY_BIN" deployment list --json --limit 30 \
     --project "$PROJECT_ID" \
@@ -2092,7 +4464,8 @@ for _ in $(seq 1 120); do
     log "Railway returned more than one deployment for the unique message" >&2
     exit 1
   fi
-  sleep 10
+  bounded_deadline_sleep "$POST_MUTATION_POLL_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" || break
 done
 
 [[ "$deployment_status" == SUCCESS && -n "$deployment_id" ]] || {
@@ -2105,7 +4478,9 @@ done
   log "successful candidate inventory has an invalid deployment identity" >&2
   exit 1
 }
-"$PYTHON_BIN" -I -S - "$candidate_prepared_at" "$deployment_created_at" <<'PY'
+run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  "$PYTHON_BIN" -I -S - "$candidate_prepared_at" "$deployment_created_at" <<'PY'
 import sys
 from datetime import UTC, datetime, timedelta
 
@@ -2121,11 +4496,15 @@ if created < prepared - timedelta(seconds=120) or created > now + timedelta(seco
     raise SystemExit("candidate deployment timestamp is outside its journal boundary")
 PY
 candidate_topology="$work_root/candidate-railway-status.json"
-env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
   "$railway_token_name=$railway_token_value" \
   "$RAILWAY_BIN" status --project "$PROJECT_ID" \
   --environment "$ENVIRONMENT_ID" --json >"$candidate_topology"
-PYTHONPATH="$checkout" "$PYTHON_BIN" - "$candidate_topology" \
+run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  env PYTHONPATH="$checkout" "$PYTHON_BIN" - "$candidate_topology" \
   "$PROJECT_ID" "$ENVIRONMENT_ID" "$SERVICE_ID" "$deployment_id" \
   "$deployment_image_digest" "$deployment_reason" <<'PY'
 import sys
@@ -2145,14 +4524,20 @@ parse_status_topology(
 PY
 
 live_sha=""
-for _ in $(seq 1 36); do
-  provider_sha="$(origin_release_sha "$PROVIDER_ORIGIN")"
-  public_sha="$(origin_release_sha "$PUBLIC_ORIGIN")"
+while bounded_deadline_timeout "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" >/dev/null; do
+  origin_timeout="$(bounded_deadline_timeout "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS")" || break
+  provider_sha="$(origin_release_sha "$PROVIDER_ORIGIN" "$origin_timeout")"
+  origin_timeout="$(bounded_deadline_timeout "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS")" || break
+  public_sha="$(origin_release_sha "$PUBLIC_ORIGIN" "$origin_timeout")"
   if [[ "$provider_sha" == "$release_sha" && "$public_sha" == "$release_sha" ]]; then
     live_sha="$public_sha"
     break
   fi
-  sleep 10
+  bounded_deadline_sleep "$POST_MUTATION_POLL_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" || break
 done
 
 [[ "$live_sha" == "$release_sha" ]] || {
@@ -2163,10 +4548,14 @@ done
 provider_manifest="$work_root/provider-railway-release.json"
 public_manifest="$work_root/public-railway-release.json"
 manifest_nonce="$(date +%s%N)"
-curl -fsS --proto '=https' --max-redirs 0 --max-time 30 \
+curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  -fsS --proto '=https' --max-redirs 0 \
   "$PROVIDER_ORIGIN/railway-release.json?receipt=$manifest_nonce" \
   -o "$provider_manifest"
-curl -fsS --proto '=https' --max-redirs 0 --max-time 30 \
+curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  -fsS --proto '=https' --max-redirs 0 \
   "$PUBLIC_ORIGIN/railway-release.json?receipt=$manifest_nonce" \
   -o "$public_manifest"
 cmp -s "$provider_manifest" "$public_manifest" || {
@@ -2200,14 +4589,18 @@ live_total_bytes="$(jq -er '.total_bytes | select(type == "number" and . >= 1 an
 # bound to this release and this exact wire before latest-success can advance.
 provider_freshness="$work_root/provider-freshness.json"
 public_freshness="$work_root/public-freshness.json"
-provider_live_wire="$work_root/provider-newswire-latest.json"
-public_live_wire="$work_root/public-newswire-latest.json"
+provider_live_attestation="$work_root/provider-publication-freshness-attestation.json"
+public_live_attestation="$work_root/public-publication-freshness-attestation.json"
 freshness_nonce="$(date +%s%N)"
-provider_freshness_http="$(curl -sS --proto '=https' --max-redirs 0 \
-  --max-time 30 --max-filesize 65536 -o "$provider_freshness" \
+provider_freshness_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  -sS --proto '=https' --max-redirs 0 \
+  --max-filesize 65536 -o "$provider_freshness" \
   -w '%{http_code}' "$PROVIDER_ORIGIN/freshness?receipt=$freshness_nonce")"
-public_freshness_http="$(curl -sS --proto '=https' --max-redirs 0 \
-  --max-time 30 --max-filesize 65536 -o "$public_freshness" \
+public_freshness_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  -sS --proto '=https' --max-redirs 0 \
+  --max-filesize 65536 -o "$public_freshness" \
   -w '%{http_code}' "$PUBLIC_ORIGIN/freshness?receipt=$freshness_nonce")"
 [[ "$provider_freshness_http" == 200 && "$public_freshness_http" == 200 \
   && -s "$provider_freshness" && -s "$public_freshness" \
@@ -2217,47 +4610,306 @@ public_freshness_http="$(curl -sS --proto '=https' --max-redirs 0 \
   exit 1
 }
 
-provider_wire_http="$(curl -sS --proto '=https' --max-redirs 0 \
-  --max-time 30 --max-filesize 67108864 -o "$provider_live_wire" \
+provider_attestation_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  -sS --proto '=https' --max-redirs 0 \
+  --max-filesize 1048576 -o "$provider_live_attestation" \
   -w '%{http_code}' \
-  "$PROVIDER_ORIGIN/readings/newswire-latest.json?receipt=$freshness_nonce")"
-public_wire_http="$(curl -sS --proto '=https' --max-redirs 0 \
-  --max-time 30 --max-filesize 67108864 -o "$public_live_wire" \
+  "$PROVIDER_ORIGIN/readings/publication-freshness-attestation-latest.json?receipt=$freshness_nonce")"
+public_attestation_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  -sS --proto '=https' --max-redirs 0 \
+  --max-filesize 1048576 -o "$public_live_attestation" \
   -w '%{http_code}' \
-  "$PUBLIC_ORIGIN/readings/newswire-latest.json?receipt=$freshness_nonce")"
-[[ "$provider_wire_http" == 200 && "$public_wire_http" == 200 ]] || {
-  log "provider and public wire endpoints did not both return HTTP 200" >&2
+  "$PUBLIC_ORIGIN/readings/publication-freshness-attestation-latest.json?receipt=$freshness_nonce")"
+[[ "$provider_attestation_http" == 200 && "$public_attestation_http" == 200 ]] || {
+  log "provider and public freshness-attestation endpoints did not both return HTTP 200" >&2
   exit 1
 }
-if ! cmp -s "$provider_live_wire" "$release/readings/newswire-latest.json" \
-  || ! cmp -s "$public_live_wire" "$release/readings/newswire-latest.json"; then
-  log "provider or public live wire differs from the authenticated release wire" >&2
+if ! cmp -s "$provider_live_attestation" "$release_freshness_attestation" \
+  || ! cmp -s "$public_live_attestation" "$release_freshness_attestation"; then
+  log "provider or public freshness attestation differs from the authenticated release" >&2
   exit 1
 fi
+provider_wire_canonical_sha256="$(validate_release_freshness_attestation \
+  "$snapshot_wire" "$provider_live_attestation" "$release_sha" \
+  "$wire_generated_at")"
+public_wire_canonical_sha256="$(validate_release_freshness_attestation \
+  "$snapshot_wire" "$public_live_attestation" "$release_sha" \
+  "$wire_generated_at")"
+[[ "$provider_wire_canonical_sha256" == "$wire_canonical_sha256" \
+  && "$public_wire_canonical_sha256" == "$wire_canonical_sha256" ]] || {
+  log "live freshness attestations do not bind the exact private wire identity" >&2
+  exit 1
+}
+bounded_deadline_timeout 1 "$RECEIPT_COMMIT_RESERVE_SECONDS" >/dev/null
 validate_live_freshness_proofs "$provider_freshness" "$public_freshness" \
   "$release_manifest_path" "$release_sha" "$live_tree_sha256" \
   "$wire_generated_at"
-log "provider and public origins prove HTTP-200 freshness for the exact release and wire"
+bounded_deadline_timeout 1 "$RECEIPT_COMMIT_RESERVE_SECONDS" >/dev/null
+log "provider and public origins prove HTTP-200 freshness from the exact rights-suppressed wire attestation"
 
-cache_buster="$(date +%s)"
-news_html="$(curl -fsSL --max-time 45 "$PUBLIC_ORIGIN/news/?edition=$cache_buster")"
-grep -Eq '<strong>[1-9][0-9]*/39</strong> measurements live' <<<"$news_html" || {
-  log "live newsroom is missing the rebuilt measurement counter" >&2
+provider_live_news_html="$work_root/provider-news-index.html"
+public_live_news_html="$work_root/public-news-index.html"
+provider_news_html_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+    -sS --proto '=https' --max-redirs 0 \
+    --max-filesize 16777216 -o "$provider_live_news_html" \
+    -w '%{http_code}' \
+    "$PROVIDER_ORIGIN/news/?receipt=$freshness_nonce")"
+public_news_html_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+    -sS --proto '=https' --max-redirs 0 \
+    --max-filesize 16777216 -o "$public_live_news_html" \
+    -w '%{http_code}' \
+    "$PUBLIC_ORIGIN/news/?receipt=$freshness_nonce")"
+[[ "$provider_news_html_http" == 200 && "$public_news_html_http" == 200 \
+    && -s "$provider_live_news_html" && -s "$public_live_news_html" ]] || {
+  log "provider and public newsroom HTML did not both return bounded HTTP 200 artifacts" >&2
   exit 1
 }
-grep -q 'The Board · Current evidence' <<<"$news_html" || {
-  log "live newsroom is missing the current Board" >&2
+if ! cmp -s "$provider_live_news_html" "$release_news_html" \
+    || ! cmp -s "$public_live_news_html" "$release_news_html"; then
+  log "provider or public newsroom HTML differs from the manifested release" >&2
+  exit 1
+fi
+[[ "$(sha256_file "$release_news_html")" == "$news_html_manifest_sha256" \
+    && "$(stat -c '%s' "$release_news_html")" == "$news_html_manifest_bytes" \
+    && "$(sha256_file "$provider_live_news_html")" == "$news_html_manifest_sha256" \
+    && "$(stat -c '%s' "$provider_live_news_html")" == "$news_html_manifest_bytes" \
+    && "$(sha256_file "$public_live_news_html")" == "$news_html_manifest_sha256" \
+    && "$(stat -c '%s' "$public_live_news_html")" == "$news_html_manifest_bytes" \
+    && "$(sha256_file "$release_newsroom")" == "$newsroom_manifest_sha256" \
+    && "$(stat -c '%s' "$release_newsroom")" == "$newsroom_manifest_bytes" ]] || {
+  log "live newsroom HTML or structured JSON is not bound to the durable release manifest" >&2
   exit 1
 }
+news_html_validation_timeout="$(bounded_deadline_timeout \
+  "$RAILWAY_COMMAND_TIMEOUT_SECONDS" "$RECEIPT_COMMIT_RESERVE_SECONDS")"
+validate_newsroom_html "$public_live_news_html" "$newsroom_measurement_count" \
+  "$newsroom_availability_count" "$news_html_validation_timeout"
+
+provider_live_newsroom="$work_root/provider-newsroom-latest.json"
+public_live_newsroom="$work_root/public-newsroom-latest.json"
+provider_newsroom_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+    -sS --proto '=https' --max-redirs 0 \
+    --max-filesize 16777216 -o "$provider_live_newsroom" \
+    -w '%{http_code}' \
+    "$PROVIDER_ORIGIN/readings/newsroom-latest.json?receipt=$freshness_nonce")"
+public_newsroom_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+    -sS --proto '=https' --max-redirs 0 \
+    --max-filesize 16777216 -o "$public_live_newsroom" \
+    -w '%{http_code}' \
+    "$PUBLIC_ORIGIN/readings/newsroom-latest.json?receipt=$freshness_nonce")"
+[[ "$provider_newsroom_http" == 200 && "$public_newsroom_http" == 200 \
+    && -s "$provider_live_newsroom" && -s "$public_live_newsroom" ]] || {
+    log "provider and public structured newsrooms did not both return bounded HTTP 200 artifacts" >&2
+    exit 1
+}
+if ! cmp -s "$provider_live_newsroom" "$release/readings/newsroom-latest.json" \
+    || ! cmp -s "$public_live_newsroom" "$release/readings/newsroom-latest.json"; then
+    log "provider or public structured newsroom differs from the manifested release" >&2
+    exit 1
+fi
+run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  "$PYTHON_BIN" -I -S - "$public_live_newsroom" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+RIGHTS_URL = "https://palimpsest.info/readings/china-publication-rights-latest.json"
+RESTRICTED = {
+    "board-alarm",
+    "event-flags",
+    "coverage-guard",
+    "forecast-ledger",
+    "cross-layer",
+    "china-econ",
+    "cny-fix-gap",
+    "data-darkness",
+}
+LABELS = {
+    "board-alarm": "Board alarm",
+    "event-flags": "Event flags",
+    "coverage-guard": "Coverage guard",
+    "forecast-ledger": "Forecast ledger",
+    "cross-layer": "Cross-layer comparison",
+    "china-econ": "China money-market benchmarks",
+    "cny-fix-gap": "Yuan-fix comparison",
+    "data-darkness": "Official-data availability",
+}
+SLUGS = {
+    "board-alarm": "board-alarm",
+    "event-flags": "event-flags",
+    "coverage-guard": "coverage-guard",
+    "forecast-ledger": "forecast-ledger",
+    "cross-layer": "cross-layer-lead-lag",
+    "china-econ": "china-money-market-benchmarks",
+    "cny-fix-gap": "cny-fix-gap",
+    "data-darkness": "official-data-darkness",
+}
+document = json.loads(Path(sys.argv[1]).read_bytes())
+rows = document.get("stories", [])
+stories = {
+    row.get("signal_id"): row
+    for row in rows
+    if isinstance(row, dict)
+}
+availability_ids = {
+    row.get("signal_id")
+    for row in rows
+    if isinstance(row, dict)
+    and isinstance(row.get("claims"), list)
+    and any(
+        isinstance(claim, dict) and claim.get("type") == "availability"
+        for claim in row["claims"]
+    )
+}
+if len(rows) != 39 or len(stories) != 39 or not RESTRICTED <= availability_ids:
+    raise SystemExit("live structured newsroom lacks its exact signal inventory")
+null_metric = {
+    "label": None,
+    "value": None,
+    "unit": None,
+    "denominator": {"label": None, "value": None},
+}
+for signal_id in RESTRICTED:
+    story = stories[signal_id]
+    evidence = story.get("evidence")
+    source = evidence.get("input") if isinstance(evidence, dict) else None
+    statement = (
+        f"No current finding is published for {LABELS[signal_id]} because public "
+        "value publication is restricted by the active source policy."
+    )
+    if (
+        story.get("id") != f"palimpsest-news:{signal_id}"
+        or story.get("slug") != SLUGS[signal_id]
+        or story.get("url") != f"https://palimpsest.info/news/{SLUGS[signal_id]}/"
+        or story.get("headline") != f"{LABELS[signal_id]}: public value unavailable"
+        or story.get("dek")
+        != (
+            "This route remains available, but its current result is withheld until "
+            "the source policy records an effective public-value grant."
+        )
+        or story.get("status") != "degraded"
+        or story.get("metric") != null_metric
+        or story.get("claims")
+        != [{"type": "availability", "statement": statement}]
+        or not isinstance(evidence, dict)
+        or evidence.get("url") != RIGHTS_URL
+        or evidence.get("source_timestamp") is not None
+        or not isinstance(source, dict)
+        or source.get("filename") != f"{signal_id}-latest.json"
+        or source.get("sha256") is not None
+        or source.get("bytes") is not None
+    ):
+        raise SystemExit(
+            f"live structured newsroom has an unsafe availability record: {signal_id}"
+        )
+PY
+newsroom_validation_timeout="$(bounded_deadline_timeout \
+  "$RAILWAY_COMMAND_TIMEOUT_SECONDS" "$RECEIPT_COMMIT_RESERVE_SECONDS")"
+IFS=$'\t' read -r live_newsroom_measurement_count live_newsroom_availability_count \
+  <<<"$(validate_structured_newsroom \
+    "$public_live_newsroom" "$wire_generated_at" \
+    "$release_manifest_built_at" "$newsroom_validation_timeout")"
+[[ "$live_newsroom_measurement_count" == "$newsroom_measurement_count" \
+  && "$live_newsroom_availability_count" == "$newsroom_availability_count" ]] || {
+  log "live structured newsroom record counts differ from the pre-mutation release" >&2
+  exit 1
+}
+measurement_evidence_validation_timeout="$(bounded_deadline_timeout \
+  "$RAILWAY_COMMAND_TIMEOUT_SECONDS" "$RECEIPT_COMMIT_RESERVE_SECONDS")"
+prove_live_measurement_evidence "$public_live_newsroom" \
+  "$release_manifest_path" "$release" "receipt" "$freshness_nonce" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" "$live_newsroom_measurement_count" \
+  "$measurement_evidence_validation_timeout"
+for newsroom_feed_relative in \
+  news/feed.json news/feed.xml \
+  news/instruments/feed.json news/instruments/feed.xml; do
+  newsroom_feed_suffix="${newsroom_feed_relative//\//-}"
+  provider_live_feed="$work_root/provider-$newsroom_feed_suffix"
+  public_live_feed="$work_root/public-$newsroom_feed_suffix"
+  if [[ "$newsroom_feed_relative" == *.json ]]; then
+    newsroom_feed_accept="application/feed+json"
+  else
+    newsroom_feed_accept="application/rss+xml"
+  fi
+  fetch_live_artifact_pair "$newsroom_feed_relative" "$provider_live_feed" \
+    "$public_live_feed" "$freshness_nonce" 16777216 \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" "$newsroom_feed_accept"
+  validate_manifest_bound_pair "$release_manifest_path" \
+    "$newsroom_feed_relative" "$provider_live_feed" "$public_live_feed" \
+    "$release/$newsroom_feed_relative"
+done
+newsroom_feed_validation_timeout="$(bounded_deadline_timeout \
+  "$RAILWAY_COMMAND_TIMEOUT_SECONDS" "$RECEIPT_COMMIT_RESERVE_SECONDS")"
+IFS=$'\t' read -r live_news_source_tail_count live_news_source_tail_sha256 \
+  <<<"$(validate_newsroom_feeds "$public_live_newsroom" \
+    "$work_root/public-news-feed.json" \
+    "$work_root/public-news-feed.xml" \
+    "$work_root/public-news-instruments-feed.json" \
+    "$work_root/public-news-instruments-feed.xml" "$snapshot_wire" \
+    "$newsroom_feed_validation_timeout")"
+[[ "$live_news_source_tail_count" == "$news_source_tail_count" \
+  && "$live_news_source_tail_sha256" == "$news_source_tail_sha256" ]] || {
+  log "live source-report tail differs from the private pre-mutation snapshot" >&2
+  exit 1
+}
+for denied_analysis_feed_relative in \
+  news/china/analysis/feed.json news/china/analysis/feed.xml; do
+  denied_analysis_feed_suffix="${denied_analysis_feed_relative//\//-}"
+  provider_denied_analysis_feed="$work_root/provider-$denied_analysis_feed_suffix"
+  public_denied_analysis_feed="$work_root/public-$denied_analysis_feed_suffix"
+  if [[ "$denied_analysis_feed_relative" == *.json ]]; then
+    denied_analysis_feed_accept="application/feed+json"
+  else
+    denied_analysis_feed_accept="application/rss+xml"
+  fi
+  fetch_live_artifact_pair "$denied_analysis_feed_relative" \
+    "$provider_denied_analysis_feed" "$public_denied_analysis_feed" \
+    "$freshness_nonce" 1048576 "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+    "$denied_analysis_feed_accept"
+  validate_manifest_bound_pair "$release_manifest_path" \
+    "$denied_analysis_feed_relative" "$provider_denied_analysis_feed" \
+    "$public_denied_analysis_feed" "$release/$denied_analysis_feed_relative"
+done
+live_newsroom_generated_at="$(jq -er \
+  '.generated_at | select(type == "string")' "$public_live_newsroom")"
+denied_analysis_validation_timeout="$(bounded_deadline_timeout \
+  "$RAILWAY_COMMAND_TIMEOUT_SECONDS" "$RECEIPT_COMMIT_RESERVE_SECONDS")"
+validate_denied_china_analysis_feeds \
+  "$work_root/public-news-china-analysis-feed.json" \
+  "$work_root/public-news-china-analysis-feed.xml" \
+  "$live_newsroom_generated_at" "$denied_analysis_validation_timeout"
+final_manifest_nonce="$(date +%s%N)-final"
+provider_final_manifest="$work_root/provider-final-railway-release.json"
+public_final_manifest="$work_root/public-final-railway-release.json"
+fetch_live_artifact_pair "railway-release.json" "$provider_final_manifest" \
+  "$public_final_manifest" "$final_manifest_nonce" 16777216 \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" "application/json"
+if ! cmp -s "$provider_final_manifest" "$release_manifest_path" \
+  || ! cmp -s "$public_final_manifest" "$release_manifest_path"; then
+  log "live manifest changed during newsroom and feed proof" >&2
+  exit 1
+fi
+log "live newsroom proves bounded snapshot copy, ${live_newsroom_measurement_count} measurements, ${live_newsroom_availability_count} availability notices, eight exact rights restrictions, four cross-bound newsroom feeds, and two canonical denied-analysis feeds"
 
 # Close the live-fetch TOCTOU window: the exact candidate topology proved
 # before origin checks must still be active immediately before receipt commit.
 candidate_final_topology="$work_root/candidate-final-railway-status.json"
-env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
   "$railway_token_name=$railway_token_value" \
   "$RAILWAY_BIN" status --project "$PROJECT_ID" \
   --environment "$ENVIRONMENT_ID" --json >"$candidate_final_topology"
-PYTHONPATH="$checkout" "$PYTHON_BIN" - "$candidate_final_topology" \
+run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  env PYTHONPATH="$checkout" "$PYTHON_BIN" - "$candidate_final_topology" \
   "$PROJECT_ID" "$ENVIRONMENT_ID" "$SERVICE_ID" "$deployment_id" \
   "$deployment_image_digest" "$deployment_reason" <<'PY'
 import sys
@@ -2318,9 +4970,35 @@ jq -n \
   '{schema_version:"palimpsest.hetzner-railway-publication.v2",status:"verified",recorded_at:$recorded_at,input_sha256:$input_sha256,wire_generated_at:$wire_generated_at,host_deployed_sha:$host_deployed_sha,base_sha:$base_sha,publication_base:{path:$base_pin_path,kind:$base_pin_kind,sha256:$base_pin_sha256,target_sha:$base_sha},release_sha:$release_sha,release_bundle:{schema_version:"palimpsest.incremental-release-bundle.v1",path:$release_bundle_path,sha256:$release_bundle_sha256,bytes:$release_bundle_bytes,base_sha:$base_sha,release_sha:$release_sha,metadata_path:$release_bundle_metadata_path,metadata_sha256:$release_bundle_metadata_sha256},predecessor:{receipt_sha256:$predecessor_receipt_sha256,archive_path:$predecessor_archive_path,schema_version:$predecessor_schema,base_sha:$predecessor_base_sha,release_sha:$predecessor_release_sha,deployment_id:$predecessor_deployment_id,input_sha256:$predecessor_input_sha256,wire_generated_at:$predecessor_wire_generated_at,manifest_sha256:$predecessor_manifest_sha256,tree_sha256:$predecessor_tree_sha256},candidate:{archive_path:$candidate_archive_path,journal_sha256:$candidate_journal_sha256,message:$candidate_message},live_manifest:{path:$live_manifest_path,sha256:$live_manifest_sha256,bytes:$live_manifest_bytes,tree_sha256:$live_tree_sha256,file_count:$live_file_count,total_bytes:$live_total_bytes},railway:{deployment_id:$deployment_id,status:$deployment_status},origins:{provider:$provider_origin,public:$public_origin},github_actions_used:false}' \
   >"$receipt_tmp"
 chmod 0600 "$receipt_tmp"
+# Durably prepare the receipt before consuming the reserved commit window.
+fsync_paths_and_directory "$receipt_tmp" "$STATE_ROOT"
+bounded_deadline_timeout 1 "$RECEIPT_COMMIT_RESERVE_SECONDS" >/dev/null
 mv -f "$receipt_tmp" "$SUCCESS_RECEIPT"
 receipt_tmp=""
 fsync_paths_and_directory "$SUCCESS_RECEIPT" "$STATE_ROOT"
+if ! bounded_deadline_timeout 1 0 >/dev/null; then
+  log "success receipt became durable after its absolute deadline; restoring predecessor receipt and leaving the candidate unresolved" >&2
+  [[ -f "$receipt_archive_path" && ! -L "$receipt_archive_path" \
+    && "$(sha256_file "$receipt_archive_path")" == "$receipt_sha256" ]] || {
+    log "cannot authenticate predecessor receipt for deadline-violation recovery" >&2
+    exit 1
+  }
+  receipt_tmp="$(mktemp "$STATE_ROOT/.latest-success.XXXXXX")"
+  cp -- "$receipt_archive_path" "$receipt_tmp"
+  chmod 0600 "$receipt_tmp"
+  [[ "$(sha256_file "$receipt_tmp")" == "$receipt_sha256" ]] || {
+    log "predecessor receipt copy changed during deadline-violation recovery" >&2
+    exit 1
+  }
+  fsync_paths_and_directory "$receipt_tmp" "$STATE_ROOT"
+  mv -f "$receipt_tmp" "$SUCCESS_RECEIPT"
+  receipt_tmp=""
+  fsync_paths_and_directory "$SUCCESS_RECEIPT" "$STATE_ROOT"
+  exit 1
+fi
+# The pending candidate is the inverse commit marker. Until its unlink is
+# durable, the reconciler must restore the authenticated predecessor receipt:
+# recorded_at was written before fsync and cannot prove durable commit time.
 [[ "$(sha256_file "$PENDING_CANDIDATE")" == "$candidate_journal_sha256" ]] || {
   log "candidate journal changed before consumption" >&2
   exit 1

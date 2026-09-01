@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import stat
@@ -49,6 +50,9 @@ LEGACY_CHAIN_CHECKPOINT_SCHEMA = "palimpsest.direct-publication-chain-checkpoint
 CHAIN_CHECKPOINT_SCHEMA = "palimpsest.direct-publication-chain-checkpoint.v2"
 CHAIN_VALIDATION_BUDGET_SECONDS = 45.0
 MAX_PIN_GENERATIONS = 256
+MAX_CANDIDATE_RECEIPT_AFTER_PREPARED_SECONDS = 720
+MAX_CANDIDATE_RECEIPT_AFTER_WIRE_SECONDS = 1500
+MAX_FUTURE_CLOCK_SKEW_SECONDS = 120
 
 V1_SCHEMA = "palimpsest.hetzner-railway-publication.v1"
 V2_SCHEMA = "palimpsest.hetzner-railway-publication.v2"
@@ -57,7 +61,8 @@ SUCCESSOR_PIN_SCHEMA = "palimpsest.direct-publication-base.v2"
 ROTATION_SCHEMA = "palimpsest.direct-publication-base-rotation.v1"
 PIN_INCIDENT = "palimpsest-direct-lineage-2026-08-30"
 BUNDLE_SCHEMA = "palimpsest.incremental-release-bundle.v1"
-CANDIDATE_SCHEMA = "palimpsest.direct-publication-candidate.v1"
+LEGACY_CANDIDATE_SCHEMA = "palimpsest.direct-publication-candidate.v1"
+CANDIDATE_SCHEMA = "palimpsest.direct-publication-candidate.v2"
 ROLLBACK_EVIDENCE_SCHEMA = "palimpsest.direct-publication-rollback-evidence.v1"
 DATA_HOLD_SCHEMA = "palimpsest.direct-publication-data-hold.v1"
 ROLLBACK_ATTEMPT_SCHEMA = "palimpsest.direct-publication-rollback-attempt.v1"
@@ -303,6 +308,34 @@ def parse_fractional_timestamp(value: Any, *, microseconds: bool = False) -> dat
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
         timezone.utc
     )
+
+
+def _candidate_receipt_deadline(candidate: dict[str, Any]) -> datetime:
+    """Validate the publisher's persisted post-mutation receipt deadline."""
+
+    timestamps: dict[str, datetime] = {}
+    for field in ("prepared_at", "wire_generated_at", "receipt_deadline_at"):
+        try:
+            timestamps[field] = parse_timestamp(candidate[field])
+        except (KeyError, ValueError) as exc:
+            raise WatchdogError(f"candidate {field} is invalid") from exc
+
+    prepared_at = timestamps["prepared_at"]
+    wire_generated_at = timestamps["wire_generated_at"]
+    receipt_deadline_at = timestamps["receipt_deadline_at"]
+    if receipt_deadline_at <= prepared_at:
+        raise WatchdogError("candidate receipt deadline does not follow preparation")
+    if receipt_deadline_at > prepared_at + timedelta(
+        seconds=MAX_CANDIDATE_RECEIPT_AFTER_PREPARED_SECONDS
+    ):
+        raise WatchdogError("candidate receipt deadline exceeds the preparation bound")
+    if receipt_deadline_at > wire_generated_at + timedelta(
+        seconds=MAX_CANDIDATE_RECEIPT_AFTER_WIRE_SECONDS
+    ):
+        raise WatchdogError(
+            "candidate receipt deadline exceeds the wire freshness bound"
+        )
+    return receipt_deadline_at
 
 
 def _sha256(raw: bytes) -> str:
@@ -1922,6 +1955,18 @@ def _validate_live_manifest(
 ) -> dict[str, Any]:
     manifest = _strict_json(raw, label="live release manifest")
     release_sha = receipt.get("release_sha")
+    try:
+        built_at = parse_timestamp(manifest.get("built_at"))
+        receipt_recorded_at = parse_timestamp(receipt.get("recorded_at"))
+    except ValueError as exc:
+        raise WatchdogError("live manifest/receipt clock is invalid") from exc
+    if built_at > receipt_recorded_at + timedelta(
+        seconds=MAX_FUTURE_CLOCK_SKEW_SECONDS
+    ):
+        raise WatchdogError(
+            "publication receipt predates the live manifest beyond the allowed "
+            f"{MAX_FUTURE_CLOCK_SKEW_SECONDS}s clock skew"
+        )
     if (
         manifest.get("schema_version") != "palimpsest.railway-static-release.v1"
         or manifest.get("state") != "artifact_ready"
@@ -1952,6 +1997,7 @@ def _validate_live_manifest(
                 "live manifest bytes do not match the pre-mutation anchor"
             )
     return {
+        "built_at": manifest["built_at"],
         "release_sha": release_sha,
         "tree_sha256": tree_sha256,
         "manifest_sha256": _sha256(raw),
@@ -2270,8 +2316,9 @@ def _validate_candidate_document(
     *,
     pin: dict[str, Any],
     pin_sha256: str,
+    allow_legacy_v1: bool = False,
 ) -> tuple[str, str, dict[str, Any]]:
-    required = {
+    legacy_required = {
         "base_sha",
         "host_deployed_sha",
         "input_sha256",
@@ -2288,15 +2335,53 @@ def _validate_candidate_document(
         "submission_id",
         "wire_generated_at",
     }
-    _expect_keys(candidate, required, label="candidate journal")
-    if (
-        candidate["schema_version"] != CANDIDATE_SCHEMA
-        or candidate["status"] != "mutation_unresolved"
-    ):
+    required = legacy_required | {
+        "news_source_tail",
+        "receipt_deadline_at",
+        "wire_canonical_sha256",
+    }
+    schema = candidate.get("schema_version")
+    is_legacy = schema == LEGACY_CANDIDATE_SCHEMA
+    if is_legacy and not allow_legacy_v1:
+        raise WatchdogError("legacy v1 candidate is not accepted as pending")
+    if schema not in {CANDIDATE_SCHEMA, LEGACY_CANDIDATE_SCHEMA}:
         raise WatchdogError("candidate journal status is invalid")
-    parse_timestamp(candidate["prepared_at"])
-    parse_timestamp(candidate["wire_generated_at"])
+    _expect_keys(
+        candidate,
+        legacy_required if is_legacy else required,
+        label="candidate journal",
+    )
+    if candidate["status"] != "mutation_unresolved":
+        raise WatchdogError("candidate journal status is invalid")
+    if is_legacy:
+        try:
+            parse_timestamp(candidate["prepared_at"])
+            parse_timestamp(candidate["wire_generated_at"])
+        except ValueError as exc:
+            raise WatchdogError("legacy candidate clock is invalid") from exc
+    else:
+        _candidate_receipt_deadline(candidate)
     input_sha256 = _digest(candidate["input_sha256"], label="candidate input digest")
+    if not is_legacy:
+        _digest(
+            candidate["wire_canonical_sha256"],
+            label="candidate wire canonical digest",
+        )
+        news_source_tail = candidate["news_source_tail"]
+        if not isinstance(news_source_tail, dict):
+            raise WatchdogError("candidate news source tail proof is invalid")
+        _expect_keys(
+            news_source_tail,
+            {"count", "sha256"},
+            label="candidate news source tail proof",
+        )
+        count = news_source_tail["count"]
+        if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+            raise WatchdogError("candidate news source tail count is invalid")
+        _digest(
+            news_source_tail["sha256"],
+            label="candidate news source tail digest",
+        )
     base_sha = _sha40(candidate["base_sha"], label="candidate publication base")
     release_sha = _sha40(candidate["release_sha"], label="candidate release")
     host_deployed_sha = _sha40(
@@ -2434,6 +2519,7 @@ def _validate_candidate_archive(
         candidate,
         pin=pin,
         pin_sha256=pin_sha256,
+        allow_legacy_v1=True,
     )
     publication_base = receipt["publication_base"]
     receipt_bundle = receipt["release_bundle"]
@@ -2958,6 +3044,7 @@ def validate_lineage(
             "publication_base_pin_sha256": pin_sha256 or None,
             "receipt_publication_base_pin_sha256": receipt_pin_sha256 or None,
             "base_rotation_bridge": base_rotation_bridge,
+            "recorded_at": receipt["recorded_at"],
             "release_sha": receipt.get("release_sha"),
             "deployment_id": receipt.get("railway", {}).get("deployment_id"),
             "chain_checkpoint": verified_chain,
@@ -3080,6 +3167,29 @@ def add_problem(problems: list[dict[str, Any]], check: str, detail: str) -> None
     problems.append({"check": check, "detail": detail})
 
 
+def _clock_age(
+    problems: list[dict[str, Any]],
+    check: str,
+    payload: dict[str, Any],
+    field: str,
+    now: datetime,
+) -> float | None:
+    try:
+        age = (now - parse_timestamp(payload.get(field))).total_seconds()
+    except (TypeError, ValueError) as exc:
+        add_problem(problems, check, f"invalid {field}: {exc}")
+        return None
+    if age < -MAX_FUTURE_CLOCK_SKEW_SECONDS:
+        add_problem(
+            problems,
+            check,
+            f"{field} is {math.ceil(-age)}s in the future; maximum clock skew is "
+            f"{MAX_FUTURE_CLOCK_SKEW_SECONDS}s",
+        )
+        return None
+    return max(0.0, age)
+
+
 def check_age(
     problems: list[dict[str, Any]],
     check: str,
@@ -3088,10 +3198,8 @@ def check_age(
     maximum: int,
     now: datetime,
 ) -> float | None:
-    try:
-        age = max(0.0, (now - parse_timestamp(payload.get(field))).total_seconds())
-    except (TypeError, ValueError) as exc:
-        add_problem(problems, check, f"invalid {field}: {exc}")
+    age = _clock_age(problems, check, payload, field, now)
+    if age is None:
         return None
     if age > maximum:
         add_problem(
@@ -3255,25 +3363,35 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, TypeError, ValueError, WatchdogError) as exc:
         add_problem(problems, "measurements/document", str(exc))
 
-    publication: dict[str, Any] = {}
     try:
-        publication = load_json(PUBLICATION_RECEIPT)
-        publication_age = check_age(
-            problems,
-            "publication/freshness",
-            publication,
-            "recorded_at",
-            PUBLICATION_MAX_AGE_SECONDS,
-            now,
-        )
         lineage, candidate = validate_lineage(
             lineage_config,
             fetch_manifest=fetch_manifest,
             chain_checkpoint=prior_chain_checkpoint,
         )
-        lineage["recorded_at"] = publication.get("recorded_at")
+        live = lineage.get("live")
+        if not isinstance(live, dict):
+            raise WatchdogError("validated lineage has no live manifest proof")
+        publication_age = check_age(
+            problems,
+            "publication/freshness",
+            live,
+            "built_at",
+            PUBLICATION_MAX_AGE_SECONDS,
+            now,
+        )
+        receipt_age = _clock_age(
+            problems,
+            "publication/receipt_clock",
+            lineage,
+            "recorded_at",
+            now,
+        )
         lineage["age_seconds"] = (
             round(publication_age, 3) if publication_age is not None else None
+        )
+        lineage["receipt_age_seconds"] = (
+            round(receipt_age, 3) if receipt_age is not None else None
         )
         lineage["candidate"] = candidate
         checks["publication"] = lineage

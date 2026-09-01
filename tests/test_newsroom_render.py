@@ -31,12 +31,12 @@ def test_renderer_emits_one_html_and_json_document_per_story():
             / build_newsroom.instrument_analysis_model.READING_HTML[story["signal_id"]]
         ).is_file()
     )
-    # Every story owns one content-addressed 1200x630 card. The edition and
-    # China-analysis pages each add a contextual card; one strict renderer
-    # manifest closes those dynamic binaries for the Pages rights gate.
-    assert len(outputs) == 12 + (5 * feed["n_stories"]) + reading_html
+    # Every story owns one content-addressed 1200x630 card. The denied-value
+    # edition omits the structured cross-instrument analysis, while retaining
+    # the route and replacing both feed formats with a current availability item.
+    assert len(outputs) == 11 + (5 * feed["n_stories"]) + reading_html
     assert Path("readings/newsroom-latest.json") in outputs
-    assert Path("readings/china-censorship-analysis-latest.json") in outputs
+    assert Path("readings/china-censorship-analysis-latest.json") not in outputs
     assert Path("news/index.html") in outputs
     assert Path("news/china/analysis/index.html") in outputs
     assert Path("news/china/analysis/feed.json") in outputs
@@ -136,6 +136,105 @@ def test_json_feed_rss_and_sitemap_are_parseable_and_complete():
     )
 
 
+def test_denied_china_analysis_feeds_are_current_closed_availability_records():
+    feed = _feed()
+    outputs = build_newsroom.build_outputs(feed)
+    json_path = build_newsroom.CHINA_ANALYSIS_JSON_FEED_RELATIVE
+    rss_path = build_newsroom.CHINA_ANALYSIS_RSS_FEED_RELATIVE
+
+    document = json.loads(outputs[json_path])
+    assert document == build_newsroom.build_china_analysis_availability_json_feed(
+        feed["generated_at"]
+    )
+    assert outputs[json_path] == build_newsroom._pretty_json(document)
+    assert len(document["items"]) == 1
+    item = document["items"][0]
+    assert item["date_published"] == feed["generated_at"]
+    assert item["date_modified"] == feed["generated_at"]
+    assert item["_palimpsest"] == {
+        "kind": "china_censorship_analysis_availability",
+        "publication_disposition": "rights-restricted-availability-v1",
+        "value_state": "withheld",
+        "verification_status": "public_finding_unavailable",
+    }
+    assert set(item) == {
+        "id",
+        "url",
+        "title",
+        "summary",
+        "content_text",
+        "date_published",
+        "date_modified",
+        "authors",
+        "tags",
+        "attachments",
+        "_palimpsest",
+    }
+    forbidden = (
+        "chinaarticlev-",
+        "finding_state",
+        "citation_coverage",
+        "board-wide e-value",
+        '"metric"',
+    )
+    assert all(token not in outputs[json_path].decode() for token in forbidden)
+
+    assert outputs[rss_path] == build_newsroom.build_china_analysis_availability_rss(
+        feed["generated_at"]
+    )
+    channel = ET.fromstring(outputs[rss_path]).find("channel")
+    assert channel is not None
+    assert len(channel.findall("item")) == 1
+    assert channel.findtext("lastBuildDate") == build_newsroom._rfc2822(
+        feed["generated_at"]
+    )
+    rss_item = channel.find("item")
+    assert rss_item is not None
+    assert rss_item.findtext("guid") == build_newsroom.CHINA_ANALYSIS_AVAILABILITY_ID
+    assert rss_item.findtext("pubDate") == channel.findtext("lastBuildDate")
+    assert all(token not in outputs[rss_path].decode() for token in forbidden)
+
+
+def test_denied_publication_overwrites_old_analysis_feeds_and_removes_old_reading(
+    tmp_path,
+):
+    feed = _feed()
+    old_article = build_newsroom.china_analysis_model.build(feed)
+    old_json = build_newsroom._pretty_json(
+        build_newsroom.build_china_analysis_json_feed(old_article)
+    )
+    old_rss = build_newsroom.build_china_analysis_rss(old_article)
+    old_reading = build_newsroom.china_analysis_model.pretty_json_bytes(old_article)
+    prior = {
+        build_newsroom.CHINA_ANALYSIS_JSON_FEED_RELATIVE: old_json,
+        build_newsroom.CHINA_ANALYSIS_RSS_FEED_RELATIVE: old_rss,
+        build_newsroom.CHINA_ANALYSIS_READING_RELATIVE: old_reading,
+    }
+    for relative, raw in prior.items():
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+
+    outputs = build_newsroom.build_outputs(feed)
+    drift = set(build_newsroom.check(outputs, root=tmp_path))
+    assert {
+        f"stale {build_newsroom.CHINA_ANALYSIS_JSON_FEED_RELATIVE}",
+        f"stale {build_newsroom.CHINA_ANALYSIS_RSS_FEED_RELATIVE}",
+        f"extra {build_newsroom.CHINA_ANALYSIS_READING_RELATIVE}",
+    } <= drift
+
+    build_newsroom.publish(outputs, root=tmp_path)
+
+    assert (tmp_path / build_newsroom.CHINA_ANALYSIS_JSON_FEED_RELATIVE).read_bytes() == (
+        outputs[build_newsroom.CHINA_ANALYSIS_JSON_FEED_RELATIVE]
+    )
+    assert (tmp_path / build_newsroom.CHINA_ANALYSIS_RSS_FEED_RELATIVE).read_bytes() == (
+        outputs[build_newsroom.CHINA_ANALYSIS_RSS_FEED_RELATIVE]
+    )
+    assert not (tmp_path / build_newsroom.CHINA_ANALYSIS_READING_RELATIVE).exists()
+    assert build_newsroom.check(outputs, root=tmp_path) == []
+
+
 def test_rss_quote_escapes_source_url_attributes():
     feed = _feed()
     feed["stories"][0]["evidence"]["url"] = (
@@ -172,6 +271,7 @@ def test_publication_is_idempotent_and_check_detects_drift(tmp_path):
 def test_generated_per_story_json_is_the_same_story_as_the_feed():
     feed = _feed()
     outputs = build_newsroom.build_outputs(feed)
-    for story in feed["stories"]:
+    public_feed = json.loads(outputs[Path("readings/newsroom-latest.json")])
+    for story in public_feed["stories"]:
         path = Path("news") / story["slug"] / "story.json"
         assert json.loads(outputs[path]) == story

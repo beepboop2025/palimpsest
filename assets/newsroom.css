@@ -502,7 +502,8 @@ body.ps.newsroom-page::before {
   line-height: 1.58;
 }
 
-.nw-card__metric {
+.nw-card__metric,
+.nw-card__availability {
   margin: auto 0 0;
   padding-top: 18px;
   border-top: 1px solid var(--nw-rule);
@@ -511,12 +512,18 @@ body.ps.newsroom-page::before {
   font-size: 11px;
 }
 
-.nw-card__metric strong {
+.nw-card__metric strong,
+.nw-card__availability strong {
   display: block;
   color: var(--nw-blue-deep);
   font-size: clamp(25px, 3vw, 38px);
   font-weight: 700;
   line-height: 1.05;
+}
+
+.nw-card__availability {
+  border-left: 3px solid var(--nw-red);
+  padding-left: 10px;
 }
 
 .nw-card__meta {

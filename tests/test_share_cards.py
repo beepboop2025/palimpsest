@@ -157,6 +157,11 @@ def test_policy_denied_economic_values_render_contextual_withheld_cards() -> Non
             "filename": source_filename,
             "sha256": source_digest,
         }
+        story = build_newsroom._rights_safe_story(
+            story,
+            publication_at=clock.isoformat().replace("+00:00", "Z"),
+        )
+        assert build_newsroom._is_rights_safe_availability_story(story)
         spec = build_newsroom._story_share_card_spec(
             story,
             section=sections[story["section"]],
@@ -188,6 +193,53 @@ def test_policy_denied_economic_values_render_contextual_withheld_cards() -> Non
         )
 
 
+def test_effectively_allowed_live_signal_gets_live_card_and_page_metadata() -> None:
+    feed = copy.deepcopy(newsroom.build_news_feed())
+    sections = {row["id"]: row for row in feed["sections"]}
+    stories = {row["signal_id"]: row for row in feed["stories"]}
+    story = stories["cny-fix-gap"]
+    story.update(
+        status="live",
+        headline="The official yuan fix gap is -0.8883%",
+        dek="A current policy-allowed comparison of the official and reference rates.",
+        metric={
+            "label": "fix gap",
+            "value": -0.8883,
+            "unit": "percent",
+            "denominator": {"label": None, "value": None},
+        },
+        claims=[
+            {
+                "type": "observation",
+                "statement": "The current policy-allowed fix gap is -0.8883%.",
+            }
+        ],
+    )
+
+    assert not build_newsroom._is_rights_safe_availability_story(story)
+    spec = build_newsroom._story_share_card_spec(
+        story,
+        section=sections[story["section"]],
+    )
+    card = share_cards.render_card(spec)
+    page = build_newsroom.render_story(
+        story,
+        section=sections[story["section"]],
+        by_id=stories,
+        share_card=card,
+    )
+
+    assert spec["status"] == "live"
+    assert spec["title"] == story["headline"]
+    assert spec["metric"] == {"value": "-0.8883%", "label": "fix gap"}
+    assert spec["source"] == story["evidence"]["input"]["filename"]
+    assert "WITHHELD" not in spec["status_label"]
+    assert story["headline"] in card.alt
+    assert card.url in page
+    assert "-0.8883%" in page
+    assert "Public value unavailable" not in page
+
+
 def test_edition_card_never_promotes_a_policy_withheld_instrument() -> None:
     feed = copy.deepcopy(newsroom.build_news_feed())
     cny_story = next(
@@ -212,9 +264,27 @@ def test_edition_card_never_promotes_a_policy_withheld_instrument() -> None:
             "denominator": {"label": None, "value": None},
         },
     )
+    projected = build_newsroom._rights_safe_story(
+        cny_story,
+        publication_at=feed["generated_at"],
+    )
+    cny_story.clear()
+    cny_story.update(projected)
     safe_story.update(
         status="live",
         headline="An unrestricted current evidence reading",
+        metric={
+            "label": "current reading",
+            "value": 1,
+            "unit": "count",
+            "denominator": {"label": None, "value": None},
+        },
+        claims=[
+            {
+                "type": "observation",
+                "statement": "One current unrestricted reading is available.",
+            }
+        ],
     )
 
     spec = build_newsroom._edition_share_card_spec(feed)
@@ -226,10 +296,39 @@ def test_edition_card_never_promotes_a_policy_withheld_instrument() -> None:
     assert "-0.8883" not in json.dumps(spec)
 
 
+def test_edition_card_can_promote_an_allowed_live_derived_instrument() -> None:
+    feed = copy.deepcopy(newsroom.build_news_feed())
+    cny_story = next(
+        story for story in feed["stories"] if story["signal_id"] == "cny-fix-gap"
+    )
+    for story in feed["stories"]:
+        story["status"] = "stale"
+        story["priority"] = "standard"
+    cny_story.update(
+        status="live",
+        priority="lead",
+        headline="The policy-allowed yuan fix gap is current",
+        metric={
+            "label": "fix gap",
+            "value": -0.8883,
+            "unit": "percent",
+            "denominator": {"label": None, "value": None},
+        },
+    )
+
+    spec = build_newsroom._edition_share_card_spec(feed)
+
+    assert spec["title"] == cny_story["headline"]
+    assert spec["metric"] == {"value": "-0.8883%", "label": "fix gap"}
+
+
 def test_edition_card_refuses_an_all_policy_withheld_feed() -> None:
     feed = copy.deepcopy(newsroom.build_news_feed())
     feed["stories"] = [
-        story
+        build_newsroom._rights_safe_story(
+            story,
+            publication_at=feed["generated_at"],
+        )
         for story in feed["stories"]
         if story["signal_id"] in build_newsroom._PUBLIC_VALUE_WITHHELD_SHARE_CARDS
     ]

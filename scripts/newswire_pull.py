@@ -18,7 +18,7 @@ import stat
 import tempfile
 import threading
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -27,11 +27,15 @@ from core.newswire import (
     DEFAULT_OUTPUT_PATH,
     MAX_FEED_BYTES,
     NoSuccessfulSources,
+    NewswireError,
     SourceRegistry,
     canonical_json_bytes,
     collect_newswire,
     load_source_registry,
     strict_json_loads,
+    validate_active_source_registry,
+    validate_legacy_fetch_error_transition_prior,
+    validate_newswire_document,
     validate_prior_newswire_document,
 )
 from core.safe_fetch import safe_fetch_bytes
@@ -45,6 +49,7 @@ MAX_PREVIOUS_BYTES = 64 * 1024 * 1024
 SNAPSHOT_SCHEMA = "palimpsest-newswire-acquisition.v1"
 MAX_SNAPSHOT_MANIFEST_BYTES = 256 * 1024
 MAX_SNAPSHOT_BYTES = 256 * 1024 * 1024
+MAX_COLLECTION_FUTURE_SKEW = timedelta(seconds=120)
 _TEMP_SUFFIX_RE = re.compile(r"^[a-z0-9_]{8}$")
 _EVENT_ID_RE = re.compile(r"^event-[0-9a-f]{24}$")
 _EVENT_VERSION_ID_RE = re.compile(r"^eventv-[0-9a-f]{24}$")
@@ -86,7 +91,54 @@ def _parse_now(value: str | None) -> datetime:
     return parsed.astimezone(timezone.utc).replace(microsecond=0)
 
 
-def _load_previous(path: Path) -> dict[str, Any] | None:
+def _utc_now() -> datetime:
+    """Return the wall clock through one testable production boundary."""
+
+    return datetime.now(timezone.utc).replace(microsecond=0)
+
+
+def _validate_collection_clock(now: datetime, *, label: str) -> None:
+    if now > _utc_now() + MAX_COLLECTION_FUTURE_SKEW:
+        raise ValueError(f"{label} exceeds the wall-clock future-skew ceiling")
+
+
+def _parse_canonical_timestamp(value: str, *, label: str) -> datetime:
+    if not _TIMESTAMP_RE.fullmatch(value):
+        raise ValueError(f"{label} is not a canonical timestamp")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError as exc:
+        raise ValueError(f"{label} is not a real timestamp") from exc
+
+
+def _validate_prior_clocks(
+    previous: dict[str, Any] | None,
+    ledger: Sequence[dict[str, Any]],
+    *,
+    collection_clock: datetime,
+) -> None:
+    if previous is not None:
+        generated_at = _parse_canonical_timestamp(
+            previous["generated_at"], label="previous generated_at"
+        )
+        if generated_at > collection_clock:
+            raise ValueError(
+                "previous generated_at exceeds the current collection clock"
+            )
+    for index, row in enumerate(ledger):
+        for field in ("recorded_at", "published_at"):
+            timestamp = _parse_canonical_timestamp(
+                row[field], label=f"ledger[{index}].{field}"
+            )
+            if timestamp > collection_clock:
+                raise ValueError(
+                    f"ledger[{index}].{field} exceeds the current collection clock"
+                )
+
+
+def _load_previous(path: Path, registry: SourceRegistry) -> dict[str, Any] | None:
     if not path.exists():
         return None
     if path.stat().st_size > MAX_PREVIOUS_BYTES:
@@ -95,7 +147,13 @@ def _load_previous(path: Path) -> dict[str, Any] | None:
     # The prior edition is continuity input, not a publication candidate.  Its
     # derived lead/order state may predate the current editorial rule; all source,
     # evidence, version, coverage, and safety fields are still validated strictly.
-    validate_prior_newswire_document(value)
+    try:
+        validate_prior_newswire_document(value)
+    except NewswireError as ordinary_prior_error:
+        try:
+            validate_legacy_fetch_error_transition_prior(value, registry)
+        except NewswireError as transition_error:
+            raise transition_error from ordinary_prior_error
     return value
 
 
@@ -586,6 +644,26 @@ def _last_good_receipt(
     )
 
 
+def _public_last_good_receipt(output: Path) -> tuple[str | None, str | None]:
+    """Best-effort identity for a valid public prior when registry loading fails.
+
+    The authoritative prior loader still runs after the registry is available and
+    retains the one bounded private 60-to-58 transition. This early read exists only
+    so an unrelated registry failure does not erase last-good identity from the
+    terminal attempt receipt.
+    """
+
+    try:
+        if not output.is_file() or output.stat().st_size > MAX_PREVIOUS_BYTES:
+            return None, None
+        raw = output.read_bytes()
+        previous = strict_json_loads(raw, label=str(output))
+        validate_prior_newswire_document(previous)
+    except Exception:
+        return None, None
+    return previous["generated_at"], hashlib.sha256(raw).hexdigest()
+
+
 def _write_status(
     path: Path | None,
     *,
@@ -706,11 +784,13 @@ def _main_locked(args: argparse.Namespace) -> int:
         output_sha256=None,
         failure_class=None,
     )
+    last_generated_at, last_sha256 = _public_last_good_receipt(args.output)
 
     try:
-        previous = _load_previous(args.output)
-        last_generated_at, last_sha256 = _last_good_receipt(args.output, previous)
         registry = load_source_registry(args.config)
+        validate_active_source_registry(registry)
+        previous = _load_previous(args.output, registry)
+        last_generated_at, last_sha256 = _last_good_receipt(args.output, previous)
         prior_ledger = _load_ledger(args.ledger)
         snapshot_transport: AcquisitionSnapshotWriter | AcquisitionSnapshotReader | None
         if args.snapshot_in is not None:
@@ -718,9 +798,14 @@ def _main_locked(args: argparse.Namespace) -> int:
             now = snapshot_transport.observed_at
             if args.now is not None and _parse_now(args.now) != now:
                 raise ValueError("--now does not match the acquisition snapshot clock")
+            _validate_collection_clock(
+                now,
+                label="acquisition snapshot observed_at",
+            )
             fetch = snapshot_transport
         else:
             now = _parse_now(args.now)
+            _validate_collection_clock(now, label="collection clock")
             proxy = os.environ.get("PALIMPSEST_PROXY") or None
 
             def network_fetch(url: str, **kwargs: Any) -> bytes:
@@ -737,6 +822,12 @@ def _main_locked(args: argparse.Namespace) -> int:
             else:
                 snapshot_transport = None
                 fetch = network_fetch
+
+        _validate_prior_clocks(
+            previous,
+            prior_ledger,
+            collection_clock=now,
+        )
 
         try:
             document = collect_newswire(
@@ -761,6 +852,25 @@ def _main_locked(args: argparse.Namespace) -> int:
         )
         print(f"newswire: {exc}; prior latest and ledger preserved")
         return 2
+    except Exception as exc:
+        _write_status(
+            args.status,
+            attempted_at=attempted_at,
+            status="failed",
+            fresh_sources=None,
+            output_generated_at=last_generated_at,
+            output_sha256=last_sha256,
+            failure_class=_failure_class(exc),
+        )
+        raise
+
+    try:
+        validate_newswire_document(document, expected_registry=registry)
+        expected_generated_at = _snapshot_timestamp(now)
+        if document["generated_at"] != expected_generated_at:
+            raise ValueError(
+                "newswire generated_at does not match the collection clock"
+            )
     except Exception as exc:
         _write_status(
             args.status,

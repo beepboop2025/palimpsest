@@ -6,6 +6,8 @@ import copy
 import json
 import math
 import re
+import shutil
+from datetime import UTC, datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree
@@ -13,7 +15,7 @@ from xml.etree import ElementTree
 import pytest
 
 from core import event_analysis, newsroom, newswire
-from scripts import build_newsroom
+from scripts import build_newsroom, stage_pages_rights
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -185,12 +187,23 @@ def test_home_is_bounded_but_keeps_economic_and_accountability_context(
     )
     assert pulse["economic_state"]["claim"] not in text
     assert "No validated economic pulse was published" in text
-    assert f"{feed['n_stories']} measurements" in text
-    assert "Measurements first. Source reports clearly labeled." in text
+    projected = json.loads(outputs[Path("readings/newsroom-latest.json")])
+    measurement_count, availability_count = build_newsroom._instrument_record_counts(
+        projected
+    )
+    assert feed["n_stories"] == 39
+    assert measurement_count + availability_count == feed["n_stories"]
+    assert f"{measurement_count} measurements" in text
+    assert f"{availability_count} availability notices" in text
+    assert "Instrument results first. Source reports clearly labeled." in text
     assert "This is not a replacement newspaper." in text
     assert "Edition generated" in text
-    assert "measurements available when built" in text
-    assert "More measurements in this edition" in text
+    assert (
+        f"<strong>{measurement_count}</strong> measurements · "
+        f"<strong>{availability_count}</strong> availability notices in this edition"
+    ) in text
+    assert "More instrument records in this edition" in text
+    assert "Measurements-only RSS" not in text
     assert "Current edition" not in text
     assert "measurements live" not in text
 
@@ -202,6 +215,9 @@ def test_denied_publication_is_availability_only_across_every_newsroom_format(
     projected = json.loads(outputs[Path("readings/newsroom-latest.json")])
     stories = {story["signal_id"]: story for story in projected["stories"]}
     restricted_ids = build_newsroom._RIGHTS_SAFE_PROJECTION_SIGNAL_IDS
+    measurement_count, availability_count = build_newsroom._instrument_record_counts(
+        projected
+    )
 
     assert (
         pulse["economic_state"]["claim"]
@@ -227,14 +243,30 @@ def test_denied_publication_is_availability_only_across_every_newsroom_format(
 
     mixed = json.loads(outputs[Path("news/feed.json")])
     assert len(mixed["items"]) == feed["n_stories"] + wire["n_events"]
+    assert mixed["title"] == "Palimpsest source index + instrument records"
+    assert (
+        f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "availability notices"
+    ) in mixed["description"]
     assert all(len(item["tags"]) == len(set(item["tags"])) for item in mixed["items"])
     instrument_items = {
         next(tag for tag in item["tags"] if tag in stories): item
         for item in mixed["items"]
-        if item["_palimpsest"]["kind"] == "instrument_measurement"
+        if item["_palimpsest"]["kind"]
+        in {"instrument_measurement", "instrument_availability"}
     }
     for signal_id in restricted_ids:
         item = instrument_items[signal_id]
+        assert item["title"].startswith("[Palimpsest availability] ")
+        assert item["tags"][0] == "palimpsest-availability"
+        assert item["_palimpsest"] == {
+            "kind": "instrument_availability",
+            "revision_id": item["_palimpsest"]["revision_id"],
+            "signal_id": signal_id,
+            "publication_disposition": "rights-restricted-availability-v1",
+            "value_state": "withheld",
+            "verification_status": "public_value_unavailable",
+        }
         assert item["external_url"] == build_newsroom._PUBLIC_RIGHTS_EVIDENCE_URL
         assert item["attachments"] == [
             {
@@ -244,6 +276,36 @@ def test_denied_publication_is_availability_only_across_every_newsroom_format(
             }
         ]
 
+    ordinary_availability_id = next(
+        signal_id
+        for signal_id, story in stories.items()
+        if signal_id not in restricted_ids
+        and build_newsroom._is_availability_story(story)
+    )
+    ordinary_item = instrument_items[ordinary_availability_id]
+    assert ordinary_item["title"].startswith("[Palimpsest availability] ")
+    assert ordinary_item["tags"][0] == "palimpsest-availability"
+    assert ordinary_item["_palimpsest"] == {
+        "kind": "instrument_availability",
+        "revision_id": ordinary_item["_palimpsest"]["revision_id"],
+        "verification_status": "current_result_unavailable",
+    }
+
+    home = outputs[Path("news/index.html")].decode()
+    assert 'data-palimpsest-kind="instrument-availability"' in home
+    assert 'data-publication-disposition="rights-restricted-availability-v1"' in home
+    assert "Public value unavailable" in home
+    assert "Not zero; no current result is published." in home
+    rss = outputs[Path("news/instruments/feed.xml")].decode()
+    assert "<title>Palimpsest instrument records</title>" in rss
+    assert (
+        f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "explicit no-result availability notices"
+    ) in rss
+    assert "[Palimpsest availability]" in rss
+    assert "<palimpsest:kind>instrument_availability</palimpsest:kind>" in rss
+    assert "rights-restricted-availability-v1" in rss
+
     china_feed = json.loads(outputs[Path("news/china/feed.json")])
     assert china_feed["items"]
     assert all(
@@ -251,6 +313,118 @@ def test_denied_publication_is_availability_only_across_every_newsroom_format(
         and not item["attachments"][-1]["url"].endswith("/analysis.json")
         for item in china_feed["items"]
     )
+
+
+def _materialize_rights_stage_fixture(
+    root: Path, outputs: dict[Path, bytes], projected: dict
+) -> set[Path]:
+    selected = {
+        Path("readings/newsroom-latest.json"),
+        Path("news/index.html"),
+        Path("news/feed.json"),
+        Path("news/feed.xml"),
+        Path("news/instruments/feed.json"),
+        Path("news/instruments/feed.xml"),
+    }
+    for story in projected["stories"]:
+        if story["signal_id"] not in build_newsroom._RIGHTS_SAFE_PROJECTION_SIGNAL_IDS:
+            continue
+        base = Path("news") / story["slug"]
+        selected.update(
+            {base / "index.html", base / "story.json", base / "analysis.json"}
+        )
+    fixture_paths = selected | {Path("news/economy/index.html")}
+    for relative in fixture_paths:
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(outputs[relative])
+    policy = root / stage_pages_rights.POLICY_RELATIVE_PATH
+    policy.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / stage_pages_rights.POLICY_RELATIVE_PATH, policy)
+    for relative in (
+        stage_pages_rights.NEWSWIRE_RELATIVE_PATH,
+        stage_pages_rights.CHINA_SITUATION_RELATIVE_PATH,
+    ):
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / relative, target)
+    return selected
+
+
+def _rights_stage_clock(root: Path, projected: dict) -> datetime:
+    clocks = [projected["generated_at"]]
+    for relative in (
+        stage_pages_rights.NEWSWIRE_RELATIVE_PATH,
+        stage_pages_rights.CHINA_SITUATION_RELATIVE_PATH,
+    ):
+        document = json.loads((root / relative).read_bytes())
+        clocks.append(document["generated_at"])
+    parsed = [
+        datetime.fromisoformat(clock.replace("Z", "+00:00")).astimezone(UTC)
+        for clock in clocks
+    ]
+    return max(parsed)
+
+
+def test_rendered_availability_survives_the_actual_rights_stage_byte_for_byte(
+    publication, tmp_path: Path
+) -> None:
+    _feed, _wire, _pulse, outputs = publication
+    projected = json.loads(outputs[Path("readings/newsroom-latest.json")])
+    selected = _materialize_rights_stage_fixture(tmp_path, outputs, projected)
+    before = {relative: (tmp_path / relative).read_bytes() for relative in selected}
+    clock = _rights_stage_clock(tmp_path, projected)
+
+    status = stage_pages_rights.stage_pages_tree(
+        tmp_path,
+        publication_sha="a" * 40,
+        evaluated_at=clock,
+        admission_at=clock,
+    )
+
+    assert selected.isdisjoint(Path(path) for path in status["quarantined_paths"])
+    assert "news/economy/index.html" in status["quarantined_paths"]
+    assert {relative: (tmp_path / relative).read_bytes() for relative in selected} == before
+    assert (
+        stage_pages_rights.verify_staged_tree(
+            tmp_path,
+            publication_sha="a" * 40,
+            evaluated_at=clock,
+            admission_at=clock,
+        )
+        == status
+    )
+
+
+def test_rights_stage_quarantines_a_value_added_to_an_availability_story(
+    publication, tmp_path: Path
+) -> None:
+    _feed, _wire, _pulse, outputs = publication
+    projected = json.loads(outputs[Path("readings/newsroom-latest.json")])
+    selected = _materialize_rights_stage_fixture(tmp_path, outputs, projected)
+    story = next(
+        item
+        for item in projected["stories"]
+        if item["signal_id"] == "board-alarm"
+    )
+    relative = Path("news") / story["slug"] / "story.json"
+    mutated = json.loads((tmp_path / relative).read_bytes())
+    mutated["metric"]["value"] = 3.2
+    (tmp_path / relative).write_text(json.dumps(mutated) + "\n", encoding="utf-8")
+    clock = _rights_stage_clock(tmp_path, projected)
+
+    status = stage_pages_rights.stage_pages_tree(
+        tmp_path,
+        publication_sha="b" * 40,
+        evaluated_at=clock,
+        admission_at=clock,
+    )
+
+    assert relative.as_posix() in status["quarantined_paths"]
+    assert "news/economy/index.html" in status["quarantined_paths"]
+    assert selected - {relative} == {
+        path for path in selected if path.as_posix() not in status["quarantined_paths"]
+    }
 
 
 def test_lead_selection_prefers_evidence_then_explicit_release_then_recency() -> None:

@@ -13,6 +13,7 @@ import subprocess
 import time
 import zipfile
 from datetime import UTC, datetime
+from email.utils import format_datetime
 from pathlib import Path
 from urllib.parse import quote
 
@@ -20,7 +21,8 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
-from scripts import share_cards, stage_pages_rights
+from core import newsroom
+from scripts import build_newsroom, share_cards, stage_pages_rights
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1011,6 +1013,21 @@ def test_topic_tags_and_safe_measurements_do_not_cross_contaminate(tmp_path: Pat
         '<p class="nw-card__metric"><strong>7</strong> deletions</p></article>',
         encoding="utf-8",
     )
+    mixed_availability_html = tmp_path / "news/safe-availability-and-metric.html"
+    availability_card = stage_pages_rights._expected_newsroom_availability_card(
+        "board-alarm",
+        publication_at=RIGHTS_CLOCK.isoformat(timespec="seconds").replace(
+            "+00:00", "Z"
+        ),
+    )
+    mixed_availability_html.write_text(
+        '<section class="nw-section">'
+        + availability_card
+        + '<article><a href="/news/ddti/">DDTI</a>'
+        '<p class="nw-card__metric"><strong>7</strong> deletions</p></article>'
+        + "</section>",
+        encoding="utf-8",
+    )
     safe_analysis = tmp_path / "news/safe-analysis.json"
     safe_analysis.write_text(
         json.dumps(
@@ -1031,8 +1048,501 @@ def test_topic_tags_and_safe_measurements_do_not_cross_contaminate(tmp_path: Pat
         "news/safe-feed.json",
         "news/safe-feed.xml",
         "news/safe.html",
+        "news/safe-availability-and-metric.html",
         "news/safe-analysis.json",
     }.isdisjoint(violations)
+
+
+def test_availability_labels_cannot_hide_a_derived_value(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    rights_url = stage_pages_rights.PUBLIC_RIGHTS_EVIDENCE_URL
+    fixtures = {
+        "news/availability-feed.json": json.dumps(
+            {
+                "version": "https://jsonfeed.org/version/1.1",
+                "items": [
+                    {
+                        "id": "unsafe-availability",
+                        "url": "https://palimpsest.info/news/board-alarm/",
+                        "external_url": rights_url,
+                        "title": "[Palimpsest availability] Board alarm unavailable",
+                        "summary": "Palimpsest availability notice. Current value: 3.2",
+                        "content_text": (
+                            "ITEM TYPE: PALIMPSEST AVAILABILITY\n\n"
+                            "Availability: Current value: 3.2"
+                        ),
+                        "date_published": "2026-08-31T00:00:00Z",
+                        "date_modified": "2026-08-31T00:00:00Z",
+                        "tags": [
+                            "palimpsest-availability",
+                            "The Board",
+                            "board-alarm",
+                            "degraded",
+                        ],
+                        "attachments": [
+                            {
+                                "url": rights_url,
+                                "mime_type": "application/json",
+                                "title": "china-publication-rights-latest.json",
+                            }
+                        ],
+                        "metric": {"value": 3.2},
+                        "_palimpsest": {
+                            "kind": "instrument_availability",
+                            "publication_disposition": (
+                                "rights-restricted-availability-v1"
+                            ),
+                            "revision_id": "storyv-" + "1" * 24,
+                            "signal_id": "board-alarm",
+                            "value_state": "withheld",
+                            "verification_status": "public_value_unavailable",
+                        },
+                    }
+                ],
+            }
+        )
+        + "\n",
+        "news/availability.html": (
+            '<article class="nw-card" data-claim-type="availability" '
+            'data-palimpsest-kind="instrument-availability" '
+            'data-signal-id="board-alarm" '
+            'data-publication-disposition="rights-restricted-availability-v1">'
+            '<a href="/news/board-alarm/">Board alarm</a>'
+            '<p class="nw-card__availability"><strong>Current value 3.2</strong>'
+            '<span>Not zero; no current result is published.</span></p></article>'
+        ),
+        "news/availability.xml": (
+            '<rss xmlns:palimpsest="https://palimpsest.info/ns/publication/1.0">'
+            '<channel><item><title>[Palimpsest availability] Board alarm</title>'
+            '<link>https://palimpsest.info/news/board-alarm/</link>'
+            '<description>Item type: Palimpsest availability. Availability: '
+            'Current value: 3.2</description>'
+            f'<source url="{rights_url}">board-alarm</source>'
+            '<palimpsest:kind>instrument_availability</palimpsest:kind>'
+            '<palimpsest:signal>board-alarm</palimpsest:signal>'
+            '<palimpsest:publicationDisposition>'
+            'rights-restricted-availability-v1'
+            '</palimpsest:publicationDisposition>'
+            '<palimpsest:valueState>withheld</palimpsest:valueState>'
+            '</item></channel></rss>'
+        ),
+    }
+    for relative, payload in fixtures.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+
+    assert set(fixtures) <= violations
+
+
+def _canonical_availability_rss(signal_id: str, publication_at: str) -> str:
+    identity = stage_pages_rights.DERIVED_AVAILABILITY_IDENTITIES[signal_id]
+    story = stage_pages_rights._expected_availability_story(
+        signal_id,
+        publication_at=publication_at,
+    )
+    published = datetime.fromisoformat(publication_at.replace("Z", "+00:00"))
+    description = (
+        "Item type: Palimpsest availability. Availability: "
+        + stage_pages_rights._availability_claim(signal_id)
+        + " Limit: Current finding withheld: public value publication is restricted "
+        + "Availability is not a zero, a normal reading, or evidence of direction. "
+        + "Evidence: "
+        + stage_pages_rights.PUBLIC_RIGHTS_EVIDENCE_URL
+    )
+    return f'''<rss xmlns:palimpsest="{stage_pages_rights.PALIMPSEST_RSS_NAMESPACE}"><channel><item>
+<title>[Palimpsest availability] {story["headline"]}</title>
+<link>{story["url"]}</link>
+<guid isPermaLink="false">{story["id"]}:{story["claim_fingerprint"]}</guid>
+<pubDate>{format_datetime(published, usegmt=True)}</pubDate>
+<description>{description}</description>
+<category>{identity["section"]}</category>
+<source url="{stage_pages_rights.PUBLIC_RIGHTS_EVIDENCE_URL}">{signal_id}</source>
+<palimpsest:kind>instrument_availability</palimpsest:kind>
+<palimpsest:signal>{signal_id}</palimpsest:signal>
+<palimpsest:publicationDisposition>rights-restricted-availability-v1</palimpsest:publicationDisposition>
+<palimpsest:valueState>withheld</palimpsest:valueState>
+</item></channel></rss>'''
+
+
+def test_canonical_availability_prose_is_closed_across_public_formats(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    publication_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    injected = "FDR007 latest reading 987654.321"
+
+    story = stage_pages_rights._expected_availability_story(
+        "board-alarm",
+        publication_at=publication_at,
+    )
+    story["claims"][0]["statement"] = (
+        "No current finding is published for Board alarm; "
+        + injected
+        + " because public value publication is restricted by the active source policy."
+    )
+    claim_core = {
+        "claim_type": "availability",
+        "metric": story["metric"],
+        "signal_id": story["signal_id"],
+        "statement": story["claims"][0]["statement"],
+        "status": story["status"],
+    }
+    story["claim_fingerprint"] = "sha256:" + hashlib.sha256(
+        stage_pages_rights._contract_json_bytes(claim_core)
+    ).hexdigest()
+
+    analysis = stage_pages_rights._expected_availability_analysis(
+        "board-alarm",
+        generated_at=publication_at,
+    )
+    analysis["brief"]["does_not_show"]["sentences"][0]["text"] = injected
+    analysis_seed = {
+        key: value for key, value in analysis.items() if key != "analysis_id"
+    }
+    analysis["analysis_id"] = stage_pages_rights._contract_id(
+        "instrumentv", analysis_seed, 24
+    )
+
+    feed_item = stage_pages_rights._expected_json_feed_availability(
+        "board-alarm",
+        publication_at=publication_at,
+    )
+    feed_item["summary"] += " " + injected
+    card = stage_pages_rights._expected_newsroom_availability_card(
+        "board-alarm",
+        publication_at=publication_at,
+    ).replace("</article>", f"<p>{injected}</p></article>")
+    rss = _canonical_availability_rss("board-alarm", publication_at).replace(
+        "Availability: No current finding",
+        f"Availability: {injected}. No current finding",
+    )
+    fixtures = {
+        "news/board-alarm/story.json": json.dumps(story) + "\n",
+        "news/board-alarm/analysis.json": json.dumps(analysis) + "\n",
+        "news/availability-feed.json": json.dumps(feed_item) + "\n",
+        "news/availability-card.html": card,
+        "news/availability-feed.xml": rss,
+    }
+    for relative, payload in fixtures.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path,
+            evaluated_at=RIGHTS_CLOCK,
+        )
+    )
+
+    assert set(fixtures) <= violations
+
+
+def test_availability_prose_cannot_escape_into_representation_siblings(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    publication_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    injected = "FDR007 latest reading 987654.321"
+    feed_item = stage_pages_rights._expected_json_feed_availability(
+        "board-alarm",
+        publication_at=publication_at,
+    )
+    assert not stage_pages_rights._is_derived_availability_story(feed_item)
+    assert stage_pages_rights._is_safe_derived_json_feed_availability(feed_item)
+    card = stage_pages_rights._expected_newsroom_availability_card(
+        "board-alarm",
+        publication_at=publication_at,
+    )
+    rss = _canonical_availability_rss("board-alarm", publication_at)
+    safe_feed = tmp_path / "news/availability-canonical.json"
+    safe_feed.parent.mkdir(parents=True, exist_ok=True)
+    safe_feed.write_text(json.dumps(feed_item) + "\n", encoding="utf-8")
+    fixtures = {
+        "news/availability-sibling.json": json.dumps(
+            {"item": feed_item, "footer": injected}
+        )
+        + "\n",
+        "news/availability-sibling.html": card + f"<p>{injected}</p>",
+        "news/availability-sibling.xml": rss.replace(
+            "</channel>",
+            f"<description>{injected}</description></channel>",
+        ),
+    }
+    for relative, payload in fixtures.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path,
+            evaluated_at=RIGHTS_CLOCK,
+        )
+    )
+
+    assert set(fixtures) <= violations
+    assert "news/availability-canonical.json" not in violations
+
+
+def test_availability_machine_markers_trigger_strict_validation_as_a_union(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    publication_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    canonical = stage_pages_rights._expected_json_feed_availability(
+        "board-alarm",
+        publication_at=publication_at,
+    )
+    fixtures: dict[str, dict] = {}
+    missing_tag = json.loads(json.dumps(canonical))
+    missing_tag["tags"].remove("board-alarm")
+    missing_tag["metric"] = {"value": 3.2}
+    fixtures["news/availability-missing-signal-tag.json"] = missing_tag
+    misspelled_kind = json.loads(json.dumps(canonical))
+    misspelled_kind["_palimpsest"]["kind"] = "instrument_availabilty"
+    misspelled_kind["metric"] = {"value": 3.2}
+    fixtures["news/availability-misspelled-kind.json"] = misspelled_kind
+    missing_kind = json.loads(json.dumps(canonical))
+    del missing_kind["_palimpsest"]["kind"]
+    missing_kind["metric"] = {"value": 3.2}
+    fixtures["news/availability-missing-kind.json"] = missing_kind
+    for relative, document in fixtures.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(document) + "\n", encoding="utf-8")
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path,
+            evaluated_at=RIGHTS_CLOCK,
+        )
+    )
+
+    assert set(fixtures) <= violations
+
+
+def test_availability_signal_identity_is_cross_bound_in_every_format(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    publication_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    story = stage_pages_rights._expected_availability_story(
+        "board-alarm",
+        publication_at=publication_at,
+    )
+    story["slug"] = "china-money-market-benchmarks"
+    story["url"] = "https://palimpsest.info/news/china-money-market-benchmarks/"
+    feed_item = stage_pages_rights._expected_json_feed_availability(
+        "board-alarm",
+        publication_at=publication_at,
+    )
+    feed_item["url"] = "https://palimpsest.info/news/china-money-market-benchmarks/"
+    card = stage_pages_rights._expected_newsroom_availability_card(
+        "board-alarm",
+        publication_at=publication_at,
+    ).replace("/news/board-alarm/", "/news/china-money-market-benchmarks/")
+    rss = _canonical_availability_rss("board-alarm", publication_at).replace(
+        "<palimpsest:signal>board-alarm</palimpsest:signal>",
+        "<palimpsest:signal>china-econ</palimpsest:signal>",
+    )
+    fixtures = {
+        "news/mismatched-story.json": json.dumps(story) + "\n",
+        "news/mismatched-feed.json": json.dumps(feed_item) + "\n",
+        "news/mismatched-card.html": card,
+        "news/mismatched-feed.xml": rss,
+    }
+    for relative, payload in fixtures.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path,
+            evaluated_at=RIGHTS_CLOCK,
+        )
+    )
+
+    assert set(fixtures) <= violations
+
+
+def test_nonrights_no_result_availability_survives_every_public_format(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    publication_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    evidence_url = "https://palimpsest.info/readings/ddti-latest.json"
+    story = {
+        "id": "palimpsest-news:ddti",
+        "slug": "ddti",
+        "url": "https://palimpsest.info/news/ddti/",
+        "signal_id": "ddti",
+        "headline": "Deletion-directive term index: no current finding",
+        "status": "stale",
+        "published_at": publication_at,
+        "modified_at": publication_at,
+        "metric": {
+            "label": None,
+            "value": None,
+            "unit": None,
+            "denominator": {"label": None, "value": None},
+        },
+        "claims": [
+            {
+                "type": "availability",
+                "statement": (
+                    "No current finding is published for the deletion-directive "
+                    "term index because the source status is stale."
+                ),
+            }
+        ],
+        "evidence": {
+            "url": evidence_url,
+            "input": {
+                "filename": "ddti-latest.json",
+                "sha256": "a" * 64,
+                "bytes": 172274,
+            },
+            "source_timestamp": "2026-08-24T04:07:05Z",
+        },
+    }
+    feed_item = {
+        "id": "palimpsest-news:ddti:storyv-safe",
+        "url": story["url"],
+        "external_url": evidence_url,
+        "title": "[Palimpsest availability] " + story["headline"],
+        "summary": "Palimpsest availability notice. Source status is stale.",
+        "content_text": (
+            "ITEM TYPE: PALIMPSEST AVAILABILITY\n\n"
+            "Availability: No current finding is published because the source "
+            "status is stale."
+        ),
+        "date_published": publication_at,
+        "date_modified": publication_at,
+        "tags": ["palimpsest-availability", "ddti", "stale"],
+        "attachments": [
+            {
+                "url": evidence_url,
+                "mime_type": "application/json",
+                "title": "ddti-latest.json",
+            }
+        ],
+        "_palimpsest": {
+            "kind": "instrument_availability",
+            "signal_id": "ddti",
+            "publication_disposition": "source-stale-availability-v1",
+            "value_state": "unavailable",
+            "verification_status": "source_stale",
+        },
+    }
+    analysis = {
+        "schema_version": "palimpsest-instrument-analysis.v1",
+        "analysis_id": "instrumentv-safe-ddti",
+        "signal_id": "ddti",
+        "story_url": story["url"],
+        "reading_url": evidence_url,
+        "generated_at": publication_at,
+        "disposition": "availability-brief",
+        "status": "stale",
+        "position": "No current finding is published while the source is stale.",
+    }
+    html_card = f'''<article class="nw-card" data-status="stale" data-claim-type="availability" data-palimpsest-kind="instrument-availability" data-signal-id="ddti">
+  <h3><a class="nw-card__link" href="/news/ddti/">{story["headline"]}</a></h3>
+  <p class="nw-card__availability"><strong>No current finding</strong><span>The source status is stale.</span></p>
+  <time datetime="{publication_at}">{publication_at}</time>
+</article>'''
+    rss = f'''<rss xmlns:palimpsest="{stage_pages_rights.PALIMPSEST_RSS_NAMESPACE}"><channel><item>
+<title>[Palimpsest availability] {story["headline"]}</title>
+<link>{story["url"]}</link>
+<guid isPermaLink="false">palimpsest-news:ddti:storyv-safe</guid>
+<pubDate>{format_datetime(RIGHTS_CLOCK, usegmt=True)}</pubDate>
+<description>Item type: Palimpsest availability. Availability: No current finding is published because the source status is stale.</description>
+<category>watch</category>
+<source url="{evidence_url}">ddti</source>
+<palimpsest:kind>instrument_availability</palimpsest:kind>
+<palimpsest:signal>ddti</palimpsest:signal>
+<palimpsest:publicationDisposition>source-stale-availability-v1</palimpsest:publicationDisposition>
+<palimpsest:valueState>unavailable</palimpsest:valueState>
+</item></channel></rss>'''
+    fixtures = {
+        "news/ddti/story.json": json.dumps(story) + "\n",
+        "news/ddti/analysis.json": json.dumps(analysis) + "\n",
+        "news/ddti/feed-item.json": json.dumps(feed_item) + "\n",
+        "news/ddti/index.html": html_card,
+        "news/ddti/feed.xml": rss,
+    }
+    for relative, payload in fixtures.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path,
+            evaluated_at=RIGHTS_CLOCK,
+        )
+    )
+
+    assert set(fixtures).isdisjoint(violations)
+
+
+def test_unicode_escaped_json_lineage_is_structurally_denied(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    fixtures = {
+        "archive/escaped-source.json": (
+            '{"source_id":"\\u0063fets_benchmarks","value":987654.321}\n'
+        ),
+        "archive/escaped-signal.json": (
+            '{"signal_id":"board\\u002dalarm","value":987654.321}\n'
+        ),
+    }
+    for relative, payload in fixtures.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+
+    assert set(fixtures) <= violations
+
+
+def test_mixed_case_html_and_rss_markers_are_not_prefilter_bypasses(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    html_path = tmp_path / "news/mixed-case.html"
+    html_path.parent.mkdir(parents=True, exist_ok=True)
+    html_path.write_text(
+        '<article><a href="/news/board-alarm/">Board</a>'
+        '<p class="NW-CARD__METRIC"><strong>987654.321</strong></p></article>',
+        encoding="utf-8",
+    )
+    rss_path = tmp_path / "news/mixed-case.xml"
+    rss_path.write_text(
+        "<rss><channel><item><title>[PALIMPSEST MEASUREMENT] Board</title>"
+        "<link>https://palimpsest.info/news/board-alarm/</link>"
+        "<description>ITEM TYPE: PALIMPSEST MEASUREMENT. Result: 987654.321"
+        "</description><source>board-alarm</source></item></channel></rss>",
+        encoding="utf-8",
+    )
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+
+    assert {"news/mixed-case.html", "news/mixed-case.xml"} <= violations
 
 
 def test_datapackage_sizes_are_reconciled_after_quarantine_and_verified(
@@ -1114,6 +1624,301 @@ def test_future_denied_values_and_derivatives_are_detected_then_removed(
     assert status["counts"]["restricted_records"] == 1
     assert status["counts"]["published_records"] == 0
     assert "987654.321" not in derivative.read_text(encoding="utf-8")
+
+
+def _write_china_analysis_availability_feeds(
+    root: Path, *, generated_at: str
+) -> None:
+    json_path = root / stage_pages_rights.CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH
+    rss_path = root / stage_pages_rights.CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_bytes(
+        stage_pages_rights._expected_china_analysis_availability_json_bytes(
+            generated_at
+        )
+    )
+    rss_path.write_bytes(
+        stage_pages_rights._expected_china_analysis_availability_rss(generated_at)
+    )
+
+
+def test_china_analysis_denied_feeds_are_exact_same_clock_availability_only(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    generated_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    _write_china_analysis_availability_feeds(tmp_path, generated_at=generated_at)
+    newsroom_path = tmp_path / "readings/newsroom-latest.json"
+    newsroom_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "palimpsest-news.v1",
+                "generated_at": generated_at,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+    assert {
+        stage_pages_rights.CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH.as_posix(),
+        stage_pages_rights.CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH.as_posix(),
+    }.isdisjoint(violations)
+
+    document = json.loads(
+        (tmp_path / stage_pages_rights.CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH).read_text(
+            encoding="utf-8"
+        )
+    )
+    document["items"][0]["summary"] += " Prior finding: 987654.321."
+    (tmp_path / stage_pages_rights.CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH).write_text(
+        json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+    assert {
+        stage_pages_rights.CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH.as_posix(),
+        stage_pages_rights.CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH.as_posix(),
+    } <= violations
+
+
+def test_china_analysis_denied_feed_clock_is_bound_to_current_newsroom(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    generated_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    _write_china_analysis_availability_feeds(tmp_path, generated_at=generated_at)
+    newsroom_path = tmp_path / "readings/newsroom-latest.json"
+    newsroom_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "palimpsest-news.v1",
+                "generated_at": "2026-08-31T00:00:01Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+    assert {
+        stage_pages_rights.CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH.as_posix(),
+        stage_pages_rights.CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH.as_posix(),
+    } <= violations
+
+
+def test_restricted_availability_cannot_hide_a_numeric_mapping_sibling(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    publication_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    availability = stage_pages_rights._expected_json_feed_availability(
+        "board-alarm", publication_at=publication_at
+    )
+    safe = tmp_path / "archive/safe-wrapper.json"
+    unsafe = tmp_path / "archive/numeric-sibling.json"
+    safe.parent.mkdir(parents=True, exist_ok=True)
+    safe.write_text(
+        json.dumps({"availability": availability, "note": "No result."}) + "\n",
+        encoding="utf-8",
+    )
+    unsafe.write_text(
+        json.dumps({"availability": availability, "latest": 987654.321}) + "\n",
+        encoding="utf-8",
+    )
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+    assert "archive/safe-wrapper.json" not in violations
+    assert "archive/numeric-sibling.json" in violations
+
+
+def test_restricted_availability_in_array_marks_its_parent_key_subtree(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    publication_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    availability = stage_pages_rights._expected_json_feed_availability(
+        "board-alarm", publication_at=publication_at
+    )
+    path = tmp_path / "archive/array-numeric-sibling.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"items": [availability], "leak": 1.18}) + "\n",
+        encoding="utf-8",
+    )
+
+    assert path.relative_to(tmp_path).as_posix() in (
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+
+
+def test_restricted_availability_in_nested_arrays_marks_outer_child_subtree(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    publication_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    availability = stage_pages_rights._expected_json_feed_availability(
+        "board-alarm", publication_at=publication_at
+    )
+    path = tmp_path / "archive/nested-array-numeric-sibling.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"items": [[[availability]]], "leak": 1.18}) + "\n",
+        encoding="utf-8",
+    )
+
+    assert path.relative_to(tmp_path).as_posix() in (
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+
+
+def test_restricted_availability_does_not_bleed_across_array_records(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    publication_at = RIGHTS_CLOCK.isoformat(timespec="seconds").replace("+00:00", "Z")
+    availability = stage_pages_rights._expected_json_feed_availability(
+        "board-alarm", publication_at=publication_at
+    )
+    path = tmp_path / "archive/independent-array-records.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "rows": [
+                    {"notice": availability},
+                    {"unrelated_numeric_metadata": 1.18},
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert path.relative_to(tmp_path).as_posix() not in (
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+
+
+def test_rendered_newsroom_aggregate_keeps_closed_numeric_metadata(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    projected = build_newsroom._rights_safe_newsroom_feed(
+        newsroom.build_news_feed()
+    )
+    safe_path = tmp_path / "archive/projected-newsroom.json"
+    unsafe_path = tmp_path / "archive/projected-newsroom-with-leak.json"
+    safe_path.parent.mkdir(parents=True, exist_ok=True)
+    safe_path.write_text(json.dumps(projected) + "\n", encoding="utf-8")
+    compromised = json.loads(json.dumps(projected))
+    compromised["leak"] = 1.18
+    unsafe_path.write_text(json.dumps(compromised) + "\n", encoding="utf-8")
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+    assert safe_path.relative_to(tmp_path).as_posix() not in violations
+    assert unsafe_path.relative_to(tmp_path).as_posix() in violations
+
+
+def test_renamed_and_recursively_encoded_raw_newswire_shapes_are_denied(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    structural_wire = {
+        "format": stage_pages_rights.NEWSWIRE_SCHEMA,
+        "generated_at": "2026-08-31T00:00:00Z",
+        "source_registry": "https://palimpsest.info/config/news_sources.json",
+        "source_registry_sha256": "0" * 64,
+        "window": {},
+        "scope": "raw",
+        "method": "raw",
+        "mutation_semantics": "raw",
+        "coverage": {},
+        "n_items": 0,
+        "n_events": 0,
+        "items": [],
+        "events": [],
+    }
+    renamed = tmp_path / "archive/wire.snapshot"
+    renamed.parent.mkdir(parents=True, exist_ok=True)
+    renamed.write_text(json.dumps(structural_wire), encoding="utf-8")
+
+    schema_wire = json.dumps(
+        {**structural_wire, "schema_version": stage_pages_rights.NEWSWIRE_SCHEMA},
+        separators=(",", ":"),
+    ).encode()
+    encoded = tmp_path / "archive/innocent-metadata.txt"
+    encoded.write_text(
+        json.dumps(
+            {"harmless_note": base64.b64encode(base64.b64encode(schema_wire)).decode()}
+        ),
+        encoding="utf-8",
+    )
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+    assert {"archive/wire.snapshot", "archive/innocent-metadata.txt"} <= violations
+
+
+def test_arbitrary_base64_keys_are_bounded_without_treating_hashes_as_payloads(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    denied = json.dumps(
+        {"source_id": "cfets_benchmarks", "value": 987654.321},
+        separators=(",", ":"),
+    ).encode()
+    nested = base64.b64encode(base64.b64encode(denied)).decode()
+    denied_path = tmp_path / "archive/arbitrary-key.json"
+    denied_path.parent.mkdir(parents=True, exist_ok=True)
+    denied_path.write_text(json.dumps({"caption": nested}), encoding="utf-8")
+
+    hashes_path = tmp_path / "archive/hashes.json"
+    hashes_path.write_text(
+        json.dumps(
+            {
+                f"digest_{position}": hashlib.sha256(str(position).encode()).hexdigest()
+                for position in range(stage_pages_rights.MAX_ENCODED_TOKENS + 1)
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+    assert "archive/arbitrary-key.json" in violations
+    assert "archive/hashes.json" not in violations
 
 
 @pytest.mark.parametrize(
