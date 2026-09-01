@@ -14,6 +14,7 @@ readonly DATA_LOCK_FILE="${PALIMPSEST_DATA_LOCK_FILE:-/var/lib/palimpsest/railwa
 readonly DEPLOYED_COMMIT_FILE="${PALIMPSEST_DEPLOYED_COMMIT_FILE:-/etc/palimpsest/deployed-commit}"
 readonly PYTHON_BIN="${PALIMPSEST_PYTHON_BIN:-/usr/bin/python3}"
 readonly JOB_TIMEOUT="${PALIMPSEST_COLLECTOR_TIMEOUT:-12m}"
+readonly SILENCE_INDEX_TIMEOUT="${PALIMPSEST_SILENCE_INDEX_TIMEOUT:-18m}"
 
 work_root=""
 checkout=""
@@ -281,7 +282,7 @@ job_due() {
 }
 
 run_job() {
-  local name="$1" interval_minutes="$2"
+  local name="$1" interval_minutes="$2" timeout_limit
   shift 2
   if ! job_due "$name" "$interval_minutes"; then
     log "skip $name; cadence not due"
@@ -292,11 +293,15 @@ run_job() {
   overlay_private_state "$name"
   marker="$work_root/$name.marker"
   touch "$marker"
+  timeout_limit="$JOB_TIMEOUT"
+  if [[ "$name" == "silence-index" ]]; then
+    timeout_limit="$SILENCE_INDEX_TIMEOUT"
+  fi
   log "refresh $name"
   if (
     cd "$checkout"
     env PYTHONPATH="$checkout" PYTHONDONTWRITEBYTECODE=1 \
-      timeout --signal=TERM --kill-after=10s "$JOB_TIMEOUT" "$@"
+      timeout --signal=TERM --kill-after=10s "$timeout_limit" "$@"
   ); then
     promote_private_state "$name" "$marker"
     promoted="$(promote_changed_readings "$marker" "$name")"

@@ -64,6 +64,34 @@ def _git(repository: Path, *arguments: str) -> str:
     return completed.stdout.strip()
 
 
+def test_main_coalesces_an_active_publication_without_marking_service_failed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def publication_busy(_config: object) -> str:
+        raise runtime.PublicationMutationActive("publication mutation is active")
+
+    monkeypatch.setattr(runtime, "run", publication_busy)
+
+    assert runtime.main([]) == 0
+    captured = capsys.readouterr()
+    assert "abstained because publication mutation is active" in captured.out
+    assert captured.err == ""
+
+
+def test_main_keeps_other_safety_refusals_failed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def unsafe_runtime(_config: object) -> str:
+        raise runtime.LiveAnalysisError("unsafe identity")
+
+    monkeypatch.setattr(runtime, "run", unsafe_runtime)
+
+    assert runtime.main([]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "refused: unsafe identity" in captured.err
+
+
 def _pin_document(target: str) -> dict[str, object]:
     return {
         "incident_id": runtime.INCIDENT_ID,
