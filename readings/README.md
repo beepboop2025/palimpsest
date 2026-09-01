@@ -10,7 +10,7 @@ Machine-readable, at stable URLs; schemas, honest scope, and citation guidance l
 [palimpsest.info/for-researchers](https://www.palimpsest.info/for-researchers.html).
 
 For a quick, non-technical check, open the public
-[freshness receipt](https://www.palimpsest.info/freshness): `fresh` means the
+[freshness receipt](https://www.palimpsest.info/freshness?view=reader): `fresh` means the
 published wire and edition are inside their stated time budgets; `stale` means
 the site is serving its last verified edition while a newer release is delayed.
 An unavailable or rights-restricted value is never equivalent to zero, calm,

@@ -141,9 +141,7 @@ def _successor_pin_fixture(namespace: dict[str, object]) -> dict[str, object]:
             "canonical_head": namespace["INCIDENT_BASE"],
             "deployed_commit": namespace["INCIDENT_BASE"],
         },
-        "installed": {
-            key: "7" * 64 for key in namespace["SUCCESSOR_INSTALLED_KEYS"]
-        },
+        "installed": {key: "7" * 64 for key in namespace["SUCCESSOR_INSTALLED_KEYS"]},
         "live": {
             "file_count": 1,
             "provider_manifest": {
@@ -171,9 +169,7 @@ def _successor_pin_fixture(namespace: dict[str, object]) -> dict[str, object]:
         "predecessor": {
             "pin": {
                 "generation": generation - 1,
-                "path": str(
-                    history / "pins" / f"{predecessor_pin_digest}.json"
-                ),
+                "path": str(history / "pins" / f"{predecessor_pin_digest}.json"),
                 "schema_version": namespace["SUCCESSOR_PIN_SCHEMA"],
                 "sha256": predecessor_pin_digest,
                 "target_sha": predecessor_target,
@@ -209,9 +205,7 @@ def _successor_pin_fixture(namespace: dict[str, object]) -> dict[str, object]:
         },
         "recorded_at": "2026-08-30T12:02:00Z",
         "rotation_record_path": str(
-            history
-            / "rotations"
-            / f"{generation}-{target_sha}-{receipt_digest}.json"
+            history / "rotations" / f"{generation}-{target_sha}-{receipt_digest}.json"
         ),
         "schema_version": namespace["SUCCESSOR_PIN_SCHEMA"],
         "status": "verified",
@@ -259,10 +253,8 @@ def test_publisher_keeps_systemd_wx_protection_and_self_heals_origin_drift() -> 
 def test_publisher_blocks_every_rotation_intent_inode_after_root_lock() -> None:
     publisher = PUBLISHER.read_text(encoding="utf-8")
 
-    canonical_intent = (
-        'readonly ROTATION_INTENT="$CONTROL_ROOT/rotation-intent.json"'
-    )
-    acquire = "exec 9<\"$LOCK_FILE\""
+    canonical_intent = 'readonly ROTATION_INTENT="$CONTROL_ROOT/rotation-intent.json"'
+    acquire = 'exec 9<"$LOCK_FILE"'
     lock = "if ! flock -n 9; then"
     verify = '[[ "$(stat -c \'%d:%i\' "$LOCK_FILE")" == "$lock_identity" ]]'
     barrier = '[[ ! -e "$ROTATION_INTENT" && ! -L "$ROTATION_INTENT" ]] || {'
@@ -290,12 +282,29 @@ def test_publisher_blocks_every_rotation_intent_inode_after_root_lock() -> None:
     assert '-L "$ROTATION_INTENT"' in barrier_block
 
 
-def test_independent_publication_timer_is_persistent_and_bounded() -> None:
+def test_independent_publication_timer_coalesces_after_each_completed_run() -> None:
     timer = PUBLISH_TIMER.read_text(encoding="utf-8")
 
-    assert "OnCalendar=*:0/15" in timer
-    assert "Persistent=true" in timer
+    assert "OnBootSec=2m" in timer
+    assert "OnUnitInactiveSec=5m" in timer
+    assert "RandomizedDelaySec=30s" in timer
+    assert "OnCalendar=" not in timer
+    assert "Persistent=" not in timer
     assert "Unit=palimpsest-railway-publish.service" in timer
+
+
+def test_silence_index_gets_a_distinct_bounded_timeout() -> None:
+    measurement = MEASUREMENT.read_text(encoding="utf-8")
+
+    assert 'JOB_TIMEOUT="${PALIMPSEST_COLLECTOR_TIMEOUT:-12m}"' in measurement
+    assert (
+        'SILENCE_INDEX_TIMEOUT="${PALIMPSEST_SILENCE_INDEX_TIMEOUT:-18m}"'
+        in measurement
+    )
+    assert 'timeout_limit="$JOB_TIMEOUT"' in measurement
+    assert 'if [[ "$name" == "silence-index" ]]; then' in measurement
+    assert 'timeout_limit="$SILENCE_INDEX_TIMEOUT"' in measurement
+    assert 'timeout --signal=TERM --kill-after=10s "$timeout_limit" "$@"' in measurement
 
 
 def test_direct_publisher_uses_a_verified_public_base_pin_without_rewriting_host_identity() -> (
@@ -439,7 +448,7 @@ def test_publisher_prepares_clone_before_ordered_atomic_capture() -> None:
         'stage_snapshot_file "$WIRE_STATUS_FILE" "$snapshot_status"', ledger_copy
     )
     status_binding = publisher.index(
-        "status_binding=\"$(validate_newswire_snapshot_receipt", status_copy
+        'status_binding="$(validate_newswire_snapshot_receipt', status_copy
     )
     data_unlock = publisher.index("flock -u 8", status_binding)
     newswire_unlock = publisher.index("flock -u 7", data_unlock)
@@ -462,10 +471,17 @@ def test_publisher_prepares_clone_before_ordered_atomic_capture() -> None:
     )
     assert "publish -> newswire -> data" in publisher
     assert 'source="$snapshot_readings/${relative#readings/}"' in publisher
-    assert 'cp -p "$snapshot_wire" "$checkout/readings/newswire-latest.json"' in publisher
-    assert 'cp -p "$snapshot_ledger" "$checkout/readings/newswire-versions.jsonl"' in publisher
+    assert (
+        'cp -p "$snapshot_wire" "$checkout/readings/newswire-latest.json"' in publisher
+    )
+    assert (
+        'cp -p "$snapshot_ledger" "$checkout/readings/newswire-versions.jsonl"'
+        in publisher
+    )
     assert 'source="$HOST_READINGS/${relative#readings/}"' not in publisher
-    assert 'cp -p "$WIRE_FILE" "$checkout/readings/newswire-latest.json"' not in publisher
+    assert (
+        'cp -p "$WIRE_FILE" "$checkout/readings/newswire-latest.json"' not in publisher
+    )
 
 
 def test_newswire_shared_capture_blocks_across_ledger_latest_pause(
@@ -488,9 +504,7 @@ def test_newswire_shared_capture_blocks_across_ledger_latest_pause(
     consumer_acquired = threading.Event()
     captured: dict[str, bytes] = {}
     errors: list[BaseException] = []
-    latest_bytes = (
-        b'{"generated_at":"2026-08-31T18:00:00Z","version":"new"}\n'
-    )
+    latest_bytes = b'{"generated_at":"2026-08-31T18:00:00Z","version":"new"}\n'
 
     def producer() -> None:
         try:
@@ -559,9 +573,7 @@ def test_newswire_shared_capture_blocks_across_ledger_latest_pause(
 
 def test_publisher_status_binding_and_freshness_reserve_precede_mutation() -> None:
     publisher = PUBLISHER.read_text(encoding="utf-8")
-    server = (ROOT / "ops" / "railway" / "static_server.py").read_text(
-        encoding="utf-8"
-    )
+    server = (ROOT / "ops" / "railway" / "static_server.py").read_text(encoding="utf-8")
 
     assert "WIRE_FRESHNESS_SECONDS = 30 * 60" in server
     assert "readonly WIRE_FRESHNESS_BUDGET_SECONDS=1800" in publisher
@@ -571,7 +583,7 @@ def test_publisher_status_binding_and_freshness_reserve_precede_mutation() -> No
         'status.get("status") != "success"',
         'status["fresh_sources"] < 1',
         'status["output_generated_at"] != wire["generated_at"]',
-        'output_sha256 != hashlib.sha256(wire_raw).hexdigest()',
+        "output_sha256 != hashlib.sha256(wire_raw).hexdigest()",
         "newswire status receipt clocks are not causally ordered",
     ):
         assert contract in publisher
@@ -590,12 +602,14 @@ def test_publisher_status_binding_and_freshness_reserve_precede_mutation() -> No
     positions = [publisher.index(fragment) for fragment in ordered]
     assert positions == sorted(positions)
     reserve_to_mutation = publisher[positions[2] : positions[-1]]
-    assert "pending-preparation" not in reserve_to_mutation.split(
-        "write_preparation_journal", maxsplit=1
-    )[0]
-    assert "pending-candidate" not in reserve_to_mutation.split(
-        'candidate_tmp="', maxsplit=1
-    )[0]
+    assert (
+        "pending-preparation"
+        not in reserve_to_mutation.split("write_preparation_journal", maxsplit=1)[0]
+    )
+    assert (
+        "pending-candidate"
+        not in reserve_to_mutation.split('candidate_tmp="', maxsplit=1)[0]
+    )
 
 
 def test_publisher_status_validator_rejects_unbound_latest(
@@ -1046,9 +1060,7 @@ def test_reconciler_rejects_forged_successor_pin_relationships() -> None:
     pin = _successor_pin_fixture(globals_)
 
     forged = json.loads(json.dumps(pin))
-    forged["predecessor"]["publication_receipt"]["publication_base_sha256"] = (
-        "f" * 64
-    )
+    forged["predecessor"]["publication_receipt"]["publication_base_sha256"] = "f" * 64
     with pytest.raises(error, match="receipt identity"):
         validate_pin(forged)
 
