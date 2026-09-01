@@ -777,6 +777,179 @@ def test_access_request_logs_use_stdout(capsys) -> None:
     assert captured.err == ""
 
 
+def _growth_request(
+    base: str,
+    payload: dict[str, object],
+    *,
+    origin: str = "https://www.palimpsest.info",
+    path: str = "/events",
+) -> urllib.request.Request:
+    return urllib.request.Request(
+        base + path,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Origin": origin,
+        },
+        method="POST",
+    )
+
+
+def test_growth_endpoint_accepts_only_bounded_privacy_minimized_events(
+    tmp_path: Path, capsys
+) -> None:
+    server = server_module.create_server(tmp_path, "127.0.0.1", 0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    payload = {
+        "schema_version": "palimpsest.growth-event.v1",
+        "event": "follow_clicked",
+        "location": "situation_top",
+        "page": "/news/china/situation/",
+        "source": "search",
+    }
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with urllib.request.urlopen(
+            _growth_request(base, payload), timeout=5
+        ) as response:
+            assert response.status == 204
+            assert response.headers["Cache-Control"] == "no-store"
+            assert response.read() == b""
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    lines = [
+        line
+        for line in captured.out.splitlines()
+        if line.startswith("PALIMPSEST_GROWTH_EVENT ")
+    ]
+    assert len(lines) == 1
+    record = json.loads(lines[0].split(" ", 1)[1])
+    assert record == {
+        **payload,
+        "received_at": record["received_at"],
+    }
+    assert record["received_at"].endswith("Z")
+    assert "127.0.0.1" not in captured.out
+    assert "user_id" not in captured.out
+    assert "referrer" not in captured.out
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected_status"),
+    (
+        ({"user_id": "visitor-1"}, 400),
+        ({"page": "/news/china/situation/?person=alice"}, 400),
+        ({"event": "arbitrary_free_form_event"}, 400),
+        ({"event": "follow_clicked"}, 400),
+        ({"location": "home"}, 400),
+        ({"source": "https://example.com/private/path"}, 400),
+    ),
+)
+def test_growth_endpoint_rejects_schema_drift_without_logging(
+    tmp_path: Path, capsys, mutation: dict[str, object], expected_status: int
+) -> None:
+    payload: dict[str, object] = {
+        "schema_version": "palimpsest.growth-event.v1",
+        "event": "deep_read",
+        "location": "situation",
+        "page": "/news/china/situation/",
+        "source": "direct",
+    }
+    payload.update(mutation)
+    server = server_module.create_server(tmp_path, "127.0.0.1", 0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with pytest.raises(urllib.error.HTTPError) as rejected:
+            urllib.request.urlopen(_growth_request(base, payload), timeout=5)
+        assert rejected.value.code == expected_status
+        assert rejected.value.headers["Cache-Control"] == "no-store"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    captured = capsys.readouterr()
+    assert "PALIMPSEST_GROWTH_EVENT" not in captured.out
+    assert "127.0.0.1" not in captured.out
+
+
+def test_growth_endpoint_rejects_cross_origin_and_read_methods(tmp_path: Path) -> None:
+    payload = {
+        "schema_version": "palimpsest.growth-event.v1",
+        "event": "follow_clicked",
+        "location": "home_secondary",
+        "page": "/",
+        "source": "direct",
+    }
+    server = server_module.create_server(tmp_path, "127.0.0.1", 0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with pytest.raises(urllib.error.HTTPError) as cross_origin:
+            urllib.request.urlopen(
+                _growth_request(base, payload, origin="https://attacker.example"),
+                timeout=5,
+            )
+        assert cross_origin.value.code == 403
+        assert cross_origin.value.headers["Cache-Control"] == "no-store"
+
+        with pytest.raises(urllib.error.HTTPError) as read_attempt:
+            urllib.request.urlopen(base + "/events", timeout=5)
+        assert read_attempt.value.code == 405
+        assert read_attempt.value.headers["Allow"] == "POST"
+        assert read_attempt.value.headers["Cache-Control"] == "no-store"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_growth_endpoint_rejects_unbounded_or_non_json_bodies(tmp_path: Path) -> None:
+    server = server_module.create_server(tmp_path, "127.0.0.1", 0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}/events"
+        oversized = urllib.request.Request(
+            base,
+            data=b"x" * (server_module.GROWTH_EVENT_MAX_BYTES + 1),
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "https://www.palimpsest.info",
+            },
+            method="POST",
+        )
+        with pytest.raises(urllib.error.HTTPError) as too_large:
+            urllib.request.urlopen(oversized, timeout=5)
+        assert too_large.value.code == 413
+
+        wrong_type = urllib.request.Request(
+            base,
+            data=b"{}",
+            headers={
+                "Content-Type": "text/plain",
+                "Origin": "https://www.palimpsest.info",
+            },
+            method="POST",
+        )
+        with pytest.raises(urllib.error.HTTPError) as unsupported:
+            urllib.request.urlopen(wrong_type, timeout=5)
+        assert unsupported.value.code == 415
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def test_server_serves_manifest_bound_publication(tmp_path: Path) -> None:
     root = _publication_root(tmp_path)
     manifest = manifest_module.write_manifest(root, "b" * 40, "2026-08-26T18:00:00Z")
@@ -1126,7 +1299,15 @@ def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> N
         relative: hashlib.sha256((public_root / relative).read_bytes()).hexdigest()
         for relative in preserved_paths
     }
-    clock = datetime(2026, 8, 26, 18, 0, 0, tzinfo=UTC)
+    # This preservation test copies the current checked-in situation artifact.
+    # Keep its simulated rights evaluation causally after that artifact instead
+    # of pinning the fixture to a date that the publication can outgrow.
+    situation_clock = json.loads(
+        (public_root / "readings/china-situation-latest.json").read_text(
+            encoding="utf-8"
+        )
+    )["generated_at"]
+    clock = datetime.fromisoformat(situation_clock.replace("Z", "+00:00"))
     publication_sha = "d" * 40
     status = stage_pages_rights.stage_pages_tree(
         public_root,

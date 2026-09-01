@@ -340,12 +340,10 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
 
 def test_home_exposes_an_attributed_daily_observatory_read():
     home = (ROOT / "index.html").read_text(encoding="utf-8")
-    telegram = (
-        "https://t.me/palimpsest_watch_bot?start=palimpsest_home_hero"
-    )
+    telegram = "https://t.me/palimpsest_watch_bot?start=china_home_primary"
 
     assert f'href="{telegram}"' in home
-    assert "Get the daily observatory read" in home
+    assert "Get the daily China evidence read" in home
     assert 'target="_blank" rel="noopener noreferrer"' in home
     task_section = home[home.index('<section class="hm-use"'):
                         home.index('</section>', home.index('<section class="hm-use"'))]
@@ -451,7 +449,10 @@ def test_china_situation_and_social_observations_are_agent_discoverable():
         assert (ROOT / relative).is_file(), relative
 
     page = (ROOT / "news/china/situation/index.html").read_text(encoding="utf-8")
-    assert f'<link rel="canonical" href="{situation_url}">' in page
+    assert (
+        '<link rel="canonical" '
+        'href="https://www.palimpsest.info/news/china/situation/">'
+    ) in page
 
 
 def test_scamshield_public_surfaces_share_one_bounded_contract():

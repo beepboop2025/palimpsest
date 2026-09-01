@@ -285,6 +285,127 @@
     return Math.round(s / 86400) + " d ago";
   }
 
+  /* ----------------------------------------- bounded growth evidence ---- */
+  /* Cloudflare Web Analytics supplies page-level discovery. This endpoint
+     adds only named funnel actions. It deliberately omits cookies, user IDs,
+     raw referrers, client clocks and free-form fields. A browser event is
+     activity evidence, never proof of a distinct person or subscriber. */
+  var GROWTH_SCHEMA = "palimpsest.growth-event.v1";
+  var GROWTH_HOST = "www.palimpsest.info";
+  var GROWTH_EVENTS = {
+    brief_clicked: true,
+    citation_copied: true,
+    deep_read: true,
+    download_started: true,
+    feed_clicked: true,
+    follow_clicked: true,
+    inquiry_clicked: true
+  };
+
+  function growthDisabled() {
+    if (location.hostname !== GROWTH_HOST) return true;
+    if (navigator.doNotTrack === "1" || window.doNotTrack === "1") return true;
+    if (navigator.globalPrivacyControl === true) return true;
+    try {
+      return localStorage.getItem("palimpsest_analytics_opt_out") === "1";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function growthPage() {
+    var path = location.pathname;
+    if (path === "/") return path;
+    if (/^\/news\/china\/situation\/(?:page\/[1-9][0-9]*\/)?$/.test(path)) return path;
+    return null;
+  }
+
+  function growthSource() {
+    if (!document.referrer) return "direct";
+    try {
+      var host = new URL(document.referrer).hostname.toLowerCase();
+      if (host === location.hostname.toLowerCase()) return "same_site";
+      if (/(^|\.)(chatgpt|openai|perplexity|gemini|claude|copilot)\./.test(host)) return "ai";
+      if (/(^|\.)(google|bing|duckduckgo|yahoo|baidu|yandex)\./.test(host)) return "search";
+      if (host === "t.me" || /(^|\.)(telegram|facebook|linkedin|twitter|x)\./.test(host)) return "social";
+    } catch (error) {
+      return "other";
+    }
+    return "other";
+  }
+
+  function trackGrowth(eventName, locationName) {
+    var page = growthPage();
+    if (growthDisabled() || !page || !GROWTH_EVENTS[eventName]) return false;
+    var body = JSON.stringify({
+      schema_version: GROWTH_SCHEMA,
+      event: eventName,
+      location: locationName,
+      page: page,
+      source: growthSource()
+    });
+    if (navigator.sendBeacon) {
+      return navigator.sendBeacon(
+        "/events",
+        new Blob([body], { type: "application/json" })
+      );
+    }
+    if (window.fetch) {
+      fetch("/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body,
+        credentials: "same-origin",
+        keepalive: true
+      }).catch(function () {});
+      return true;
+    }
+    return false;
+  }
+
+  function initGrowthEvidence() {
+    if (growthDisabled() || !document.body.hasAttribute("data-growth-page")) return;
+    document.addEventListener("click", function (event) {
+      var target = event.target && event.target.closest
+        ? event.target.closest("[data-growth-event]")
+        : null;
+      if (!target) return;
+      trackGrowth(
+        target.getAttribute("data-growth-event"),
+        target.getAttribute("data-growth-location")
+      );
+    });
+
+    var visibleSince = document.hidden ? null : Date.now();
+    var visibleMilliseconds = 0;
+    var sentDeepRead = false;
+    function settleVisibility() {
+      if (visibleSince !== null) {
+        visibleMilliseconds += Date.now() - visibleSince;
+        visibleSince = null;
+      }
+    }
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) settleVisibility();
+      else visibleSince = Date.now();
+    });
+    window.setInterval(function () {
+      if (sentDeepRead || document.hidden) return;
+      var documentHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight
+      );
+      var depth = (window.scrollY + window.innerHeight) / Math.max(documentHeight, 1);
+      var elapsed = visibleMilliseconds + (visibleSince === null ? 0 : Date.now() - visibleSince);
+      if (depth >= 0.5 && elapsed >= 20000) {
+        sentDeepRead = trackGrowth(
+          "deep_read",
+          document.body.getAttribute("data-growth-page")
+        );
+      }
+    }, 1000);
+  }
+
   /* -------------------------------------------------------- page share ---- */
   /* Every reading, brief and dashboard can leave the site as a social-grade
      card: the brand row, the page's own h1 and description, and a footer
@@ -480,6 +601,7 @@
         a.download = fileStamp();
         a.click();
         setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        trackGrowth("download_started", "page_share");
       });
     };
 
@@ -555,7 +677,10 @@
       var citation = 'Palimpsest. "' + meta.title + '." Palimpsest, accessed ' +
         accessed + ". " + meta.link;
       navigator.clipboard.writeText(citation)
-        .then(function () { say("citation copied"); }, function () { say("copy blocked"); });
+        .then(function () {
+          say("citation copied");
+          trackGrowth("citation_copied", "page_share");
+        }, function () { say("copy blocked"); });
     }, "copy a citation with the canonical URL and access date");
     row.appendChild(note);
     h1.parentNode.insertBefore(row, h1.nextSibling);
@@ -806,6 +931,7 @@
     initPageShare();
     initCardShare();
     initWebAnalytics();
+    initGrowthEvidence();
     initFreshnessLease();
   }
 
@@ -820,6 +946,7 @@
     countUp: countUp,
     loadReading: loadReading,
     ago: ago,
+    trackGrowth: trackGrowth,
     reducedMotion: RM
   };
 })();

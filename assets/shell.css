@@ -362,7 +362,7 @@ body.ps > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: var(--ps-z
 }
 .ps-region-rail__list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   height: 100%;
   margin: 0; padding: 0;
   list-style: none;
@@ -467,7 +467,7 @@ body[data-ps-menu] { overflow: hidden; }
 }
 
 @media (max-width: 620px) {
-  :root { --ps-region-rail-h: 88px; }
+  :root { --ps-region-rail-h: 132px; }
   .ps-region-rail { grid-template-columns: 72px minmax(0, 1fr); }
   .ps-region-rail__label {
     padding: 0 10px 0 2px;
@@ -476,13 +476,15 @@ body[data-ps-menu] { overflow: hidden; }
   }
   .ps-region-rail__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, 44px);
+    grid-template-rows: repeat(3, 44px);
   }
   .ps-region-rail__link { padding: 0 6px; font-size: 10.5px; }
   .ps-region-rail__list li:nth-child(even) .ps-region-rail__link { border-right: 0; }
-  .ps-region-rail__list li:nth-child(-n+2) .ps-region-rail__link {
+  .ps-region-rail__list li:nth-child(-n+4) .ps-region-rail__link {
     border-bottom: 1px solid var(--ps-edge-1);
   }
+  .ps-region-rail__list li:last-child { grid-column: 1 / -1; }
+  .ps-region-rail__list li:last-child .ps-region-rail__link { border-right: 0; }
 }
 
 /* ---- no JavaScript: the nav must still be a nav --------------------------

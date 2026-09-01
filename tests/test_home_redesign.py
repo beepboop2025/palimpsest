@@ -25,7 +25,6 @@ def test_home_has_one_heading_and_clear_publication_routes():
     ):
         assert f'href="{route}"' in page
     for marker in (
-        "data-home-journal",
         "data-home-registry",
         "data-home-osint",
         "data-home-osint-summary",
@@ -34,8 +33,8 @@ def test_home_has_one_heading_and_clear_publication_routes():
         "data-home-wire-source-state",
     ):
         assert marker in page
-    assert "Open the result." in page
-    assert "Then open the proof." in page
+    assert "See what changed." in page
+    assert "Inspect the evidence." in page
     assert "Not a newspaper" in page
     assert "AI assistance, named" in page
     assert 'id="main"' in page
@@ -88,7 +87,6 @@ def test_home_rejects_restricted_success_responses_and_uses_fresh_public_feed():
     assert 'document.availability === "unavailable"' in script
     assert "document.publication_allowed === false" in script
     for schema in (
-        "palimpsest-eval-journal.v1",
         "osint-china.v1",
         "palimpsest-newswire.v1",
         "palimpsest.publication-freshness.v1",
@@ -150,6 +148,11 @@ def test_home_visual_system_is_responsive_and_motion_safe():
     assert "--hm-blue: #245dff" in css
     assert "--hm-teal: #087e8b" in css
     assert "--hm-paper: #f4f8fb" in css
+    responsive = css.split("@media (max-width: 980px)", 1)[1].split(
+        "@media (max-width: 860px)", 1
+    )[0]
+    assert responsive.index('"headline"') < responsive.index('"details"')
+    assert responsive.index('"details"') < responsive.index('"proof"')
 
 
 def test_new_home_copy_avoids_typographic_dashes():
@@ -157,6 +160,43 @@ def test_new_home_copy_avoids_typographic_dashes():
         text = (ROOT / relative).read_text(encoding="utf-8")
         assert "\u2013" not in text, relative
         assert "\u2014" not in text, relative
+
+
+def test_home_leads_with_one_attributable_china_funnel():
+    home = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    assert '<link rel="canonical" href="https://www.palimpsest.info/">' in home
+    assert 'data-growth-page="home"' in home
+    assert "China information-control evidence" in home
+    assert "researchers, journalists and institutions" in home
+    assert 'href="/news/china/situation/"' in home
+    assert 'data-growth-event="brief_clicked"' in home
+    assert 'data-growth-event="follow_clicked"' in home
+    assert 'data-growth-location="home_primary"' in home
+    assert 'data-growth-location="home_secondary"' in home
+    assert "A click is not counted as a subscriber." in home
+
+
+def test_growth_measurement_is_bounded_and_respects_browser_opt_outs():
+    shell = (ROOT / "assets" / "shell.js").read_text(encoding="utf-8")
+
+    assert 'var GROWTH_SCHEMA = "palimpsest.growth-event.v1"' in shell
+    assert 'var GROWTH_HOST = "www.palimpsest.info"' in shell
+    assert 'navigator.doNotTrack === "1"' in shell
+    assert "navigator.globalPrivacyControl === true" in shell
+    assert 'localStorage.getItem("palimpsest_analytics_opt_out")' in shell
+    assert "document.referrer" in shell
+    assert 'source: growthSource()' in shell
+    assert shell.index("chatgpt|openai|perplexity|gemini") < shell.index(
+        "google|bing|duckduckgo"
+    )
+    assert "raw_referrer" not in shell
+    assert "user_id" not in shell
+    assert "client_timestamp" not in shell
+    assert "depth >= 0.5" in shell
+    assert "elapsed >= 20000" in shell
+    assert 'trackGrowth("citation_copied", "page_share")' in shell
+    assert 'trackGrowth("download_started", "page_share")' in shell
 
 
 def test_service_worker_never_presents_an_old_journal_head_as_current():

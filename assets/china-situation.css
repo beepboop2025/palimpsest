@@ -54,6 +54,21 @@ body.ps.newsroom-page.situation-page {
   font-style: normal;
 }
 
+.situation-hero__follow {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--sit-measure);
+  background: var(--sit-measure);
+  color: #071017;
+  font: 700 0.72rem/1.25 var(--nw-mono, ui-monospace, monospace);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
 .situation-hero__dek {
   max-width: 42rem;
   margin: 2rem 0;
@@ -80,6 +95,64 @@ body.ps.newsroom-page.situation-page {
   letter-spacing: 0.04em;
   text-decoration: none;
   text-transform: uppercase;
+}
+
+.situation-follow {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.2fr) minmax(20rem, 0.8fr);
+  gap: 1.5rem 3rem;
+  max-width: 92rem;
+  margin: 1.5rem auto;
+  padding: clamp(1.4rem, 3vw, 2.3rem) clamp(1.25rem, 5vw, 5rem);
+  border: 1px solid var(--sit-line);
+  border-left: 0.35rem solid var(--sit-measure);
+  background: var(--sit-panel);
+}
+
+.situation-follow h2 {
+  margin: 0;
+  font-size: clamp(1.55rem, 3vw, 2.65rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.situation-follow p {
+  max-width: 48rem;
+  margin: 0.8rem 0 0;
+  color: #bdcbd2;
+  line-height: 1.55;
+}
+
+.situation-follow__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-content: center;
+}
+
+.situation-follow__actions a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--sit-line);
+  color: var(--sit-ink);
+  font: 700 0.7rem/1.25 var(--nw-mono, ui-monospace, monospace);
+  letter-spacing: 0.035em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.situation-follow__actions .situation-follow__primary {
+  border-color: var(--sit-measure);
+  background: var(--sit-measure);
+  color: #071017;
+}
+
+.situation-follow__actions small {
+  flex-basis: 100%;
+  color: var(--sit-muted);
+  font: 0.67rem/1.45 var(--nw-mono, ui-monospace, monospace);
 }
 
 .situation-stats {
@@ -436,6 +509,7 @@ body.ps.newsroom-page.situation-page {
 
 @media (max-width: 1100px) {
   .situation-hero,
+  .situation-follow,
   .situation-social-state,
   .situation-telegram > div:first-child,
   .situation-method,
