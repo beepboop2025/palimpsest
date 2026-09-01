@@ -1534,6 +1534,24 @@ def _china_analysis_share_card_spec(article: Mapping[str, Any]) -> dict[str, Any
     }
 
 
+def _china_analysis_unavailable_share_card_spec(
+    feed: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "china-analysis",
+        "kicker": "CHINA CENSORSHIP ANALYSIS / AVAILABILITY NOTICE",
+        "title": "No cross-instrument finding is published in this edition.",
+        "status": "restricted",
+        "status_label": "PUBLIC VALUE UNAVAILABLE / SOURCE POLICY",
+        "metric": None,
+        "as_of": feed["generated_at"],
+        "source": _PUBLIC_RIGHTS_EVIDENCE_FILENAME,
+        "receipt": None,
+        "target_url": f"{SITE}/news/china/analysis/",
+    }
+
+
 def _economic_share_card_spec(pulse: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": share_cards.SPEC_VERSION,
@@ -1741,6 +1759,7 @@ def _head(
     extra_styles: Sequence[str] = (),
     image_url: str = OG_IMAGE,
     image_alt: str = "Palimpsest evidence observatory",
+    robots: str = "index, follow, max-image-preview:large, max-snippet:-1",
 ) -> str:
     article_meta = ""
     if published_at:
@@ -1762,7 +1781,7 @@ def _head(
 <title>{_h(title)}</title>
 <meta name="description" content="{_h(description)}">
 <meta name="author" content="{PUBLISHER}">
-<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="robots" content="{_h(robots)}">
 <link rel="canonical" href="{_h(canonical)}">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="alternate" type="application/feed+json" title="Palimpsest Wire JSON Feed" href="{_h(feed_base)}/feed.json">
@@ -4510,6 +4529,61 @@ def render_china_censorship_analysis(
     )
 
 
+def render_china_analysis_unavailable(
+    feed: Mapping[str, Any],
+    *,
+    share_card: share_cards.RenderedCard,
+) -> str:
+    """Keep the established route useful without deriving a denied finding."""
+
+    title = "China censorship analysis: public finding unavailable"
+    description = (
+        "Palimpsest did not publish a cross-instrument finding because the active "
+        "source policy does not allow the required public values."
+    )
+    generated_at = _h(feed["generated_at"])
+    body = f"""<body class="ps newsroom-page china-analysis-page">
+{site_nav.render("/news/china/analysis/")}
+<main id="main">
+  <header class="ca-hero">
+    <div class="ca-shell ca-hero__meta"><span>PALIMPSEST / AVAILABILITY NOTICE</span><time datetime="{generated_at}">{_h(_human_time(feed["generated_at"]))}</time></div>
+    <div class="ca-shell ca-hero__grid"><div><p class="ca-eyebrow">No current cross-instrument finding</p><h1>{_h(title)}</h1></div><div><p>{_h(description)}</p><a href="/readings/china-publication-rights-latest.json">Open the public rights receipt</a></div></div>
+  </header>
+  <section class="ca-section ca-shell" aria-labelledby="availability-meaning">
+    <header><span>01</span><h2 id="availability-meaning">What this means</h2></header>
+    <div><p>The page remains available so bookmarks and citations do not break. Palimpsest has not calculated, retained, or substituted a public result for this edition.</p><p>Unavailable is not zero, normal, safe, unchanged, or evidence of direction. Publisher source reports remain available separately and are not treated as Palimpsest measurements.</p></div>
+  </section>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/china/">← China publisher source index</a> · <a href="/news/">Evidence desk</a> · <a href="/readings/china-publication-rights-latest.json">Rights receipt</a> · <a href="/docs/NEWSROOM.md">Method</a></div></footer>
+{site_nav.FOOT}
+</body></html>"""
+    return (
+        _head(
+            title=f"{title} · Palimpsest",
+            description=description,
+            canonical=f"{SITE}/news/china/analysis/",
+            page_type="website",
+            modified_at=feed["generated_at"],
+            feed_base="/news/china",
+            extra_styles=("/assets/china-analysis.css",),
+            json_ld={
+                "@context": "https://schema.org",
+                "@type": "WebPage",
+                "name": title,
+                "description": description,
+                "url": f"{SITE}/news/china/analysis/",
+                "dateModified": feed["generated_at"],
+                "isBasedOn": _PUBLIC_RIGHTS_EVIDENCE_URL,
+            },
+            image_url=share_card.url,
+            image_alt=share_card.alt,
+            robots="noindex, follow, max-image-preview:large",
+        )
+        + "\n"
+        + body
+    )
+
+
 def build_china_analysis_json_feed(article: Mapping[str, Any]) -> dict[str, Any]:
     text = [article["thesis"]]
     for section in article["sections"]:
@@ -6492,10 +6566,10 @@ def build_outputs(
         for event in (wire["events"] if wire is not None else [])
     }
     edition_share_card = share_cards.render_card(_edition_share_card_spec(feed))
-    china_analysis_share_card = (
-        share_cards.render_card(_china_analysis_share_card_spec(china_analysis))
+    china_analysis_share_card = share_cards.render_card(
+        _china_analysis_share_card_spec(china_analysis)
         if china_analysis is not None
-        else None
+        else _china_analysis_unavailable_share_card_spec(feed)
     )
     economic_share_card = (
         share_cards.render_card(_economic_share_card_spec(pulse))
@@ -6519,7 +6593,7 @@ def build_outputs(
         )
     rendered_share_cards = [
         edition_share_card,
-        *([china_analysis_share_card] if china_analysis_share_card is not None else []),
+        china_analysis_share_card,
         *story_share_cards.values(),
         *event_share_cards.values(),
         *historical_event_cards.values(),
@@ -6579,6 +6653,13 @@ def build_outputs(
                     china_analysis
                 ),
             }
+        )
+    else:
+        outputs[Path("news/china/analysis/index.html")] = (
+            render_china_analysis_unavailable(
+                feed,
+                share_card=china_analysis_share_card,
+            ).encode("utf-8")
         )
     outputs.update(historical_event_html)
     if wire is not None:
@@ -6830,11 +6911,7 @@ def build_outputs(
             outputs[base / "revisions" / f"{revision}.json"] = _pretty_json(story)
     contextual_paths = [
         Path("news/index.html"),
-        *(
-            [Path("news/china/analysis/index.html")]
-            if china_analysis_share_card is not None
-            else []
-        ),
+        Path("news/china/analysis/index.html"),
         *(Path("news") / story["slug"] / "index.html" for story in feed["stories"]),
         *(
             Path("news/wire") / event_id / "index.html"

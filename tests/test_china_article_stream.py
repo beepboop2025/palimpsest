@@ -389,19 +389,35 @@ def test_build_outputs_adds_paginated_stream_and_machine_formats(publication):
     assert Path("news/china/feed.xml") in outputs
     assert Path("news/china/feed.json") in outputs
     assert Path("readings/china-article-stream-latest.json") in outputs
-    assert Path("news/china/analysis/index.html") in outputs
-    assert Path("news/china/analysis/feed.xml") in outputs
-    assert Path("news/china/analysis/feed.json") in outputs
-    assert Path("readings/china-censorship-analysis-latest.json") in outputs
     newsroom_index = outputs[Path("news/index.html")].decode()
-    assert 'href="/news/china/analysis/"' in newsroom_index
-    assert "Open the latest cross-instrument result" in newsroom_index
-    assert '<b>Censorship analysis</b>' in newsroom_index
+    analysis_paths = {
+        Path("news/china/analysis/index.html"),
+        Path("news/china/analysis/feed.xml"),
+        Path("news/china/analysis/feed.json"),
+        Path("readings/china-censorship-analysis-latest.json"),
+    }
+    analysis_denied = build_newsroom._china_public_values_denied(feed["generated_at"])
+    if analysis_denied:
+        assert Path("news/china/analysis/index.html") in outputs
+        assert (analysis_paths - {Path("news/china/analysis/index.html")}).isdisjoint(
+            outputs
+        )
+        unavailable_page = outputs[Path("news/china/analysis/index.html")].decode()
+        assert "public finding unavailable" in unavailable_page
+        assert "Unavailable is not zero" in unavailable_page
+        assert 'content="noindex, follow, max-image-preview:large"' in unavailable_page
+    else:
+        assert analysis_paths <= outputs.keys()
+        assert 'href="/news/china/analysis/"' in newsroom_index
+        assert "Open the latest cross-instrument result" in newsroom_index
+        assert '<b>Censorship analysis</b>' in newsroom_index
     for page in range(2, n_pages + 1):
         assert Path("news/china/page") / str(page) / "index.html" in outputs
     sitemap = outputs[Path("news/sitemap.xml")].decode()
     assert "https://palimpsest.info/news/china/" in sitemap
-    assert "https://palimpsest.info/news/china/analysis/" in sitemap
+    assert ("https://palimpsest.info/news/china/analysis/" in sitemap) == (
+        not analysis_denied
+    )
     assert f"https://palimpsest.info/news/china/page/{n_pages}/" in sitemap
 
 

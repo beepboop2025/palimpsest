@@ -208,7 +208,10 @@ def test_denied_publication_is_availability_only_across_every_newsroom_format(
         not in outputs[Path("news/index.html")].decode()
     )
     assert Path("news/economy/index.html") in outputs
-    assert Path("news/china/analysis/index.html") not in outputs
+    unavailable_analysis = outputs[Path("news/china/analysis/index.html")].decode()
+    assert "public finding unavailable" in unavailable_analysis
+    assert "Unavailable is not zero" in unavailable_analysis
+    assert "china-censorship-analysis-latest.json" not in unavailable_analysis
     assert Path("readings/china-censorship-analysis-latest.json") not in outputs
     assert len(stories) == feed["n_stories"]
     for signal_id in restricted_ids:

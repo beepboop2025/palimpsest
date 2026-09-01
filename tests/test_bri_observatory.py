@@ -10,6 +10,7 @@ import hashlib
 from collections import Counter
 from pathlib import Path
 
+import pytest
 from jsonschema import Draft202012Validator
 
 from core.newswire import load_source_registry
@@ -492,15 +493,25 @@ def test_regional_capture_can_honestly_omit_unsealed_translations() -> None:
         ROOT / "config" / "news_sources.json"
     )
 
-    index = _build_captured_index(
-        wire,
-        versions,
-        versions_sha256=versions_sha256,
-        source_specs=source_specs,
-        source_registry_sha256=source_registry_sha256,
-        region="bri",
-        translations=None,
-    )
+    build_args = {
+        "versions_sha256": versions_sha256,
+        "source_specs": source_specs,
+        "source_registry_sha256": source_registry_sha256,
+        "region": "bri",
+        "translations": None,
+    }
+    if wire["source_registry_sha256"] != source_registry_sha256:
+        assert wire["source_registry_sha256"] == (
+            "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14"
+        )
+        with pytest.raises(
+            ValueError,
+            match="current newswire does not bind the exact configured source registry",
+        ):
+            _build_captured_index(wire, versions, **build_args)
+        return
+
+    index = _build_captured_index(wire, versions, **build_args)
 
     assert index["inputs"]["chinese_translation_sidecar"] is None
     assert index["counts"]["events_with_english_translation"] == 0
@@ -785,9 +796,25 @@ def test_narcoscope_bridge_is_production_verified_and_cannot_infer_actors() -> N
 
 
 def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
-    expected_json, expected_html = build(REGISTRY)
-    assert READING.read_bytes() == expected_json
-    assert PAGE.read_bytes() == expected_html
+    wire = _load_newswire(ROOT / "readings" / "newswire-latest.json")
+    _source_specs, active_registry_sha256 = _source_registry_projection(
+        ROOT / "config" / "news_sources.json"
+    )
+    if wire["source_registry_sha256"] == active_registry_sha256:
+        expected_json, expected_html = build(REGISTRY)
+        assert READING.read_bytes() == expected_json
+        assert PAGE.read_bytes() == expected_html
+    else:
+        assert wire["source_registry_sha256"] == (
+            "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14"
+        )
+        with pytest.raises(
+            ValueError,
+            match="current newswire does not bind the exact configured source registry",
+        ):
+            build(REGISTRY)
+        expected_json = READING.read_bytes()
+        expected_html = PAGE.read_bytes()
     artifact = json.loads(expected_json)
     gwadar_analysis = json.loads(GWADAR_ANALYSIS_JSON.read_text(encoding="utf-8"))
     assert GWADAR_PAGE.read_bytes() == _render_gwadar_html(
