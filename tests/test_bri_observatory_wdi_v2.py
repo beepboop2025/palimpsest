@@ -26,8 +26,10 @@ from processors.bri_observatory import (
     load_registry,
     validate_observation_dataset_descriptor,
 )
+from scripts import build_bri_observatory as bri_builder
 from scripts.build_bri_observatory import build
 from scripts.build_osint_china import EXCLUDED_LATEST_FILES, SIGNALS
+from tests.bri_test_support import write_active_registry_wire
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +41,14 @@ BRI_V1_SCHEMA = ROOT / "protocol" / "belt-and-road-observatory-v1.schema.json"
 BRI_V2_SCHEMA = ROOT / "protocol" / "belt-and-road-observatory-v2.schema.json"
 FROZEN_V1 = ROOT / "readings" / "belt-and-road-observatory-v1.json"
 RETRIEVED_AT = datetime(2026, 8, 26, 10, 30, tzinfo=UTC)
+
+
+@pytest.fixture(autouse=True)
+def _use_active_registry_wire(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    wire = write_active_registry_wire(tmp_path / "newswire-latest.json", root=ROOT)
+    monkeypatch.setitem(bri_builder.build.__kwdefaults__, "newswire_path", wire)
 
 
 def _full_wdi_bundle() -> dict:
