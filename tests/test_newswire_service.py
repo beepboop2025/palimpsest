@@ -488,6 +488,62 @@ def test_success_receipt_is_bound_to_the_atomically_published_latest(
     assert receipt["failure_class"] is None
 
 
+def test_success_receipt_lands_after_ledger_and_latest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "newswire-latest.json"
+    ledger = tmp_path / "newswire-versions.jsonl"
+    status = tmp_path / "newswire-status.json"
+    document = {
+        "generated_at": "2026-08-13T00:00:00Z",
+        "n_items": 0,
+        "n_events": 0,
+        "events": [],
+        "coverage": {
+            "registry_sources": 1,
+            "successful_sources": 1,
+            "counts": {"success": 1},
+            "status": "healthy",
+        },
+    }
+    writes: list[str] = []
+    atomic_write = pull._atomic_write
+
+    def observed_write(path: Path, payload: bytes, *, mode: int = 0o644) -> None:
+        writes.append(path.name)
+        atomic_write(path, payload, mode=mode)
+
+    monkeypatch.setattr(pull, "load_source_registry", lambda _path: object())
+    monkeypatch.setattr(pull, "collect_newswire", lambda *_args, **_kwargs: document)
+    monkeypatch.setattr(pull, "_atomic_write", observed_write)
+
+    assert (
+        pull.main(
+            [
+                "--config",
+                str(tmp_path / "registry.json"),
+                "--output",
+                str(output),
+                "--ledger",
+                str(ledger),
+                "--status",
+                str(status),
+            ]
+        )
+        == 0
+    )
+
+    assert writes == [
+        "newswire-status.json",
+        "newswire-versions.jsonl",
+        "newswire-latest.json",
+        "newswire-status.json",
+    ]
+    receipt = json.loads(status.read_text(encoding="utf-8"))
+    assert receipt["status"] == "success"
+    assert receipt["output_sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()
+
+
 def test_unexpected_wire_failure_receipt_does_not_leak_exception_text(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

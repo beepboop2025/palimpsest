@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import fcntl
 import os
 import json
 from pathlib import Path
 import runpy
+import shlex
+import subprocess
+import sys
+import threading
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -20,6 +26,13 @@ PUBLISH_SERVICE = ROOT / "ops" / "systemd" / "palimpsest-railway-publish.service
 ADVANCE_BASE = ROOT / "ops" / "railway" / "advance-direct-publication-base"
 ROTATE_BASE = ROOT / "ops" / "railway" / "rotate-direct-publication-base"
 RECONCILE = ROOT / "ops" / "railway" / "reconcile-direct-publication-candidate"
+
+
+def _publisher_shell_function(name: str, next_name: str) -> str:
+    source = PUBLISHER.read_text(encoding="utf-8")
+    start = source.index(f"{name}() {{")
+    end = source.index(f"\n{next_name}() {{", start)
+    return source[start:end]
 
 
 def _candidate_fixture() -> dict[str, object]:
@@ -403,6 +416,411 @@ def test_generated_release_is_durably_bundled_before_any_railway_mutation() -> N
         assert fragment in publisher
     assert "clone --quiet --no-local --no-checkout" in publisher
     assert "clone --quiet --shared" not in publisher
+
+
+def test_publisher_prepares_clone_before_ordered_atomic_capture() -> None:
+    publisher = PUBLISHER.read_text(encoding="utf-8")
+
+    publish_lock = publisher.index("if ! flock -n 9; then")
+    clone = publisher.index(
+        'git clone --quiet --no-local --no-checkout "$SOURCE_REPOSITORY" "$checkout"'
+    )
+    newswire_lock = publisher.index('exec 7<"$NEWSWIRE_LOCK_FILE"')
+    newswire_shared = publisher.index("flock -s 7", newswire_lock)
+    data_lock = publisher.index('exec 8<"$DATA_LOCK_FILE"', newswire_shared)
+    data_shared = publisher.index("flock -s 8", data_lock)
+    latest_copy = publisher.index(
+        'stage_snapshot_file "$WIRE_FILE" "$snapshot_wire"', data_shared
+    )
+    ledger_copy = publisher.index(
+        'stage_snapshot_file "$LEDGER_FILE" "$snapshot_ledger"', latest_copy
+    )
+    status_copy = publisher.index(
+        'stage_snapshot_file "$WIRE_STATUS_FILE" "$snapshot_status"', ledger_copy
+    )
+    status_binding = publisher.index(
+        "status_binding=\"$(validate_newswire_snapshot_receipt", status_copy
+    )
+    data_unlock = publisher.index("flock -u 8", status_binding)
+    newswire_unlock = publisher.index("flock -u 7", data_unlock)
+    first_builder = publisher.index('"$PYTHON_BIN" -c', newswire_unlock)
+
+    assert (
+        publish_lock
+        < clone
+        < newswire_lock
+        < newswire_shared
+        < data_lock
+        < data_shared
+        < latest_copy
+        < ledger_copy
+        < status_copy
+        < status_binding
+        < data_unlock
+        < newswire_unlock
+        < first_builder
+    )
+    assert "publish -> newswire -> data" in publisher
+    assert 'source="$snapshot_readings/${relative#readings/}"' in publisher
+    assert 'cp -p "$snapshot_wire" "$checkout/readings/newswire-latest.json"' in publisher
+    assert 'cp -p "$snapshot_ledger" "$checkout/readings/newswire-versions.jsonl"' in publisher
+    assert 'source="$HOST_READINGS/${relative#readings/}"' not in publisher
+    assert 'cp -p "$WIRE_FILE" "$checkout/readings/newswire-latest.json"' not in publisher
+
+
+def test_newswire_shared_capture_blocks_across_ledger_latest_pause(
+    tmp_path: Path,
+) -> None:
+    lock = tmp_path / "newswire.lock"
+    ledger = tmp_path / "newswire-versions.jsonl"
+    latest = tmp_path / "newswire-latest.json"
+    status = tmp_path / "newswire-status.json"
+    lock.write_bytes(b"")
+    ledger.write_text('{"version":"old"}\n', encoding="utf-8")
+    latest.write_text(
+        '{"generated_at":"2026-08-31T17:00:00Z","version":"old"}\n',
+        encoding="utf-8",
+    )
+
+    producer_paused = threading.Event()
+    finish_producer = threading.Event()
+    consumer_waiting = threading.Event()
+    consumer_acquired = threading.Event()
+    captured: dict[str, bytes] = {}
+    errors: list[BaseException] = []
+    latest_bytes = (
+        b'{"generated_at":"2026-08-31T18:00:00Z","version":"new"}\n'
+    )
+
+    def producer() -> None:
+        try:
+            with lock.open("rb") as handle:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+                ledger.write_text('{"version":"new"}\n', encoding="utf-8")
+                producer_paused.set()
+                assert finish_producer.wait(timeout=5)
+                latest.write_bytes(latest_bytes)
+                status.write_text(
+                    json.dumps(
+                        {
+                            "attempted_at": "2026-08-31T17:59:59Z",
+                            "completed_at": "2026-08-31T18:00:01Z",
+                            "failure_class": None,
+                            "fresh_sources": 1,
+                            "output_generated_at": "2026-08-31T18:00:00Z",
+                            "output_sha256": hashlib.sha256(latest_bytes).hexdigest(),
+                            "schema_version": "palimpsest-evidence-wire-attempt.v1",
+                            "status": "success",
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        except BaseException as exc:  # pragma: no cover - surfaced below
+            errors.append(exc)
+
+    def consumer() -> None:
+        try:
+            assert producer_paused.wait(timeout=5)
+            with lock.open("rb") as handle:
+                consumer_waiting.set()
+                fcntl.flock(handle.fileno(), fcntl.LOCK_SH)
+                consumer_acquired.set()
+                captured["ledger"] = ledger.read_bytes()
+                captured["latest"] = latest.read_bytes()
+                captured["status"] = status.read_bytes()
+        except BaseException as exc:  # pragma: no cover - surfaced below
+            errors.append(exc)
+
+    producer_thread = threading.Thread(target=producer)
+    consumer_thread = threading.Thread(target=consumer)
+    producer_thread.start()
+    assert producer_paused.wait(timeout=5)
+    consumer_thread.start()
+    assert consumer_waiting.wait(timeout=5)
+    assert not consumer_acquired.wait(timeout=0.1)
+    finish_producer.set()
+    producer_thread.join(timeout=5)
+    consumer_thread.join(timeout=5)
+
+    assert not producer_thread.is_alive()
+    assert not consumer_thread.is_alive()
+    assert errors == []
+    assert captured["ledger"] == b'{"version":"new"}\n'
+    assert captured["latest"] == latest_bytes
+    receipt = json.loads(captured["status"])
+    assert receipt["status"] == "success"
+    assert receipt["fresh_sources"] == 1
+    assert receipt["output_generated_at"] == "2026-08-31T18:00:00Z"
+    assert receipt["output_sha256"] == hashlib.sha256(captured["latest"]).hexdigest()
+
+
+def test_publisher_status_binding_and_freshness_reserve_precede_mutation() -> None:
+    publisher = PUBLISHER.read_text(encoding="utf-8")
+    server = (ROOT / "ops" / "railway" / "static_server.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "WIRE_FRESHNESS_SECONDS = 30 * 60" in server
+    assert "readonly WIRE_FRESHNESS_BUDGET_SECONDS=1800" in publisher
+    assert "readonly DEPLOY_RESERVE_SECONDS=300" in publisher
+    assert "readonly DESIRED_LIVE_MARGIN_SECONDS=300" in publisher
+    for contract in (
+        'status.get("status") != "success"',
+        'status["fresh_sources"] < 1',
+        'status["output_generated_at"] != wire["generated_at"]',
+        'output_sha256 != hashlib.sha256(wire_raw).hexdigest()',
+        "newswire status receipt clocks are not causally ordered",
+    ):
+        assert contract in publisher
+
+    ordered = (
+        'build-static-bundle.sh" "$release_sha" "$release"',
+        'cmp -s "$snapshot_wire" "$release/readings/newswire-latest.json"',
+        'require_pre_mutation_freshness_reserve "$wire_generated_at"',
+        "\nwrite_preparation_journal\n",
+        "\npersist_release_manifest_anchor\n",
+        "\npersist_release_bundle\n",
+        "\ncapture_predecessor_rollback_evidence\n",
+        'candidate_tmp="$(mktemp "$STATE_ROOT/.pending-candidate.XXXXXX")"',
+        '"$RAILWAY_BIN" up --detach',
+    )
+    positions = [publisher.index(fragment) for fragment in ordered]
+    assert positions == sorted(positions)
+    reserve_to_mutation = publisher[positions[2] : positions[-1]]
+    assert "pending-preparation" not in reserve_to_mutation.split(
+        "write_preparation_journal", maxsplit=1
+    )[0]
+    assert "pending-candidate" not in reserve_to_mutation.split(
+        'candidate_tmp="', maxsplit=1
+    )[0]
+
+
+def test_publisher_status_validator_rejects_unbound_latest(
+    tmp_path: Path,
+) -> None:
+    wire = tmp_path / "newswire-latest.json"
+    status = tmp_path / "newswire-status.json"
+    wire_bytes = b'{"generated_at":"2026-08-31T18:00:00Z"}\n'
+    wire.write_bytes(wire_bytes)
+    receipt = {
+        "attempted_at": "2026-08-31T17:59:59Z",
+        "completed_at": "2026-08-31T18:00:01Z",
+        "failure_class": None,
+        "fresh_sources": 2,
+        "output_generated_at": "2026-08-31T18:00:00Z",
+        "output_sha256": hashlib.sha256(wire_bytes).hexdigest(),
+        "schema_version": "palimpsest-evidence-wire-attempt.v1",
+        "status": "success",
+    }
+    status.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+    function = _publisher_shell_function(
+        "validate_newswire_snapshot_receipt",
+        "require_pre_mutation_freshness_reserve",
+    )
+
+    def invoke() -> subprocess.CompletedProcess[str]:
+        script = "\n".join(
+            (
+                "set -Eeuo pipefail",
+                f"PYTHON_BIN={shlex.quote(sys.executable)}",
+                function,
+                "validate_newswire_snapshot_receipt "
+                f"{shlex.quote(str(status))} {shlex.quote(str(wire))} "
+                "2026-08-31T18:00:02Z",
+            )
+        )
+        return subprocess.run(
+            ["/bin/bash", "-c", script],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+    valid = invoke()
+    assert valid.returncode == 0, valid.stderr
+    assert valid.stdout == "2026-08-31T18:00:00Z\t2026-08-31T18:00:01Z\t2\n"
+
+    receipt["output_sha256"] = "0" * 64
+    status.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+    forged = invoke()
+    assert forged.returncode != 0
+    assert "digest does not bind" in forged.stderr
+
+
+def test_stale_reserve_short_circuits_all_publication_mutations(
+    tmp_path: Path,
+) -> None:
+    function = _publisher_shell_function(
+        "require_pre_mutation_freshness_reserve", "validate_live_freshness_proofs"
+    )
+    preparation = tmp_path / "preparation"
+    candidate = tmp_path / "candidate"
+    railway = tmp_path / "railway"
+    script = "\n".join(
+        (
+            "set -Eeuo pipefail",
+            f"PYTHON_BIN={shlex.quote(sys.executable)}",
+            "WIRE_FRESHNESS_BUDGET_SECONDS=1800",
+            "DEPLOY_RESERVE_SECONDS=300",
+            "DESIRED_LIVE_MARGIN_SECONDS=300",
+            "log() { :; }",
+            function,
+            'require_pre_mutation_freshness_reserve "2000-01-01T00:00:00Z"',
+            f"touch {shlex.quote(str(preparation))}",
+            f"touch {shlex.quote(str(candidate))}",
+            f"touch {shlex.quote(str(railway))}",
+        )
+    )
+    result = subprocess.run(
+        ["/bin/bash", "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "300-second deployment reserve" in result.stderr
+    assert not preparation.exists()
+    assert not candidate.exists()
+    assert not railway.exists()
+
+
+def test_latest_success_waits_for_exact_two_origin_freshness_and_wire_proof() -> None:
+    publisher = PUBLISHER.read_text(encoding="utf-8")
+
+    provider_freshness = publisher.index(
+        '"$PROVIDER_ORIGIN/freshness?receipt=$freshness_nonce"'
+    )
+    public_freshness = publisher.index(
+        '"$PUBLIC_ORIGIN/freshness?receipt=$freshness_nonce"', provider_freshness
+    )
+    http_200 = publisher.index(
+        '"$provider_freshness_http" == 200 && "$public_freshness_http" == 200',
+        public_freshness,
+    )
+    provider_wire = publisher.index(
+        '"$PROVIDER_ORIGIN/readings/newswire-latest.json?receipt=$freshness_nonce"',
+        http_200,
+    )
+    public_wire = publisher.index(
+        '"$PUBLIC_ORIGIN/readings/newswire-latest.json?receipt=$freshness_nonce"',
+        provider_wire,
+    )
+    wire_identity = publisher.index(
+        'cmp -s "$provider_live_wire" "$release/readings/newswire-latest.json"',
+        public_wire,
+    )
+    freshness_identity = publisher.index(
+        'validate_live_freshness_proofs "$provider_freshness" "$public_freshness"',
+        wire_identity,
+    )
+    final_topology = publisher.index(
+        'candidate_final_topology="$work_root/candidate-final-railway-status.json"',
+        freshness_identity,
+    )
+    receipt = publisher.index(
+        'receipt_tmp="$(mktemp "$STATE_ROOT/.latest-success.XXXXXX")"',
+        final_topology,
+    )
+
+    assert (
+        provider_freshness
+        < public_freshness
+        < http_200
+        < provider_wire
+        < public_wire
+        < wire_identity
+        < freshness_identity
+        < final_topology
+        < receipt
+    )
+    for contract in (
+        'proof.get("source_commit") != expected_release',
+        'proof.get("tree_sha256") != expected_tree',
+        '("wire", expected_wire, 1800)',
+        '("publication", expected_publication, 3600)',
+        'row.get("status") != "fresh"',
+    ):
+        assert contract in publisher
+
+
+def test_two_origin_freshness_validator_binds_release_tree_and_wire(
+    tmp_path: Path,
+) -> None:
+    function = _publisher_shell_function(
+        "validate_live_freshness_proofs", "validate_installed_transition_artifact"
+    )
+    checked = datetime.now(UTC).replace(microsecond=0)
+    wire_at = checked - timedelta(seconds=60)
+    publication_at = checked - timedelta(seconds=30)
+    release = "a" * 40
+    tree = "b" * 64
+
+    def stamp(value: datetime) -> str:
+        return value.isoformat().replace("+00:00", "Z")
+
+    proof = {
+        "checked_at": stamp(checked),
+        "clocks": {
+            "publication": {
+                "age_seconds": 30,
+                "freshness_budget_seconds": 3600,
+                "generated_at": stamp(publication_at),
+                "status": "fresh",
+            },
+            "wire": {
+                "age_seconds": 60,
+                "freshness_budget_seconds": 1800,
+                "generated_at": stamp(wire_at),
+                "status": "fresh",
+            },
+        },
+        "rights": {"mode": "rights-suppressed", "publication_allowed": False},
+        "schema_version": "palimpsest.publication-freshness.v1",
+        "service": "palimpsest-publication",
+        "source_commit": release,
+        "status": "fresh",
+        "tree_sha256": tree,
+    }
+    provider = tmp_path / "provider.json"
+    public = tmp_path / "public.json"
+    manifest = tmp_path / "railway-release.json"
+    provider.write_text(json.dumps(proof) + "\n", encoding="utf-8")
+    public.write_text(json.dumps(proof) + "\n", encoding="utf-8")
+    manifest.write_text(
+        json.dumps({"built_at": stamp(publication_at)}) + "\n", encoding="utf-8"
+    )
+
+    def invoke() -> subprocess.CompletedProcess[str]:
+        script = "\n".join(
+            (
+                "set -Eeuo pipefail",
+                f"PYTHON_BIN={shlex.quote(sys.executable)}",
+                function,
+                "validate_live_freshness_proofs "
+                f"{shlex.quote(str(provider))} {shlex.quote(str(public))} "
+                f"{shlex.quote(str(manifest))} {release} {tree} {stamp(wire_at)}",
+            )
+        )
+        return subprocess.run(
+            ["/bin/bash", "-c", script],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+    valid = invoke()
+    assert valid.returncode == 0, valid.stderr
+
+    forged = json.loads(json.dumps(proof))
+    forged["clocks"]["wire"]["generated_at"] = stamp(wire_at - timedelta(seconds=1))
+    public.write_text(json.dumps(forged) + "\n", encoding="utf-8")
+    rejected = invoke()
+    assert rejected.returncode != 0
+    assert "wire freshness proof is not live and bound" in rejected.stderr
 
 
 def test_publisher_unlinks_each_private_temporary_file_separately() -> None:

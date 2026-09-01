@@ -44,6 +44,11 @@ readonly PYTHON_BIN="${PALIMPSEST_PYTHON_BIN:-/usr/bin/python3}"
 
 readonly WIRE_FILE="$LIVE_WIRE_ROOT/newswire-latest.json"
 readonly LEDGER_FILE="$LIVE_WIRE_ROOT/newswire-versions.jsonl"
+readonly WIRE_STATUS_FILE="${PALIMPSEST_NEWSWIRE_STATUS_FILE:-$LIVE_WIRE_ROOT/newswire-status.json}"
+readonly NEWSWIRE_LOCK_FILE="${PALIMPSEST_NEWSWIRE_LOCK_FILE:-$LIVE_WIRE_ROOT/newswire.lock}"
+readonly WIRE_FRESHNESS_BUDGET_SECONDS=1800
+readonly DEPLOY_RESERVE_SECONDS=300
+readonly DESIRED_LIVE_MARGIN_SECONDS=300
 readonly SUCCESS_RECEIPT="$STATE_ROOT/latest-success.json"
 readonly PENDING_CANDIDATE="$STATE_ROOT/pending-candidate.json"
 readonly PENDING_PREPARATION="$STATE_ROOT/pending-preparation.json"
@@ -116,6 +121,298 @@ origin_release_sha() {
 
 sha256_file() {
   sha256sum "$1" | awk '{print $1}'
+}
+
+validate_owned_regular_path() {
+  local path="$1" label="$2" allowed_modes="$3" metadata uid gid mode links
+  [[ -f "$path" && ! -L "$path" ]] || {
+    log "$label is not a regular non-symbolic-link file: $path" >&2
+    return 1
+  }
+  metadata="$(stat -c '%u:%g:%a:%h' "$path")"
+  IFS=: read -r uid gid mode links <<<"$metadata"
+  [[ "$uid" == "$(id -u)" && "$gid" == "$(id -g)" && "$links" == 1 \
+    && " $allowed_modes " == *" $mode "* ]] || {
+    log "$label has unsafe ownership, mode, or link count: $path" >&2
+    return 1
+  }
+}
+
+validate_shared_lock_descriptor() {
+  local path="$1" descriptor="$2" label="$3" path_identity descriptor_identity
+  path_identity="$(stat -c '%d:%i' "$path")"
+  descriptor_identity="$(stat -Lc '%d:%i' "/proc/$$/fd/$descriptor")"
+  [[ "$descriptor_identity" == "$path_identity" ]] || {
+    log "$label descriptor differs from its authenticated path" >&2
+    return 1
+  }
+}
+
+stage_snapshot_file() {
+  local source="$1" destination="$2" label="$3"
+  local source_before source_after snapshot_sha
+  [[ -f "$source" && ! -L "$source" \
+    && ! -e "$destination" && ! -L "$destination" ]] || {
+    log "$label cannot be staged from a regular unique source" >&2
+    return 1
+  }
+  mkdir -p "${destination%/*}"
+  source_before="$(sha256_file "$source")"
+  cp --reflink=never --no-dereference --preserve=timestamps -- \
+    "$source" "$destination"
+  chmod 0400 "$destination"
+  source_after="$(sha256_file "$source")"
+  snapshot_sha="$(sha256_file "$destination")"
+  [[ -f "$source" && ! -L "$source" \
+    && -f "$destination" && ! -L "$destination" \
+    && "$(stat -c '%u:%g:%a:%h' "$destination")" \
+      == "$(id -u):$(id -g):400:1" \
+    && "$source_before" == "$source_after" \
+    && "$source_after" == "$snapshot_sha" ]] || {
+    log "$label changed while its immutable snapshot was staged" >&2
+    return 1
+  }
+}
+
+validate_newswire_snapshot_receipt() {
+  local status_path="$1" wire_path="$2" observed_at="$3"
+  "$PYTHON_BIN" -I -S - "$status_path" "$wire_path" "$observed_at" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+EXPECTED_STATUS_KEYS = {
+    "attempted_at",
+    "completed_at",
+    "failure_class",
+    "fresh_sources",
+    "output_generated_at",
+    "output_sha256",
+    "schema_version",
+    "status",
+}
+CLOCK = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("newswire snapshot contains a duplicate JSON key")
+        value[key] = item
+    return value
+
+
+def parse_document(path):
+    try:
+        return json.loads(
+            path.read_bytes().decode("utf-8", "strict"),
+            object_pairs_hook=strict_object,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON value: {value}")
+            ),
+        )
+    except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"newswire snapshot is not strict JSON: {path.name}") from exc
+
+
+def clock(value, label):
+    if not isinstance(value, str) or CLOCK.fullmatch(value) is None:
+        raise SystemExit(f"{label} is not a strict UTC clock")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError as exc:
+        raise SystemExit(f"{label} is not a valid UTC clock") from exc
+
+
+status_path, wire_path = map(Path, sys.argv[1:3])
+observed_at = clock(sys.argv[3], "snapshot observed_at")
+status = parse_document(status_path)
+wire_raw = wire_path.read_bytes()
+wire = parse_document(wire_path)
+if not isinstance(status, dict) or set(status) != EXPECTED_STATUS_KEYS:
+    raise SystemExit("newswire status receipt does not have its exact schema")
+if (
+    status.get("schema_version") != "palimpsest-evidence-wire-attempt.v1"
+    or status.get("status") != "success"
+    or status.get("failure_class") is not None
+    or type(status.get("fresh_sources")) is not int
+    or status["fresh_sources"] < 1
+):
+    raise SystemExit("newswire status receipt is not a successful fresh-source run")
+if not isinstance(wire, dict):
+    raise SystemExit("newswire latest snapshot is not an object")
+attempted = clock(status.get("attempted_at"), "newswire attempted_at")
+completed = clock(status.get("completed_at"), "newswire completed_at")
+output_at = clock(status.get("output_generated_at"), "newswire output_generated_at")
+wire_at = clock(wire.get("generated_at"), "newswire generated_at")
+if not attempted <= output_at <= completed <= observed_at + timedelta(seconds=120):
+    raise SystemExit("newswire status receipt clocks are not causally ordered")
+if output_at != wire_at or status["output_generated_at"] != wire["generated_at"]:
+    raise SystemExit("newswire status receipt clock does not bind the frozen latest output")
+output_sha256 = status.get("output_sha256")
+if (
+    not isinstance(output_sha256, str)
+    or re.fullmatch(r"[0-9a-f]{64}", output_sha256) is None
+    or output_sha256 != hashlib.sha256(wire_raw).hexdigest()
+):
+    raise SystemExit("newswire status receipt digest does not bind the frozen latest output")
+print(
+    status["output_generated_at"],
+    status["completed_at"],
+    status["fresh_sources"],
+    sep="\t",
+)
+PY
+}
+
+require_pre_mutation_freshness_reserve() {
+  local wire_clock="$1" remaining
+  remaining="$("$PYTHON_BIN" -I -S - "$wire_clock" \
+    "$WIRE_FRESHNESS_BUDGET_SECONDS" "$DEPLOY_RESERVE_SECONDS" \
+    "$DESIRED_LIVE_MARGIN_SECONDS" <<'PY'
+import sys
+from datetime import UTC, datetime, timedelta
+
+wire = datetime.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+budget, deploy, margin = map(int, sys.argv[2:5])
+if min(budget, deploy, margin) < 1 or deploy + margin >= budget:
+    raise SystemExit("publication freshness reserve constants are invalid")
+now = datetime.now(UTC)
+if wire > now + timedelta(seconds=120):
+    raise SystemExit("captured newswire clock is implausibly future-dated")
+remaining = int((wire + timedelta(seconds=budget) - now).total_seconds())
+required = deploy + margin
+if remaining < required:
+    raise SystemExit(
+        "captured newswire lacks the 300-second deployment reserve plus "
+        "300-second desired live margin"
+    )
+print(remaining)
+PY
+)"
+  [[ "$remaining" =~ ^[0-9]+$ ]] || {
+    log "pre-mutation freshness reserve did not return whole seconds" >&2
+    return 1
+  }
+  log "pre-mutation freshness reserve accepted: ${remaining}s remain"
+}
+
+validate_live_freshness_proofs() {
+  local provider_path="$1" public_path="$2" manifest_path="$3"
+  local expected_release="$4" expected_tree="$5" expected_wire="$6"
+  "$PYTHON_BIN" -I -S - "$provider_path" "$public_path" "$manifest_path" \
+    "$expected_release" "$expected_tree" "$expected_wire" <<'PY'
+import json
+import re
+import sys
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+CLOCK = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+TOP_KEYS = {
+    "checked_at",
+    "clocks",
+    "rights",
+    "schema_version",
+    "service",
+    "source_commit",
+    "status",
+    "tree_sha256",
+}
+CLOCK_KEYS = {"age_seconds", "freshness_budget_seconds", "generated_at", "status"}
+
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("live freshness proof contains a duplicate JSON key")
+        value[key] = item
+    return value
+
+
+def document(path):
+    try:
+        value = json.loads(
+            path.read_bytes().decode("utf-8", "strict"),
+            object_pairs_hook=strict_object,
+            parse_constant=lambda item: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON value: {item}")
+            ),
+        )
+    except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"live proof is not strict JSON: {path.name}") from exc
+    if not isinstance(value, dict):
+        raise SystemExit(f"live proof is not an object: {path.name}")
+    return value
+
+
+def clock(value, label):
+    if not isinstance(value, str) or CLOCK.fullmatch(value) is None:
+        raise SystemExit(f"{label} is not a strict UTC clock")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError as exc:
+        raise SystemExit(f"{label} is not a valid UTC clock") from exc
+
+
+provider_path, public_path, manifest_path = map(Path, sys.argv[1:4])
+expected_release, expected_tree, expected_wire = sys.argv[4:7]
+manifest = document(manifest_path)
+expected_publication = manifest.get("built_at")
+clock(expected_publication, "release built_at")
+proofs = {
+    "provider": document(provider_path),
+    "public": document(public_path),
+}
+checked = []
+now = datetime.now(UTC)
+for label, proof in proofs.items():
+    if set(proof) != TOP_KEYS:
+        raise SystemExit(f"{label} freshness proof does not have its exact schema")
+    if (
+        proof.get("schema_version") != "palimpsest.publication-freshness.v1"
+        or proof.get("status") != "fresh"
+        or proof.get("service") != "palimpsest-publication"
+        or proof.get("source_commit") != expected_release
+        or proof.get("tree_sha256") != expected_tree
+        or proof.get("rights")
+        != {"mode": "rights-suppressed", "publication_allowed": False}
+    ):
+        raise SystemExit(f"{label} freshness proof has the wrong release identity")
+    clocks = proof.get("clocks")
+    if not isinstance(clocks, dict) or set(clocks) != {"publication", "wire"}:
+        raise SystemExit(f"{label} freshness clock inventory is invalid")
+    checked_at = clock(proof.get("checked_at"), f"{label} checked_at")
+    if checked_at > now + timedelta(seconds=120):
+        raise SystemExit(f"{label} freshness proof is implausibly future-dated")
+    checked.append(checked_at)
+    for name, generated, budget in (
+        ("wire", expected_wire, 1800),
+        ("publication", expected_publication, 3600),
+    ):
+        row = clocks.get(name)
+        if not isinstance(row, dict) or set(row) != CLOCK_KEYS:
+            raise SystemExit(f"{label} {name} freshness clock is not exact")
+        generated_at = clock(row.get("generated_at"), f"{label} {name} generated_at")
+        age = row.get("age_seconds")
+        expected_age = max(0, int((checked_at - generated_at).total_seconds()))
+        if (
+            row.get("generated_at") != generated
+            or type(age) is not int
+            or age != expected_age
+            or age > budget
+            or row.get("freshness_budget_seconds") != budget
+            or row.get("status") != "fresh"
+        ):
+            raise SystemExit(f"{label} {name} freshness proof is not live and bound")
+if abs((checked[0] - checked[1]).total_seconds()) > 120:
+    raise SystemExit("provider and public freshness proofs are not contemporaneous")
+PY
 }
 
 validate_installed_transition_artifact() {
@@ -1123,6 +1420,9 @@ for required in \
   "$SOURCE_REPOSITORY/.git" \
   "$WIRE_FILE" \
   "$LEDGER_FILE" \
+  "$WIRE_STATUS_FILE" \
+  "$NEWSWIRE_LOCK_FILE" \
+  "$DATA_LOCK_FILE" \
   "$RAILWAY_BIN" \
   "$PYTHON_BIN"; do
   [[ -e "$required" ]] || { log "required path missing: $required" >&2; exit 1; }
@@ -1326,47 +1626,17 @@ fi
 }
 archive_predecessor_receipt
 
-exec 8>"$DATA_LOCK_FILE"
-flock -s 8
-readings_sha256="$({
-  find "$HOST_READINGS" -maxdepth 1 -type f ! -name '.*' -print0
-  if [[ -d "$HOST_READINGS/anchors" && ! -L "$HOST_READINGS/anchors" ]]; then
-    while IFS= read -r -d '' anchor; do
-      filename="${anchor##*/}"
-      [[ "$filename" =~ ^roots-[0-9]{8}T[0-9]{6}Z\.txt(\.ots)?$ ]] || continue
-      printf '%s\0' "$anchor"
-    done < <(find "$HOST_READINGS/anchors" -maxdepth 1 -type f -print0)
-  fi
-} | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')"
-input_sha256="$({
-  sha256sum "$WIRE_FILE" "$LEDGER_FILE"
-  printf '%s  host-readings\n' "$readings_sha256"
-} | sha256sum | awk '{print $1}')"
-[[ "$input_sha256" =~ ^[0-9a-f]{64}$ ]] || { log "cannot hash live inputs" >&2; exit 1; }
-wire_generated_at="$(jq -er '.generated_at | select(type == "string")' "$WIRE_FILE")"
-
-if [[ "$receipt_input_sha" == "$input_sha256" ]]; then
-  if [[ "$receipt_release_sha" =~ ^[0-9a-f]{40}$ ]] \
-    && [[ "$receipt_base_sha" == "$base_sha" ]] \
-    && [[ "$receipt_base_pin_sha256" == "$base_pin_sha256" ]] \
-    && [[ "$receipt_bundle_path" == "$RELEASE_BUNDLE_ROOT/$receipt_release_sha.bundle" ]] \
-    && [[ -f "$receipt_bundle_path" && ! -L "$receipt_bundle_path" ]] \
-    && [[ "$(stat -c '%a' "$receipt_bundle_path")" == 600 ]] \
-    && [[ "$(sha256_file "$receipt_bundle_path")" == "$receipt_bundle_sha256" ]] \
-    && [[ "$provider_receipt_sha" == "$receipt_release_sha" ]] \
-    && [[ "$public_receipt_sha" == "$receipt_release_sha" ]]; then
-    flock -u 8
-    log "capture $wire_generated_at is already live at $receipt_release_sha; skipping duplicate deployment"
-    exit 0
-  fi
-  log "unchanged capture is not proven on both origins; rebuilding for self-healing"
-fi
-
 work_root="$(mktemp -d "$STATE_ROOT/work.XXXXXX")"
 checkout="$work_root/source"
 release="$work_root/release"
+snapshot_root="$work_root/snapshot"
+snapshot_newswire="$snapshot_root/newswire"
+snapshot_readings="$snapshot_root/readings"
+snapshot_wire="$snapshot_newswire/newswire-latest.json"
+snapshot_ledger="$snapshot_newswire/newswire-versions.jsonl"
+snapshot_status="$snapshot_newswire/newswire-status.json"
 
-log "building capture $wire_generated_at from base $base_sha"
+log "preparing isolated publication checkout from base $base_sha"
 git clone --quiet --no-local --no-checkout "$SOURCE_REPOSITORY" "$checkout"
 git -C "$checkout" fetch --quiet --no-tags "$SOURCE_REPOSITORY" \
   'refs/remotes/origin/main:refs/remotes/source/public-main'
@@ -1384,11 +1654,114 @@ git -C "$checkout" fetch --quiet --no-tags "$SOURCE_REPOSITORY" \
 }
 git -C "$checkout" checkout --quiet --detach "$base_sha"
 
+# The root-controlled publication lease is already held on descriptor 9.  The
+# producer and measurement leases are acquired only for the bounded copy, in
+# the globally ordered publish -> newswire -> data direction.
+validate_owned_regular_path "$NEWSWIRE_LOCK_FILE" "newswire attempt lock" "600"
+newswire_lock_identity="$(stat -c '%d:%i' "$NEWSWIRE_LOCK_FILE")"
+exec 7<"$NEWSWIRE_LOCK_FILE"
+validate_shared_lock_descriptor "$NEWSWIRE_LOCK_FILE" 7 "newswire attempt lock"
+flock -s 7
+validate_shared_lock_descriptor "$NEWSWIRE_LOCK_FILE" 7 "newswire attempt lock"
+[[ "$(stat -c '%d:%i' "$NEWSWIRE_LOCK_FILE")" == "$newswire_lock_identity" ]] || {
+  log "newswire attempt lock pathname changed while locking" >&2
+  exit 1
+}
+
+validate_owned_regular_path "$DATA_LOCK_FILE" "measurement data lock" "600 640"
+data_lock_identity="$(stat -c '%d:%i' "$DATA_LOCK_FILE")"
+exec 8<"$DATA_LOCK_FILE"
+validate_shared_lock_descriptor "$DATA_LOCK_FILE" 8 "measurement data lock"
+flock -s 8
+validate_shared_lock_descriptor "$DATA_LOCK_FILE" 8 "measurement data lock"
+[[ "$(stat -c '%d:%i' "$DATA_LOCK_FILE")" == "$data_lock_identity" ]] || {
+  log "measurement data lock pathname changed while locking" >&2
+  exit 1
+}
+
+validate_owned_regular_path "$WIRE_FILE" "newswire latest output" "644"
+validate_owned_regular_path "$LEDGER_FILE" "newswire version ledger" "644"
+validate_owned_regular_path "$WIRE_STATUS_FILE" "newswire status receipt" "644"
 if find "$HOST_READINGS" -type l -print -quit | grep -q .; then
-  log "host readings contain a symbolic link; refusing overlay" >&2
+  log "host readings contain a symbolic link; refusing snapshot" >&2
   exit 1
 fi
 
+mkdir -p "$snapshot_newswire" "$snapshot_readings"
+chmod 0700 "$snapshot_root" "$snapshot_newswire" "$snapshot_readings"
+stage_snapshot_file "$WIRE_FILE" "$snapshot_wire" "newswire latest output"
+stage_snapshot_file "$LEDGER_FILE" "$snapshot_ledger" "newswire version ledger"
+stage_snapshot_file "$WIRE_STATUS_FILE" "$snapshot_status" "newswire status receipt"
+while IFS= read -r -d '' source; do
+  relative="${source#"$HOST_READINGS"/}"
+  stage_snapshot_file "$source" "$snapshot_readings/$relative" \
+    "host reading $relative"
+done < <(find "$HOST_READINGS" -maxdepth 1 -type f ! -name '.*' -print0 | sort -z)
+if [[ -d "$HOST_READINGS/anchors" && ! -L "$HOST_READINGS/anchors" ]]; then
+  while IFS= read -r -d '' anchor; do
+    filename="${anchor##*/}"
+    [[ "$filename" =~ ^roots-[0-9]{8}T[0-9]{6}Z\.txt(\.ots)?$ ]] || continue
+    stage_snapshot_file "$anchor" "$snapshot_readings/anchors/$filename" \
+      "host reading anchor $filename"
+  done < <(find "$HOST_READINGS/anchors" -maxdepth 1 -type f -print0 | sort -z)
+fi
+
+snapshot_observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+status_binding="$(validate_newswire_snapshot_receipt \
+  "$snapshot_status" "$snapshot_wire" "$snapshot_observed_at")"
+IFS=$'\t' read -r wire_generated_at wire_status_completed_at \
+  wire_status_fresh_sources <<<"$status_binding"
+[[ "$wire_generated_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ \
+  && "$wire_status_completed_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ \
+  && "$wire_status_fresh_sources" =~ ^[1-9][0-9]*$ ]] || {
+  log "newswire status binding output is invalid" >&2
+  exit 1
+}
+
+snapshot_manifest="$snapshot_root/sha256sums"
+{
+  printf '%s  newswire/newswire-latest.json\n' "$(sha256_file "$snapshot_wire")"
+  printf '%s  newswire/newswire-versions.jsonl\n' "$(sha256_file "$snapshot_ledger")"
+  printf '%s  newswire/newswire-status.json\n' "$(sha256_file "$snapshot_status")"
+  while IFS= read -r -d '' snapshot_file; do
+    relative="${snapshot_file#"$snapshot_root"/}"
+    printf '%s  %s\n' "$(sha256_file "$snapshot_file")" "$relative"
+  done < <(find "$snapshot_readings" -type f -print0 | sort -z)
+} >"$snapshot_manifest"
+chmod 0400 "$snapshot_manifest"
+snapshot_manifest_sha256="$(sha256_file "$snapshot_manifest")"
+input_sha256="$(grep -v '  newswire/newswire-status.json$' "$snapshot_manifest" \
+  | sha256sum | awk '{print $1}')"
+[[ "$snapshot_manifest_sha256" =~ ^[0-9a-f]{64}$ \
+  && "$input_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+  log "cannot hash immutable publication snapshot" >&2
+  exit 1
+}
+
+validate_shared_lock_descriptor "$DATA_LOCK_FILE" 8 "measurement data lock"
+validate_shared_lock_descriptor "$NEWSWIRE_LOCK_FILE" 7 "newswire attempt lock"
+chmod -R a-w "$snapshot_root"
+flock -u 8
+flock -u 7
+log "captured immutable snapshot $snapshot_manifest_sha256 from $wire_status_fresh_sources fresh sources"
+
+if [[ "$receipt_input_sha" == "$input_sha256" ]]; then
+  if [[ "$receipt_release_sha" =~ ^[0-9a-f]{40}$ ]] \
+    && [[ "$receipt_base_sha" == "$base_sha" ]] \
+    && [[ "$receipt_base_pin_sha256" == "$base_pin_sha256" ]] \
+    && [[ "$receipt_bundle_path" == "$RELEASE_BUNDLE_ROOT/$receipt_release_sha.bundle" ]] \
+    && [[ -f "$receipt_bundle_path" && ! -L "$receipt_bundle_path" ]] \
+    && [[ "$(stat -c '%a' "$receipt_bundle_path")" == 600 ]] \
+    && [[ "$(sha256_file "$receipt_bundle_path")" == "$receipt_bundle_sha256" ]] \
+    && [[ "$provider_receipt_sha" == "$receipt_release_sha" ]] \
+    && [[ "$public_receipt_sha" == "$receipt_release_sha" ]]; then
+    log "capture $wire_generated_at is already live at $receipt_release_sha; skipping duplicate deployment"
+    exit 0
+  fi
+  log "unchanged capture is not proven on both origins; rebuilding for self-healing"
+fi
+
+log "building capture $wire_generated_at from base $base_sha"
 copy_host_public_file() {
   local relative="$1" source destination
   [[ "$relative" == readings/* && "$relative" != *'/../'* ]] || return 1
@@ -1399,16 +1772,17 @@ copy_host_public_file() {
       return 0
       ;;
   esac
-  source="$HOST_READINGS/${relative#readings/}"
+  source="$snapshot_readings/${relative#readings/}"
   destination="$checkout/$relative"
   if [[ -f "$source" ]]; then
     mkdir -p "${destination%/*}"
     cp -p "$source" "$destination"
+    chmod u+rw "$destination"
   fi
 }
 
 overlay_monotonic_readings_ledger() {
-  local source="$HOST_READINGS/readings-ledger.jsonl"
+  local source="$snapshot_readings/readings-ledger.jsonl"
   local destination="$checkout/readings/readings-ledger.jsonl"
   local source_bytes destination_bytes
 
@@ -1430,6 +1804,7 @@ overlay_monotonic_readings_ledger() {
   elif (( source_bytes > destination_bytes )) \
     && cmp -n "$destination_bytes" "$destination" "$source"; then
     cp -p "$source" "$destination"
+    chmod u+rw "$destination"
     log "admitted the host readings-ledger strict extension"
   elif (( destination_bytes > source_bytes )) \
     && cmp -n "$source_bytes" "$source" "$destination"; then
@@ -1450,17 +1825,18 @@ overlay_monotonic_readings_ledger
 for tracked_path in "${PUBLIC_COMPANION_PATHS[@]}"; do
   copy_host_public_file "$tracked_path"
 done
-if [[ -d "$HOST_READINGS/anchors" && ! -L "$HOST_READINGS/anchors" ]]; then
+if [[ -d "$snapshot_readings/anchors" && ! -L "$snapshot_readings/anchors" ]]; then
   while IFS= read -r -d '' anchor; do
     filename="${anchor##*/}"
     [[ "$filename" =~ ^roots-[0-9]{8}T[0-9]{6}Z\.txt(\.ots)?$ ]] || continue
     copy_host_public_file "readings/anchors/$filename"
-  done < <(find "$HOST_READINGS/anchors" -maxdepth 1 -type f -print0)
+  done < <(find "$snapshot_readings/anchors" -maxdepth 1 -type f -print0)
 fi
 
-cp -p "$WIRE_FILE" "$checkout/readings/newswire-latest.json"
-cp -p "$LEDGER_FILE" "$checkout/readings/newswire-versions.jsonl"
-flock -u 8
+cp -p "$snapshot_wire" "$checkout/readings/newswire-latest.json"
+cp -p "$snapshot_ledger" "$checkout/readings/newswire-versions.jsonl"
+chmod u+rw "$checkout/readings/newswire-latest.json" \
+  "$checkout/readings/newswire-versions.jsonl"
 
 export PYTHONPATH="$checkout"
 export PYTHONDONTWRITEBYTECODE=1
@@ -1580,6 +1956,11 @@ release_sha="$(git rev-parse HEAD)"
 log "rights-scrubbing local release $release_sha"
 PALIMPSEST_RAILWAY_PYTHON="$PYTHON_BIN" \
   /usr/bin/bash "$checkout/ops/railway/build-static-bundle.sh" "$release_sha" "$release"
+cmp -s "$snapshot_wire" "$release/readings/newswire-latest.json" || {
+  log "rights-clean release wire differs from the authenticated snapshot" >&2
+  exit 1
+}
+require_pre_mutation_freshness_reserve "$wire_generated_at"
 
 # The generated Git object must remain recoverable after cleanup. Verify the
 # incremental bundle in a fresh object database and durably promote it before
@@ -1814,6 +2195,49 @@ live_total_bytes="$(jq -er '.total_bytes | select(type == "number" and . >= 1 an
   log "live manifest identity differs from the durable release anchor" >&2
   exit 1
 }
+
+# Both visitor paths must independently serve an HTTP-200 freshness contract
+# bound to this release and this exact wire before latest-success can advance.
+provider_freshness="$work_root/provider-freshness.json"
+public_freshness="$work_root/public-freshness.json"
+provider_live_wire="$work_root/provider-newswire-latest.json"
+public_live_wire="$work_root/public-newswire-latest.json"
+freshness_nonce="$(date +%s%N)"
+provider_freshness_http="$(curl -sS --proto '=https' --max-redirs 0 \
+  --max-time 30 --max-filesize 65536 -o "$provider_freshness" \
+  -w '%{http_code}' "$PROVIDER_ORIGIN/freshness?receipt=$freshness_nonce")"
+public_freshness_http="$(curl -sS --proto '=https' --max-redirs 0 \
+  --max-time 30 --max-filesize 65536 -o "$public_freshness" \
+  -w '%{http_code}' "$PUBLIC_ORIGIN/freshness?receipt=$freshness_nonce")"
+[[ "$provider_freshness_http" == 200 && "$public_freshness_http" == 200 \
+  && -s "$provider_freshness" && -s "$public_freshness" \
+  && "$(stat -c '%s' "$provider_freshness")" -le 65536 \
+  && "$(stat -c '%s' "$public_freshness")" -le 65536 ]] || {
+  log "provider and public freshness endpoints did not both return bounded HTTP 200 proofs" >&2
+  exit 1
+}
+
+provider_wire_http="$(curl -sS --proto '=https' --max-redirs 0 \
+  --max-time 30 --max-filesize 67108864 -o "$provider_live_wire" \
+  -w '%{http_code}' \
+  "$PROVIDER_ORIGIN/readings/newswire-latest.json?receipt=$freshness_nonce")"
+public_wire_http="$(curl -sS --proto '=https' --max-redirs 0 \
+  --max-time 30 --max-filesize 67108864 -o "$public_live_wire" \
+  -w '%{http_code}' \
+  "$PUBLIC_ORIGIN/readings/newswire-latest.json?receipt=$freshness_nonce")"
+[[ "$provider_wire_http" == 200 && "$public_wire_http" == 200 ]] || {
+  log "provider and public wire endpoints did not both return HTTP 200" >&2
+  exit 1
+}
+if ! cmp -s "$provider_live_wire" "$release/readings/newswire-latest.json" \
+  || ! cmp -s "$public_live_wire" "$release/readings/newswire-latest.json"; then
+  log "provider or public live wire differs from the authenticated release wire" >&2
+  exit 1
+fi
+validate_live_freshness_proofs "$provider_freshness" "$public_freshness" \
+  "$release_manifest_path" "$release_sha" "$live_tree_sha256" \
+  "$wire_generated_at"
+log "provider and public origins prove HTTP-200 freshness for the exact release and wire"
 
 cache_buster="$(date +%s)"
 news_html="$(curl -fsSL --max-time 45 "$PUBLIC_ORIGIN/news/?edition=$cache_buster")"
