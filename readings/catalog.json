@@ -13,8 +13,7 @@
     "states": {
       "disabled": 1,
       "fresh": 25,
-      "gated": 17,
-      "pending": 1,
+      "gated": 18,
       "private-node": 1,
       "stale": 31,
       "warming": 12
@@ -3507,11 +3506,12 @@
     {
       "id": "china-censorship-analysis",
       "name": "Palimpsest China Censorship Analysis",
-      "description": "Continuously refreshed cross-instrument analysis of content attention, silence, network interference, erasure and app distribution. Every analytical sentence cites an exact aggregate newsroom receipt, incompatible denominators remain separate, and non-live instruments become visible availability warnings rather than retained findings.",
+      "description": "Publication-gated cross-instrument analysis of content attention, silence, network interference, erasure and app distribution. Every analytical sentence still cites an exact aggregate newsroom receipt, incompatible denominators remain separate, and non-live instruments remain visible as availability warnings. The public HTML, JSON and RSS surfaces remain as explicit availability notices, but the value-bearing reading and download stay withheld while source rights are denied. Unavailable is not zero and must not be read as no change.",
       "layer": "cross-layer",
       "stage": "publication",
       "collection_mode": "deterministic-cross-instrument-analysis",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "PT1H",
       "geography": [
         "CN",
@@ -3532,13 +3532,13 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "pending",
+        "evidence_state": "gated",
         "observed_at": null,
         "age_seconds": null,
         "counts": {},
-        "latest_bytes": 0,
-        "history_bytes": 0,
-        "history_rows": 0,
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
         "latest_available": false,
         "history_available": false
       },
