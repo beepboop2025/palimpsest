@@ -12,6 +12,8 @@ import re
 import shlex
 from pathlib import Path
 
+from core import newswire as newswire_model
+
 
 ROOT = Path(__file__).resolve().parent.parent
 NEWSWIRE_WORKFLOW = ROOT / ".github" / "workflows" / "newswire-refresh.yml"
@@ -251,16 +253,41 @@ def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():
     assert schema["$id"] == "https://palimpsest.info/protocol/newswire-v1.schema.json"
     assert schema["additionalProperties"] is False
     source_contract = schema["$defs"]["coverage"]["properties"]["sources"]
-    assert (
-        source_contract["minItems"]
-        == source_contract["maxItems"]
-        == len(registry["sources"])
-    )
+    exact_schema_sizes = {
+        branch["minItems"]
+        for branch in source_contract["oneOf"]
+        if branch["minItems"] == branch["maxItems"]
+    }
+    assert exact_schema_sizes == {
+        len(registry["sources"]),
+        len(registry["sources"]) + len(newswire_model._RETIRED_SOURCE_TOMBSTONES),
+    }
     assert latest["schema_version"] == "palimpsest-newswire.v1"
     assert (
         latest["source_registry"] == "https://palimpsest.info/config/news_sources.json"
     )
-    assert latest["coverage"]["registry_sources"] == len(registry["sources"])
+    active_ids = {source["id"] for source in registry["sources"]}
+    receipt_ids = {row["source_id"] for row in latest["coverage"]["sources"]}
+    assert latest["coverage"]["registry_sources"] == len(receipt_ids)
+    if receipt_ids == active_ids:
+        assert latest["source_registry_sha256"] == newswire_model.load_source_registry().sha256
+    else:
+        assert latest["source_registry_sha256"] == (
+            "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14"
+        )
+        assert latest["generated_at"] == "2026-08-30T08:45:26Z"
+        assert receipt_ids - active_ids == set(
+            newswire_model._RETIRED_SOURCE_TOMBSTONES
+        )
+        receipts = {
+            row["source_id"]: row for row in latest["coverage"]["sources"]
+        }
+        for source_id, (feed_url, _reason) in (
+            newswire_model._RETIRED_SOURCE_TOMBSTONES.items()
+        ):
+            assert receipts[source_id]["feed_url"] == feed_url
+            assert receipts[source_id]["accepted_items"] == 0
+            assert receipts[source_id]["status"] == "stale"
     assert latest["n_items"] == len(latest["items"])
     assert latest["n_events"] == len(latest["events"])
     assert (ROOT / "readings" / "newswire-versions.jsonl").is_file()

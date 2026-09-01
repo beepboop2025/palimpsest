@@ -215,8 +215,11 @@
         "rejected_items": {"$ref": "#/$defs/count"},
         "sources": {
           "type": "array",
-          "minItems": 58,
-          "maxItems": 58,
+          "description": "Exactly 58 active-registry receipts, or the exact 60-receipt shape retained by pre-retirement v1 snapshots.",
+          "oneOf": [
+            {"minItems": 58, "maxItems": 58},
+            {"minItems": 60, "maxItems": 60}
+          ],
           "items": {"$ref": "#/$defs/sourceReceipt"}
         }
       }
