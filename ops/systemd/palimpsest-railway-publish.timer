@@ -1,12 +1,11 @@
 [Unit]
-Description=Independently reconcile Palimpsest with Railway every fifteen minutes
+Description=Reconcile Palimpsest with Railway after each completed publication cycle
 
 [Timer]
-OnCalendar=*:0/15
+OnBootSec=2m
+OnUnitInactiveSec=5m
 RandomizedDelaySec=30s
-FixedRandomDelay=true
 AccuracySec=15s
-Persistent=true
 Unit=palimpsest-railway-publish.service
 
 [Install]

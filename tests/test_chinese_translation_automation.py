@@ -91,30 +91,30 @@ def test_railway_publisher_is_model_free_and_fails_before_deploy() -> None:
     script = PUBLISHER_PATH.read_text(encoding="utf-8")
     assert "GOOGLE_AI_STUDIO_API_KEY" not in script
     assert "OPENROUTER_API_KEY" not in script
-    assert 'scripts.build_chinese_translations --retain-last-good' in script
-    assert 'scripts.build_chinese_translations --offline' not in script
-    assert 'scripts.build_chinese_translations --check' not in script
+    assert "scripts.build_chinese_translations --retain-last-good" in script
+    assert "scripts.build_chinese_translations --offline" not in script
+    assert "scripts.build_chinese_translations --check" not in script
     assert 'translation_publication_state="$(jq -r' in script
-    assert 'translation retention status does not satisfy its closed release contract' in script
-    assert 'if [[ "$translation_publication_state" == "retained-last-good" ]]' in script
-    assert 'bri_translation_args=(--omit-unbound-chinese-translations)' in script
     assert (
-        'scripts.build_bri_observatory "${bri_translation_args[@]}"' in script
-    )
-    assert (
-        'scripts.build_bri_observatory --check "${bri_translation_args[@]}"'
+        "translation retention status does not satisfy its closed release contract"
         in script
+    )
+    assert 'if [[ "$translation_publication_state" == "retained-last-good" ]]' in script
+    assert "bri_translation_args=(--omit-unbound-chinese-translations)" in script
+    assert 'scripts.build_bri_observatory "${bri_translation_args[@]}"' in script
+    assert (
+        'scripts.build_bri_observatory --check "${bri_translation_args[@]}"' in script
     )
     assert '"$PYTHON_BIN" -m scripts.build_chinese_translations\n' not in script
     _assert_order(
         script,
         (
             '"$PYTHON_BIN" -m scripts.build_newsroom --check',
-            'scripts.build_chinese_translations --retain-last-good',
-            'scripts.build_chinese_translation_pages',
-            'scripts.build_bri_observatory',
-            'scripts.build_data_catalog',
-            'git commit --quiet',
+            "scripts.build_chinese_translations --retain-last-good",
+            "scripts.build_chinese_translation_pages",
+            "scripts.build_bri_observatory",
+            "scripts.build_data_catalog",
+            "git commit --quiet",
             '"$RAILWAY_BIN" up',
         ),
     )
@@ -129,7 +129,7 @@ def test_railway_publisher_keeps_translation_and_selects_a_monotonic_ledger() ->
     assert "readings/chinese-translations-latest.json" in overlay_functions
     assert "readings/readings-ledger.jsonl" in overlay_functions
     assert overlay_functions.index('case "$relative" in') < overlay_functions.index(
-        'source="$HOST_READINGS/'
+        'source="$snapshot_readings/'
     )
     assert 'cmp -n "$destination_bytes" "$destination" "$source"' in overlay_functions
     assert 'cmp -n "$source_bytes" "$source" "$destination"' in overlay_functions

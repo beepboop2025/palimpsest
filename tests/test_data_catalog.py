@@ -791,6 +791,8 @@ def test_china_censorship_analysis_catalog_exposes_article_quality_boundary():
     )
 
     assert entry["collection_mode"] == "deterministic-cross-instrument-analysis"
+    assert entry["status"] == "gated"
+    assert entry["publication_allowed"] is False
     assert entry["latest"] == "readings/china-censorship-analysis-latest.json"
     assert entry["landing_page"] == "news/china/analysis/"
     assert entry["method"] == "docs/CHINA-CENSORSHIP-ANALYSIS.md"

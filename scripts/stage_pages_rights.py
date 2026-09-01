@@ -30,11 +30,14 @@ import tempfile
 import zipfile
 from collections import Counter
 from datetime import UTC, datetime
+from email.utils import format_datetime, parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 from urllib.parse import unquote, urlsplit
+from xml.etree import ElementTree
 
 from core import china_situation as china_situation_model
+from core import instrument_analysis as instrument_analysis_model
 from core import newswire as newswire_model
 from core.china_econ_export import SourcePolicy, load_source_policy
 from scripts import share_cards
@@ -45,6 +48,7 @@ POLICY_RELATIVE_PATH = Path("config/china_econ_source_policy.json")
 BINARY_ALLOWLIST_RELATIVE_PATH = Path("config/pages_public_binary_allowlist.json")
 SHARE_CARD_MANIFEST_RELATIVE_PATH = share_cards.MANIFEST_PATH
 STATUS_RELATIVE_PATH = Path("readings/china-publication-rights-latest.json")
+DATAPACKAGE_RELATIVE_PATH = Path("datapackage.json")
 STATUS_SCHEMA = "palimpsest-restricted-publication.v1"
 STATUS_SCHEMA_PATH = "protocol/restricted-publication-v1.schema.json"
 FRESHNESS_ATTESTATION_RELATIVE_PATH = Path(
@@ -66,10 +70,44 @@ MAX_DECODED_BYTES = 16 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 256
 MAX_DECODE_DEPTH = 3
 MAX_ENCODED_TOKENS = 4096
+MAX_BASE64_CANDIDATE_STRINGS = 100_000
+MAX_BASE64_TOKEN_DECODED_BYTES = 8 * 1024 * 1024
 MAX_DELIMITED_FIELDS = 256
 MAX_DELIMITED_HEADER_CHARS = 64 * 1024
 MAX_QUARANTINED_PATHS = 50_000
 PUBLICATION_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH = Path("news/china/analysis/feed.json")
+CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH = Path("news/china/analysis/feed.xml")
+CHINA_ANALYSIS_AVAILABILITY_ID = (
+    "palimpsest-news:china-censorship-analysis:availability"
+)
+CHINA_ANALYSIS_AVAILABILITY_KIND = "china_censorship_analysis_availability"
+CHINA_ANALYSIS_AVAILABILITY_DISPOSITION = "rights-restricted-availability-v1"
+CHINA_ANALYSIS_AVAILABILITY_TITLE = (
+    "[Palimpsest availability] China censorship analysis: public finding unavailable"
+)
+CHINA_ANALYSIS_AVAILABILITY_DESCRIPTION = (
+    "Availability updates for Palimpsest's China censorship analysis. No current "
+    "cross-instrument finding is published while required public values are "
+    "restricted."
+)
+CHINA_ANALYSIS_AVAILABILITY_SUMMARY = (
+    "No current cross-instrument finding is published because the active source "
+    "policy does not allow the required public values."
+)
+CHINA_ANALYSIS_AVAILABILITY_MEANING = (
+    "This is not a zero, normal, safe, unchanged, or directional reading. Publisher "
+    "source reports remain available separately and are not treated as Palimpsest "
+    "measurements."
+)
+CHINA_ANALYSIS_AVAILABILITY_RSS_DESCRIPTION = (
+    "Palimpsest availability notice. "
+    + CHINA_ANALYSIS_AVAILABILITY_SUMMARY
+    + " "
+    + CHINA_ANALYSIS_AVAILABILITY_MEANING
+    + " Evidence: "
+    + "https://palimpsest.info/readings/china-publication-rights-latest.json"
+)
 
 # These endpoints either carry CFETS values directly, derive a signal from
 # them, or advertise a value API that the current policy does not permit.
@@ -81,7 +119,6 @@ ALWAYS_RESTRICT = frozenset(
         "china/index.html",
         "china/money-markets/index.html",
         "china/sources/index.html",
-        "news/economy/index.html",
         "readings/board-alarm-latest.json",
         "readings/china-econ-forecast-latest.json",
         "readings/china-econ-history.jsonl",
@@ -100,7 +137,6 @@ ALWAYS_RESTRICT = frozenset(
         "readings/forecast-ledger-latest.json",
         "readings/catalog.json",
         "readings/investigations-latest.json",
-        "readings/newsroom-latest.json",
         "readings/newswire-latest.json",
         "readings/osint-china-latest.json",
         "readings/index.html",
@@ -154,7 +190,107 @@ VALUE_FIELDS = frozenset(
         "direction",
     }
 )
-DERIVED_INSTRUMENTS = frozenset({"china-econ", "cny-fix-gap"})
+# Canonical closure of public signals whose values may transitively depend on a
+# rights-denied China value family.  Every public representation is bound to
+# this identity table so a no-value notice for one signal cannot be relabelled
+# as another signal merely by changing a tag, route, or RSS field.
+DERIVED_AVAILABILITY_IDENTITIES: dict[str, dict[str, Any]] = {
+    "board-alarm": {
+        "label": "Board alarm",
+        "slug": "board-alarm",
+        "filename": "board-alarm-latest.json",
+        "section": "command",
+        "section_title": "The Board",
+        "order": 1,
+        "type": "analysis",
+        "priority": "lead",
+        "related_signal_ids": ["event-flags", "coverage-guard", "vantage-fusion"],
+    },
+    "event-flags": {
+        "label": "Event flags",
+        "slug": "event-flags",
+        "filename": "event-flags-latest.json",
+        "section": "command",
+        "section_title": "The Board",
+        "order": 2,
+        "type": "methodology",
+        "priority": "high",
+        "related_signal_ids": ["board-alarm", "forecast-ledger", "coverage-guard"],
+    },
+    "coverage-guard": {
+        "label": "Coverage guard",
+        "slug": "coverage-guard",
+        "filename": "coverage-guard-latest.json",
+        "section": "command",
+        "section_title": "The Board",
+        "order": 3,
+        "type": "methodology",
+        "priority": "high",
+        "related_signal_ids": ["board-alarm", "event-flags", "ddti"],
+    },
+    "forecast-ledger": {
+        "label": "Forecast ledger",
+        "slug": "forecast-ledger",
+        "filename": "forecast-ledger-latest.json",
+        "section": "command",
+        "section_title": "The Board",
+        "order": 4,
+        "type": "methodology",
+        "priority": "standard",
+        "related_signal_ids": ["event-flags", "cross-layer"],
+    },
+    "cross-layer": {
+        "label": "Cross-layer comparison",
+        "slug": "cross-layer-lead-lag",
+        "filename": "cross-layer-latest.json",
+        "section": "command",
+        "section_title": "The Board",
+        "order": 5,
+        "type": "methodology",
+        "priority": "background",
+        "related_signal_ids": ["forecast-ledger", "board-alarm"],
+    },
+    "china-econ": {
+        "label": "China money-market benchmarks",
+        "slug": "china-money-market-benchmarks",
+        "filename": "china-econ-latest.json",
+        "section": "economy",
+        "section_title": "Economic Undertext",
+        "order": 1,
+        "type": "measurement",
+        "priority": "standard",
+        "related_signal_ids": [
+            "cny-fix-gap",
+            "stock-connect",
+            "data-darkness",
+            "believability",
+        ],
+    },
+    "cny-fix-gap": {
+        "label": "Yuan-fix comparison",
+        "slug": "cny-fix-gap",
+        "filename": "cny-fix-gap-latest.json",
+        "section": "economy",
+        "section_title": "Economic Undertext",
+        "order": 2,
+        "type": "measurement",
+        "priority": "high",
+        "related_signal_ids": ["china-econ", "stock-connect", "data-darkness"],
+    },
+    "data-darkness": {
+        "label": "Official-data availability",
+        "slug": "official-data-darkness",
+        "filename": "data-darkness-latest.json",
+        "section": "economy",
+        "section_title": "Economic Undertext",
+        "order": 4,
+        "type": "analysis",
+        "priority": "high",
+        "related_signal_ids": ["china-econ", "cny-fix-gap", "believability"],
+    },
+}
+DERIVED_INSTRUMENTS = frozenset(DERIVED_AVAILABILITY_IDENTITIES)
+SIGNAL_ID_FIELDS = frozenset({"signal_id", "signal_ids"})
 LINEAGE_FIELDS = frozenset(
     {
         "source_id",
@@ -190,6 +326,92 @@ HTML_VALUE_SHAPE = re.compile(
     r"[\"'](?:value|current_value|usdcny_parity)[\"']\s*:)",
     re.IGNORECASE,
 )
+HTML_NEWSROOM_METRIC_CLASS = re.compile(
+    r"class=[\"'][^\"']*(?:nw-card__metric|nw-metric-block|"
+    r"nw-metric-card__value)[^\"']*[\"']",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_AVAILABILITY_CLASS = re.compile(
+    r"class=[\"'][^\"']*nw-card__availability[^\"']*[\"']",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_CARD_CLASS = re.compile(
+    r"class=[\"'](?:[^\"']*\s)?nw-card(?:\s[^\"']*)?[\"']",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_AVAILABILITY_MARKER = re.compile(
+    r"data-claim-type\s*=\s*[\"']availability[\"']",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_AVAILABILITY_KIND = re.compile(
+    r"data-palimpsest-kind\s*=\s*[\"']instrument-avail(?:ability|abilty)[\"']",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_AVAILABILITY_DISPOSITION = re.compile(
+    r"data-publication-disposition\s*=\s*[\"']"
+    r"rights-restricted-availability-v1[\"']",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_SIGNAL = re.compile(
+    r"data-signal-id\s*=\s*[\"'](?P<signal>[a-z0-9-]+)[\"']",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_BLOCK = re.compile(
+    r"<(?P<tag>article|section)\b[^>]*>.*?</(?P=tag)\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+HTML_NEWSROOM_CARD = re.compile(
+    r"<article\b[^>]*>.*?</article\s*>", re.IGNORECASE | re.DOTALL
+)
+RSS_ITEM = re.compile(r"<item\b[^>]*>.*?</item\s*>", re.IGNORECASE | re.DOTALL)
+RSS_MEASUREMENT_MARKER = re.compile(
+    r"(?:\[Palimpsest measurement\]|Item\s+type\s*:\s*Palimpsest\s+measurement)",
+    re.IGNORECASE,
+)
+RSS_AVAILABILITY_MARKER = re.compile(
+    r"(?:\[Palimpsest availability\]|Item\s+type\s*:\s*Palimpsest\s+availability)",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_METRIC_BYTES = (
+    b"nw-card__metric",
+    b"nw-metric-block",
+    b"nw-metric-card__value",
+)
+HTML_NEWSROOM_AVAILABILITY_BYTES = (
+    b"nw-card__availability",
+    b"data-claim-type",
+    b"data-palimpsest-kind",
+    b"data-publication-disposition",
+    b"data-signal-id",
+    b"public value unavailable",
+)
+RSS_REPRESENTATION_BYTES = (
+    b"Palimpsest measurement",
+    b"palimpsest measurement",
+    b"Palimpsest availability",
+    b"palimpsest availability",
+    b"palimpsest:kind",
+    b"palimpsest:signal",
+    b"palimpsest:publicationdisposition",
+    b"palimpsest:valuestate",
+)
+AVAILABILITY_REPRESENTATION_BYTES = (
+    *HTML_NEWSROOM_AVAILABILITY_BYTES,
+    b"palimpsest availability",
+    b"instrument_availab",
+    b"rights-restricted-",
+    b"public_value_unavailab",
+)
+PUBLIC_RIGHTS_EVIDENCE_URL = (
+    "https://palimpsest.info/readings/china-publication-rights-latest.json"
+)
+AVAILABILITY_VALUE_TEXT = re.compile(
+    r"(?:cfets|chinamoney|fdr(?:001|007|014)|fr(?:001|007|014)|"
+    r"shibor(?:_on|_(?:1w|2w|1m|3m|6m|9m|1y))?|usdcny(?:_parity)?)"
+    r"[^\n<>]{0,64}?[+-]?\d",
+    re.IGNORECASE,
+)
+PALIMPSEST_RSS_NAMESPACE = "https://palimpsest.info/ns/publication/1.0"
 TEXT_DIRECT_VALUE_SHAPE = re.compile(
     r"[\"'](?:fdr001|fdr007|fdr014|fr001|fr007|fr014|"
     r"shibor_(?:on|1w|2w|1m|3m|6m|9m|1y)|usdcny_parity)[\"']\s*"
@@ -215,6 +437,7 @@ BASE64_FIELD = re.compile(
     rb"[\"'](?:base64|encoded|payload)[\"']\s*[:=]\s*[\"']" + BASE64_VALUE,
     re.IGNORECASE,
 )
+BASE64_QUOTED = re.compile(rb"[\"']" + BASE64_VALUE + rb"[\"']")
 BASE64_WHOLE = re.compile(rb"^\s*" + BASE64_VALUE + rb"\s*$")
 SCANNED_SUFFIXES = frozenset(
     {
@@ -250,8 +473,26 @@ DELIMITED_LINEAGE_BYTES = re.compile(
     ),
     re.IGNORECASE,
 )
+DERIVED_INSTRUMENT_TOKEN = re.compile(
+    r"(?<![a-z0-9_-])(?:"
+    + "|".join(re.escape(key) for key in sorted(DERIVED_INSTRUMENTS))
+    + r")(?![a-z0-9_-])",
+    re.IGNORECASE,
+)
 DERIVED_INSTRUMENT_BYTES = re.compile(
-    b"|".join(re.escape(key.encode("ascii")) for key in sorted(DERIVED_INSTRUMENTS)),
+    rb"(?<![a-z0-9_-])(?:"
+    + b"|".join(re.escape(key.encode("ascii")) for key in sorted(DERIVED_INSTRUMENTS))
+    + rb")(?![a-z0-9_-])",
+    re.IGNORECASE,
+)
+DERIVED_PUBLIC_ROUTE = re.compile(
+    r"/(?:"
+    r"news/(?:board-alarm|event-flags|coverage-guard|forecast-ledger|"
+    r"cross-layer-lead-lag|china-money-market-benchmarks|cny-fix-gap|"
+    r"official-data-darkness)/"
+    r"|readings/(?:board-alarm|event-flags|coverage-guard|forecast-ledger|"
+    r"cross-layer|china-econ|cny-fix-gap|data-darkness)-latest\.json"
+    r")",
     re.IGNORECASE,
 )
 ENCODED_SHAPE_BYTES = re.compile(
@@ -519,6 +760,88 @@ def _json_documents(path: Path, raw: bytes) -> list[Any]:
         return [_strict_json_loads(text)]
     except (ValueError, RecursionError) as exc:
         raise PagesRightsError(f"invalid public JSON artifact {path}: {exc}") from exc
+
+
+def _datapackage_resources(
+    root: Path,
+) -> tuple[Path, dict[str, Any], list[dict[str, Any]]] | None:
+    """Load local Frictionless-style resources from the staged package."""
+
+    package_path = root / DATAPACKAGE_RELATIVE_PATH
+    if not package_path.exists():
+        return None
+    if not package_path.is_file() or not _within_root(root, package_path):
+        raise PagesRightsError("staged datapackage is not a regular in-root file")
+    documents = _json_documents(package_path, _read_bounded(package_path))
+    if len(documents) != 1 or not isinstance(documents[0], dict):
+        raise PagesRightsError("staged datapackage must contain one JSON object")
+    document = documents[0]
+    resources = document.get("resources")
+    if not isinstance(resources, list):
+        raise PagesRightsError("staged datapackage resources must be a list")
+    seen: set[str] = set()
+    for resource in resources:
+        if not isinstance(resource, dict):
+            raise PagesRightsError("staged datapackage resource is not an object")
+        relative = resource.get("path")
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or Path(relative).is_absolute()
+            or ".." in Path(relative).parts
+            or relative in seen
+        ):
+            raise PagesRightsError("staged datapackage resource path is invalid")
+        seen.add(relative)
+        target = root / relative
+        if not _within_root(root, target):
+            raise PagesRightsError(
+                f"staged datapackage resource escaped root: {relative}"
+            )
+        if target.resolve(strict=False) == package_path.resolve(strict=False):
+            raise PagesRightsError("staged datapackage cannot inventory itself")
+        if target.exists() and not target.is_file():
+            raise PagesRightsError(
+                f"staged datapackage resource is not a regular file: {relative}"
+            )
+    return package_path, document, resources
+
+
+def _datapackage_bytes(document: Mapping[str, Any]) -> bytes:
+    return (
+        json.dumps(document, allow_nan=False, ensure_ascii=False, indent=2) + "\n"
+    ).encode("utf-8")
+
+
+def _reconcile_datapackage_sizes(root: Path) -> None:
+    """Bind every existing resource to its final post-quarantine byte size."""
+
+    loaded = _datapackage_resources(root)
+    if loaded is None:
+        return
+    package_path, document, resources = loaded
+    for resource in resources:
+        target = root / resource["path"]
+        if target.is_file():
+            resource["bytes"] = len(_read_bounded(target))
+    _atomic_write(package_path, _datapackage_bytes(document), durable=False)
+
+
+def _verify_datapackage_sizes(root: Path) -> None:
+    loaded = _datapackage_resources(root)
+    if loaded is None:
+        return
+    _package_path, _document, resources = loaded
+    for resource in resources:
+        target = root / resource["path"]
+        if not target.is_file():
+            continue
+        expected = resource.get("bytes")
+        actual = len(_read_bounded(target))
+        if type(expected) is not int or expected != actual:
+            raise PagesRightsError(
+                "staged datapackage resource byte size drifted: " + resource["path"]
+            )
 
 
 def _is_number(value: Any) -> bool:
@@ -859,6 +1182,1029 @@ def _strings(value: Any) -> Iterable[str]:
                 yield child
 
 
+def _is_derived_signal(value: Any) -> bool:
+    return isinstance(value, str) and value.strip().lower() in DERIVED_INSTRUMENTS
+
+
+def _mapping_signal_ids(value: Mapping[str, Any]) -> Iterable[str]:
+    """Yield explicit signal identities without treating topic tags as lineage.
+
+    JSON Feed tags are signal identity only for Palimpsest's own measurement
+    items.  A publisher source report may legitimately carry an economic topic
+    tag, and must not borrow the rights state of a Palimpsest instrument.
+    """
+
+    instrument_id = value.get("instrument_id")
+    if isinstance(instrument_id, str):
+        yield instrument_id
+    for field in SIGNAL_ID_FIELDS:
+        yield from _strings(value.get(field))
+    metadata = value.get("_palimpsest")
+    if (
+        isinstance(metadata, Mapping)
+        and metadata.get("kind")
+        in {"instrument_measurement", "instrument_availability"}
+    ):
+        yield from _strings(value.get("tags"))
+
+
+def _numeric_paths(value: Any, prefix: tuple[str, ...] = ()) -> set[tuple[str, ...]]:
+    paths: set[tuple[str, ...]] = set()
+    if _is_number(value):
+        paths.add(prefix)
+    elif isinstance(value, Mapping):
+        for key, child in value.items():
+            paths.update(_numeric_paths(child, (*prefix, str(key))))
+    elif isinstance(value, list):
+        for child in value:
+            paths.update(_numeric_paths(child, (*prefix, "[]")))
+    return paths
+
+
+def _contract_json_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def _contract_id(prefix: str, value: Any, length: int) -> str:
+    return f"{prefix}-{hashlib.sha256(_contract_json_bytes(value)).hexdigest()[:length]}"
+
+
+def _availability_claim(signal_id: str) -> str:
+    identity = DERIVED_AVAILABILITY_IDENTITIES[signal_id]
+    return (
+        f"No current finding is published for {identity['label']} because public value "
+        "publication is restricted by the active source policy."
+    )
+
+
+def _availability_metric() -> dict[str, Any]:
+    return {
+        "label": None,
+        "value": None,
+        "unit": None,
+        "denominator": {"label": None, "value": None},
+    }
+
+
+def _valid_contract_clock(value: Any) -> bool:
+    try:
+        parsed = _parse_clock(value, path="availability contract clock")
+    except PagesRightsError:
+        return False
+    return _clock_text(parsed) == value
+
+
+def _expected_china_analysis_availability_json_feed(
+    generated_at: str,
+) -> dict[str, Any]:
+    return {
+        "version": "https://jsonfeed.org/version/1.1",
+        "title": "Palimpsest China Censorship Analysis",
+        "home_page_url": "https://palimpsest.info/news/china/analysis/",
+        "feed_url": "https://palimpsest.info/news/china/analysis/feed.json",
+        "description": CHINA_ANALYSIS_AVAILABILITY_DESCRIPTION,
+        "items": [
+            {
+                "id": CHINA_ANALYSIS_AVAILABILITY_ID,
+                "url": "https://palimpsest.info/news/china/analysis/",
+                "title": CHINA_ANALYSIS_AVAILABILITY_TITLE,
+                "summary": CHINA_ANALYSIS_AVAILABILITY_SUMMARY,
+                "content_text": "\n\n".join(
+                    [
+                        "ITEM TYPE: PALIMPSEST AVAILABILITY",
+                        "Availability: " + CHINA_ANALYSIS_AVAILABILITY_SUMMARY,
+                        "What this means: " + CHINA_ANALYSIS_AVAILABILITY_MEANING,
+                        "Evidence: " + PUBLIC_RIGHTS_EVIDENCE_URL,
+                    ]
+                ),
+                "date_published": generated_at,
+                "date_modified": generated_at,
+                "authors": [
+                    {
+                        "name": "Palimpsest China Desk",
+                        "url": "https://palimpsest.info/news/china/analysis/",
+                    }
+                ],
+                "tags": [
+                    "palimpsest-availability",
+                    "China",
+                    "censorship",
+                    "rights-restricted",
+                ],
+                "attachments": [
+                    {
+                        "url": PUBLIC_RIGHTS_EVIDENCE_URL,
+                        "mime_type": "application/json",
+                        "title": "china-publication-rights-latest.json",
+                    }
+                ],
+                "_palimpsest": {
+                    "kind": CHINA_ANALYSIS_AVAILABILITY_KIND,
+                    "publication_disposition": (
+                        CHINA_ANALYSIS_AVAILABILITY_DISPOSITION
+                    ),
+                    "value_state": "withheld",
+                    "verification_status": "public_finding_unavailable",
+                },
+            }
+        ],
+        "language": "en",
+    }
+
+
+def _expected_china_analysis_availability_json_bytes(generated_at: str) -> bytes:
+    return (
+        json.dumps(
+            _expected_china_analysis_availability_json_feed(generated_at),
+            ensure_ascii=False,
+            indent=2,
+            allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def _expected_china_analysis_availability_rss(generated_at: str) -> bytes:
+    parsed = _parse_clock(generated_at, path="China-analysis availability feed clock")
+    rss_clock = format_datetime(parsed, usegmt=True)
+    return f'''<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:palimpsest="{PALIMPSEST_RSS_NAMESPACE}">
+<channel>
+  <title>Palimpsest China Censorship Analysis</title>
+  <link>https://palimpsest.info/news/china/analysis/</link>
+  <description>{CHINA_ANALYSIS_AVAILABILITY_DESCRIPTION}</description>
+  <language>en</language>
+  <lastBuildDate>{rss_clock}</lastBuildDate>
+  <atom:link href="https://palimpsest.info/news/china/analysis/feed.xml" rel="self" type="application/rss+xml" />
+  <item><title>{CHINA_ANALYSIS_AVAILABILITY_TITLE}</title><link>https://palimpsest.info/news/china/analysis/</link><guid isPermaLink="false">{CHINA_ANALYSIS_AVAILABILITY_ID}</guid><pubDate>{rss_clock}</pubDate><description>{CHINA_ANALYSIS_AVAILABILITY_RSS_DESCRIPTION}</description><category>palimpsest-availability</category><category>China censorship analysis</category><source url="{PUBLIC_RIGHTS_EVIDENCE_URL}">china-publication-rights</source><palimpsest:kind>{CHINA_ANALYSIS_AVAILABILITY_KIND}</palimpsest:kind><palimpsest:publicationDisposition>{CHINA_ANALYSIS_AVAILABILITY_DISPOSITION}</palimpsest:publicationDisposition><palimpsest:valueState>withheld</palimpsest:valueState></item>
+</channel>
+</rss>
+'''.encode("utf-8")
+
+
+def _china_analysis_availability_json_clock(raw: bytes) -> str | None:
+    try:
+        document = _strict_json_loads(raw.decode("utf-8"))
+        items = document["items"]
+        generated_at = items[0]["date_published"]
+    except (KeyError, IndexError, TypeError, UnicodeDecodeError, ValueError):
+        return None
+    if (
+        not _valid_contract_clock(generated_at)
+        or raw != _expected_china_analysis_availability_json_bytes(generated_at)
+    ):
+        return None
+    return generated_at
+
+
+def _china_analysis_availability_rss_clock(raw: bytes) -> str | None:
+    try:
+        root = ElementTree.fromstring(raw)
+        channel = root.find("channel")
+        if channel is None:
+            return None
+        last_build = channel.findtext("lastBuildDate")
+        parsed = parsedate_to_datetime(last_build).astimezone(UTC)
+        generated_at = _clock_text(parsed)
+    except (ElementTree.ParseError, TypeError, ValueError, OverflowError):
+        return None
+    if raw != _expected_china_analysis_availability_rss(generated_at):
+        return None
+    return generated_at
+
+
+def _mapping_has_derived_public_route(value: Mapping[str, Any]) -> bool:
+    return any(
+        isinstance(value.get(field), str)
+        and DERIVED_PUBLIC_ROUTE.search(value[field]) is not None
+        for field in ("url", "story_url", "reading_url", "external_url")
+    )
+
+
+def _mapping_has_restricted_availability_identity(
+    value: Mapping[str, Any],
+) -> bool:
+    """Bind a rights-only projection to every identity-bearing representation."""
+
+    metadata = value.get("_palimpsest")
+    metadata_signal = metadata.get("signal_id") if isinstance(metadata, Mapping) else None
+    identity_tokens = [
+        value.get("source"),
+        metadata_signal,
+        *_mapping_signal_ids(value),
+    ]
+    if any(_is_derived_signal(token) for token in identity_tokens):
+        return True
+    if _mapping_has_derived_public_route(value):
+        return True
+    if isinstance(metadata, Mapping):
+        disposition = metadata.get("publication_disposition")
+        verification = metadata.get("verification_status")
+        if (
+            isinstance(disposition, str)
+            and disposition.casefold().startswith("rights-restricted-")
+        ) or (
+            isinstance(verification, str)
+            and verification.casefold().startswith("public_value_unavailab")
+        ):
+            return True
+
+    rights_urls: list[Any] = [
+        value.get("url"),
+        value.get("story_url"),
+        value.get("reading_url"),
+        value.get("external_url"),
+    ]
+    restricted_filenames = {
+        identity["filename"] for identity in DERIVED_AVAILABILITY_IDENTITIES.values()
+    }
+    evidence = value.get("evidence")
+    if isinstance(evidence, Mapping):
+        rights_urls.append(evidence.get("url"))
+        evidence_input = evidence.get("input")
+        if (
+            isinstance(evidence_input, Mapping)
+            and evidence_input.get("filename") in restricted_filenames
+        ):
+            return True
+    attachments = value.get("attachments")
+    if isinstance(attachments, list):
+        for attachment in attachments:
+            if isinstance(attachment, Mapping):
+                rights_urls.append(attachment.get("url"))
+                if attachment.get("title") in restricted_filenames:
+                    return True
+    return any(url == PUBLIC_RIGHTS_EVIDENCE_URL for url in rights_urls)
+
+
+def _expected_availability_story(
+    signal_id: str, *, publication_at: str
+) -> dict[str, Any]:
+    identity = DERIVED_AVAILABILITY_IDENTITIES[signal_id]
+    metric = _availability_metric()
+    statement = _availability_claim(signal_id)
+    claim_core = {
+        "claim_type": "availability",
+        "metric": metric,
+        "signal_id": signal_id,
+        "statement": statement,
+        "status": "degraded",
+    }
+    return {
+        "id": f"palimpsest-news:{signal_id}",
+        "slug": identity["slug"],
+        "url": f"https://palimpsest.info/news/{identity['slug']}/",
+        "signal_id": signal_id,
+        "section": identity["section"],
+        "order": identity["order"],
+        "type": identity["type"],
+        "priority": identity["priority"],
+        "headline": f"{identity['label']}: public value unavailable",
+        "dek": (
+            "This route remains available, but its current result is withheld "
+            "until the source policy records an effective public-value grant."
+        ),
+        "status": "degraded",
+        "published_at": publication_at,
+        "modified_at": publication_at,
+        "claim_fingerprint": "sha256:"
+        + hashlib.sha256(_contract_json_bytes(claim_core)).hexdigest(),
+        "metric": metric,
+        "claims": [{"type": "availability", "statement": statement}],
+        "evidence": {
+            "url": PUBLIC_RIGHTS_EVIDENCE_URL,
+            "input": {
+                "filename": identity["filename"],
+                "sha256": None,
+                "bytes": None,
+            },
+            "source_timestamp": None,
+        },
+        "method": {
+            "summary": (
+                "Availability-only public projection under the active China "
+                "economic source policy"
+            ),
+            "version": 1,
+        },
+        "limitations": [
+            "Current finding withheld: public value publication is restricted",
+            "Availability is not a zero, a normal reading, or evidence of direction.",
+        ],
+        "related_signal_ids": list(identity["related_signal_ids"]),
+    }
+
+
+def _has_availability_value_text(value: Any) -> bool:
+    if isinstance(value, str):
+        return AVAILABILITY_VALUE_TEXT.search(value) is not None
+    if isinstance(value, Mapping):
+        return any(_has_availability_value_text(child) for child in value.values())
+    if isinstance(value, list):
+        return any(_has_availability_value_text(child) for child in value)
+    return False
+
+
+def _is_derived_availability_story(value: Mapping[str, Any]) -> bool:
+    story_id = value.get("id")
+    story_shape = (
+        isinstance(story_id, str)
+        and re.fullmatch(r"palimpsest-news:[a-z0-9-]+", story_id) is not None
+        and bool({"claims", "headline", "metric", "slug"} & set(value))
+    ) or (
+        "headline" in value
+        and bool({"claim_fingerprint", "claims", "metric", "slug"} & set(value))
+    )
+    return story_shape and (
+        _mapping_has_restricted_availability_identity(value)
+        or (
+            _mapping_has_availability_marker(value)
+            and _has_availability_value_text(value)
+        )
+    )
+
+
+def _is_safe_derived_availability_story(value: Mapping[str, Any]) -> bool:
+    signal_id = value.get("signal_id")
+    publication_at = value.get("published_at")
+    if not _is_derived_signal(signal_id) or not _valid_contract_clock(publication_at):
+        return False
+    return value == _expected_availability_story(
+        signal_id,
+        publication_at=publication_at,
+    )
+
+
+def _is_derived_availability_analysis(value: Mapping[str, Any]) -> bool:
+    disposition = value.get("disposition")
+    analysis_shape = (
+        value.get("schema_version") == instrument_analysis_model.SCHEMA_VERSION
+        or bool(
+            {
+                "analysis_id",
+                "brief",
+                "publication_receipt",
+            }
+            & set(value)
+        )
+        or (
+            isinstance(disposition, str)
+            and disposition.casefold().startswith("availability")
+        )
+    )
+    return analysis_shape and (
+        _mapping_has_restricted_availability_identity(value)
+        or (
+            _mapping_has_availability_marker(value)
+            and _has_availability_value_text(value)
+        )
+    )
+
+
+def _expected_availability_analysis(
+    signal_id: str, *, generated_at: str
+) -> dict[str, Any]:
+    identity = DERIVED_AVAILABILITY_IDENTITIES[signal_id]
+    label = identity["label"]
+    slug = identity["slug"]
+    story_url = f"https://palimpsest.info/news/{slug}/"
+    claim = _availability_claim(signal_id)
+    evidence_row = {
+        "kind": "newsroom-story",
+        "signal_id": signal_id,
+        "headline": f"{label}: public value unavailable",
+        "status": "degraded",
+        "claim": claim,
+        "story_url": story_url,
+        "reading_url": PUBLIC_RIGHTS_EVIDENCE_URL,
+        "source_timestamp": None,
+        "input_sha256": None,
+        "interpretation_limit": (
+            "Current finding withheld: public value publication is restricted"
+        ),
+    }
+    evidence_id = _contract_id("instrumentevidence", evidence_row, 20)
+
+    def sentence(text: str) -> dict[str, Any]:
+        return {"text": text, "citation_ids": [evidence_id]}
+
+    disclosure = instrument_analysis_model.DISCLOSURE
+    method = instrument_analysis_model.METHOD
+    core = {
+        "schema_version": instrument_analysis_model.SCHEMA_VERSION,
+        "signal_id": signal_id,
+        "story_url": story_url,
+        "url": story_url + "analysis.json",
+        "reading_url": PUBLIC_RIGHTS_EVIDENCE_URL,
+        "reading_analysis_url": (
+            "https://palimpsest.info/readings/"
+            + identity["filename"].removesuffix("-latest.json")
+            + "-analysis.json"
+        ),
+        "generated_at": generated_at,
+        "disposition": "availability-brief",
+        "status": "degraded",
+        "position": (
+            f"Palimpsest withholds a current finding for {signal_id}: the source "
+            "status is degraded. This is an availability brief, not a measurement."
+        ),
+        "key_numbers": [
+            {
+                "value": "withheld",
+                "label": "headline metric",
+                "note": "withheld because the source is not live",
+                "citation_ids": [evidence_id],
+            }
+        ],
+        "brief": {
+            "current_number": {
+                "status": "abstained",
+                "sentences": [
+                    sentence(
+                        f"No current number is published for {signal_id} because the "
+                        "newsroom status is degraded. The retained metric is withheld."
+                    ),
+                    sentence(claim),
+                ],
+            },
+            "board_context": {
+                "status": "present",
+                "sentences": [
+                    sentence(
+                        "Same-edition elevated layers: none declared. Other live lead "
+                        "or high signal ids: none."
+                    ),
+                    sentence(
+                        "No editorial_priority or MAD score is treated as a finding "
+                        "on this reading."
+                    ),
+                ],
+            },
+            "does_not_show": {
+                "status": "present",
+                "sentences": [
+                    sentence(
+                        "Current finding withheld: public value publication is restricted"
+                    ),
+                    sentence(
+                        "The brief does not assign motive, identify a person, merge "
+                        "unlike denominators, or treat a missing reading as a zero."
+                    ),
+                    sentence(
+                        "Availability-only public projection under the active China "
+                        "economic source policy"
+                    ),
+                ],
+            },
+        },
+        "counterreadings": [
+            sentence(
+                "A current or withheld instrument value is not independent corroboration "
+                "of any publisher article, and it is not a cause."
+            ),
+            sentence(
+                "Co-movement with another live signal on this edition is layer context, "
+                "not a shared rate or a coordinated action."
+            ),
+        ],
+        "limitations": [
+            sentence("Current finding withheld: public value publication is restricted"),
+            sentence(
+                "The companion copies newsroom templates only; it adds no interview, "
+                "article body, or generative prose."
+            ),
+        ],
+        "elevated_peers": [],
+        "review_rank": {
+            "editorial_priority": None,
+            "editorial_priority_role": "review-rank-only",
+            "anomaly_state": None,
+            "anomaly_score_published": False,
+        },
+        "evidence": [{"evidence_id": evidence_id, **evidence_row}],
+        "publication_receipt": {
+            "status": "passed",
+            "publishable": True,
+            "automatic_publication": False,
+            "citation_coverage": 1.0,
+            "human_review_required": True,
+            "availability_warnings": [signal_id],
+            "gates": [
+                {
+                    "gate_id": "closed-source-set",
+                    "label": "Every analytical input is the validated newsroom story",
+                    "passed": True,
+                    "detail": (
+                        "The companion projects one story and the same-edition board names."
+                    ),
+                },
+                {
+                    "gate_id": "availability-honesty",
+                    "label": (
+                        "Non-live instruments publish availability, not retained findings"
+                    ),
+                    "passed": True,
+                    "detail": (
+                        "Story status is degraded; metric publication is withheld."
+                    ),
+                },
+                {
+                    "gate_id": "sentence-citations",
+                    "label": "Every analytical sentence names exact evidence receipts",
+                    "passed": True,
+                    "detail": "7 of 7 analytical sentences carry citations.",
+                },
+                {
+                    "gate_id": "denominators-separated",
+                    "label": (
+                        "This instrument is not collapsed into one censorship rate"
+                    ),
+                    "passed": True,
+                    "detail": "The brief names this signal's own denominator only.",
+                },
+                {
+                    "gate_id": "bounded-authorship",
+                    "label": (
+                        "No interviews or free-form model prose are represented as reporting"
+                    ),
+                    "passed": True,
+                    "detail": disclosure,
+                },
+                {
+                    "gate_id": "human-review-policy",
+                    "label": (
+                        "Human review remains required; automatic publication stays prohibited"
+                    ),
+                    "passed": True,
+                    "detail": (
+                        "The existing human-review and causal-language policy still holds."
+                    ),
+                },
+            ],
+        },
+        "authorship": {
+            "byline": "Palimpsest China Desk",
+            "mode": instrument_analysis_model.PUBLICATION_MODE,
+            "human_interviews": "none",
+            "freeform_model_generation": "none",
+        },
+        "disclosure": disclosure,
+        "method": method,
+    }
+    return {
+        "schema_version": instrument_analysis_model.SCHEMA_VERSION,
+        "analysis_id": _contract_id("instrumentv", core, 24),
+        **{key: item for key, item in core.items() if key != "schema_version"},
+    }
+
+
+def _is_safe_derived_availability_analysis(value: Mapping[str, Any]) -> bool:
+    try:
+        instrument_analysis_model.validate_instrument_analysis(value)
+    except instrument_analysis_model.InstrumentAnalysisError:
+        return False
+    signal_id = value["signal_id"]
+    generated_at = value.get("generated_at")
+    return (
+        _is_derived_signal(signal_id)
+        and _valid_contract_clock(generated_at)
+        and value
+        == _expected_availability_analysis(signal_id, generated_at=generated_at)
+    )
+
+
+def _mapping_has_availability_marker(value: Mapping[str, Any]) -> bool:
+    metadata = value.get("_palimpsest")
+    metadata_marked = False
+    if isinstance(metadata, Mapping):
+        metadata_marked = bool(
+            {
+                "publication_disposition",
+                "value_state",
+            }
+            & set(metadata)
+        ) or any(
+            isinstance(item, str)
+            and (
+                "instrument_availab" in item.casefold()
+                or item == "rights-restricted-availability-v1"
+                or item == "public_value_unavailable"
+            )
+            for item in metadata.values()
+        )
+    elif isinstance(metadata, str):
+        metadata_marked = "availab" in metadata.casefold()
+    tags = set(_strings(value.get("tags")))
+    claims = value.get("claims")
+    return (
+        metadata_marked
+        or "palimpsest-availability" in tags
+        or any(
+            marker in str(value.get(field) or "").casefold()
+            for field, marker in (
+                ("title", "[palimpsest availability]"),
+                ("summary", "palimpsest availability notice"),
+                ("content_text", "palimpsest availability"),
+                ("disposition", "availability"),
+            )
+        )
+        or (
+            isinstance(claims, list)
+            and any(
+                isinstance(claim, Mapping)
+                and isinstance(claim.get("type"), str)
+                and claim["type"].casefold().startswith("availab")
+                for claim in claims
+            )
+        )
+    )
+
+
+def _is_derived_json_feed_availability(value: Mapping[str, Any]) -> bool:
+    feed_shape = bool(
+        {
+            "_palimpsest",
+            "attachments",
+            "content_text",
+            "date_published",
+            "summary",
+        }
+        & set(value)
+    )
+    return feed_shape and (
+        _mapping_has_restricted_availability_identity(value)
+        or (
+            _mapping_has_availability_marker(value)
+            and _has_availability_value_text(value)
+        )
+    )
+
+
+def _expected_json_feed_availability(
+    signal_id: str, *, publication_at: str
+) -> dict[str, Any]:
+    identity = DERIVED_AVAILABILITY_IDENTITIES[signal_id]
+    story = _expected_availability_story(signal_id, publication_at=publication_at)
+    return {
+        "id": story["id"] + ":" + story["claim_fingerprint"],
+        "url": story["url"],
+        "external_url": PUBLIC_RIGHTS_EVIDENCE_URL,
+        "title": "[Palimpsest availability] " + story["headline"],
+        "summary": "Palimpsest availability notice. " + story["dek"],
+        "content_text": "\n\n".join(
+            [
+                "ITEM TYPE: PALIMPSEST AVAILABILITY",
+                "Availability: " + _availability_claim(signal_id),
+                "Limit: " + " ".join(story["limitations"]),
+                "Evidence: " + PUBLIC_RIGHTS_EVIDENCE_URL,
+            ]
+        ),
+        "date_published": publication_at,
+        "date_modified": publication_at,
+        "tags": [
+            "palimpsest-availability",
+            identity["section_title"],
+            signal_id,
+            "degraded",
+        ],
+        "attachments": [
+            {
+                "url": PUBLIC_RIGHTS_EVIDENCE_URL,
+                "mime_type": "application/json",
+                "title": "china-publication-rights-latest.json",
+            }
+        ],
+        "_palimpsest": {
+            "kind": "instrument_availability",
+            "revision_id": _contract_id("storyv", story, 24),
+            "signal_id": signal_id,
+            "publication_disposition": "rights-restricted-availability-v1",
+            "value_state": "withheld",
+            "verification_status": "public_value_unavailable",
+        },
+    }
+
+
+def _is_safe_derived_json_feed_availability(value: Mapping[str, Any]) -> bool:
+    metadata = value.get("_palimpsest")
+    if not isinstance(metadata, Mapping):
+        return False
+    signal_id = metadata.get("signal_id")
+    publication_at = value.get("date_published")
+    return (
+        _is_derived_signal(signal_id)
+        and _valid_contract_clock(publication_at)
+        and value.get("date_modified") == publication_at
+        and value
+        == _expected_json_feed_availability(
+            signal_id,
+            publication_at=publication_at,
+        )
+    )
+
+
+def _is_derived_json_feed_measurement(value: Mapping[str, Any]) -> bool:
+    metadata = value.get("_palimpsest")
+    tags = set(_strings(value.get("tags")))
+    kind = metadata.get("kind") if isinstance(metadata, Mapping) else None
+    derived = any(_is_derived_signal(token) for token in tags) or (
+        isinstance(metadata, Mapping) and _is_derived_signal(metadata.get("signal_id"))
+    )
+    return (
+        derived
+        and (
+            "palimpsest-measurement" in tags
+            or (
+                isinstance(kind, str)
+                and kind.casefold().startswith("instrument_measur")
+            )
+        )
+    )
+
+
+def _html_has_derived_newsroom_metric(text: str) -> bool:
+    """Recognize a rights-derived metric inside the same newsroom block."""
+
+    if HTML_NEWSROOM_METRIC_CLASS.search(text) is None:
+        return False
+    for match in HTML_NEWSROOM_BLOCK.finditer(text):
+        block = match.group(0)
+        if (
+            HTML_NEWSROOM_METRIC_CLASS.search(block) is not None
+            and DERIVED_PUBLIC_ROUTE.search(html.unescape(block)) is not None
+        ):
+            return True
+    return False
+
+
+def _is_derived_newsroom_availability_block(block: str) -> bool:
+    decoded = html.unescape(block)
+    signal_match = HTML_NEWSROOM_SIGNAL.search(block)
+    availability_marker = (
+        HTML_NEWSROOM_AVAILABILITY_MARKER.search(block) is not None
+        or HTML_NEWSROOM_AVAILABILITY_CLASS.search(block) is not None
+        or HTML_NEWSROOM_AVAILABILITY_KIND.search(block) is not None
+    )
+    availability_representation = (
+        availability_marker or HTML_NEWSROOM_CARD_CLASS.search(block) is not None
+    )
+    restricted_identity = (
+        DERIVED_PUBLIC_ROUTE.search(decoded) is not None
+        or PUBLIC_RIGHTS_EVIDENCE_URL in decoded
+        or HTML_NEWSROOM_AVAILABILITY_DISPOSITION.search(block) is not None
+        or "rights-restricted-" in decoded.casefold()
+        or (
+            signal_match is not None
+            and _is_derived_signal(signal_match.group("signal"))
+        )
+    )
+    return availability_representation and (
+        restricted_identity
+        or (
+            availability_marker
+            and AVAILABILITY_VALUE_TEXT.search(decoded) is not None
+        )
+    )
+
+
+def _expected_newsroom_availability_card(
+    signal_id: str, *, publication_at: str
+) -> str:
+    identity = DERIVED_AVAILABILITY_IDENTITIES[signal_id]
+    story = _expected_availability_story(signal_id, publication_at=publication_at)
+    observed = _parse_clock(publication_at, path="availability card time")
+    human_time = observed.strftime("%d %b %Y · %H:%M UTC")
+    return f'''<article class="nw-card" data-status="degraded" data-claim-type="availability" data-palimpsest-kind="instrument-availability" data-signal-id="{signal_id}" data-publication-disposition="rights-restricted-availability-v1">
+  <p class="nw-card__kicker nw-kicker--warning">{identity["section_title"]} · Coverage degraded</p>
+  <h3><a class="nw-card__link" href="/news/{identity["slug"]}/">{story["headline"]}</a></h3>
+  <p class="nw-card__dek">{story["dek"]}</p>
+  <p class="nw-card__availability"><strong>Public value unavailable</strong><span>Not zero; no current result is published.</span></p>
+  <p class="nw-card__meta"><time datetime="{publication_at}">{human_time}</time><span class="nw-card__hash">sha no-source-hash</span></p>
+</article>'''
+
+
+def _is_safe_derived_newsroom_availability_block(block: str) -> bool:
+    if not _is_derived_newsroom_availability_block(block):
+        return False
+    signal_matches = list(HTML_NEWSROOM_SIGNAL.finditer(block))
+    time_matches = re.findall(r'<time datetime="([^"]+)">', block)
+    if len(signal_matches) != 1 or len(time_matches) != 1:
+        return False
+    signal_id = signal_matches[0].group("signal")
+    publication_at = time_matches[0]
+    if not _is_derived_signal(signal_id) or not _valid_contract_clock(publication_at):
+        return False
+    return block == _expected_newsroom_availability_card(
+        signal_id,
+        publication_at=publication_at,
+    )
+
+
+def _html_has_unsafe_derived_newsroom_availability(text: str) -> bool:
+    """Reject malformed availability cards while allowing the exact no-value copy."""
+
+    return any(
+        _is_derived_newsroom_availability_block(match.group(0))
+        and not _is_safe_derived_newsroom_availability_block(match.group(0))
+        for match in HTML_NEWSROOM_CARD.finditer(text)
+    )
+
+
+def _without_safe_derived_newsroom_availability_blocks(text: str) -> str:
+    """Remove independently validated no-value cards before mixed-page scanning."""
+
+    return HTML_NEWSROOM_CARD.sub(
+        lambda match: (
+            ""
+            if _is_safe_derived_newsroom_availability_block(match.group(0))
+            else match.group(0)
+        ),
+        text,
+    )
+
+
+def _rss_has_derived_measurement(text: str) -> bool:
+    """Recognize one measurement item without cross-contaminating RSS items."""
+
+    if RSS_MEASUREMENT_MARKER.search(text) is None:
+        return False
+    for match in RSS_ITEM.finditer(text):
+        item = html.unescape(match.group(0))
+        if RSS_MEASUREMENT_MARKER.search(item) is None:
+            continue
+        if (
+            DERIVED_PUBLIC_ROUTE.search(item) is not None
+            or re.search(
+                r"<source\b[^>]*>\s*(?:"
+                + "|".join(re.escape(key) for key in sorted(DERIVED_INSTRUMENTS))
+                + r")\s*</source\s*>",
+                item,
+                re.IGNORECASE,
+            )
+            is not None
+        ):
+            return True
+    return False
+
+
+def _rss_has_unsafe_derived_availability(text: str) -> bool:
+    """Accept only the exact no-value RSS representation for derived signals."""
+
+    try:
+        root = ElementTree.fromstring(text)
+    except ElementTree.ParseError:
+        return True
+    items = [
+        element
+        for element in root.iter()
+        if isinstance(element.tag, str) and element.tag.rsplit("}", 1)[-1] == "item"
+    ]
+    if not items:
+        return True
+    for item in items:
+        children = list(item)
+        by_name: dict[str, list[ElementTree.Element]] = {}
+        for child in children:
+            local_name = child.tag.rsplit("}", 1)[-1]
+            by_name.setdefault(local_name, []).append(child)
+        item_text = " ".join(part.strip() for part in item.itertext() if part.strip())
+        link = next(iter(by_name.get("link", [])), None)
+        source = next(iter(by_name.get("source", [])), None)
+        derived_route = (
+            link is not None
+            and isinstance(link.text, str)
+            and DERIVED_PUBLIC_ROUTE.search(link.text) is not None
+        )
+        derived_source = (
+            source is not None
+            and isinstance(source.text, str)
+            and _is_derived_signal(source.text)
+        )
+        source_rights_url = (
+            source is not None
+            and source.attrib.get("url") == PUBLIC_RIGHTS_EVIDENCE_URL
+        )
+        machine_signal = any(
+            _is_derived_signal(element.text)
+            for element in by_name.get("signal", [])
+        )
+        rights_disposition = any(
+            isinstance(element.text, str)
+            and element.text.casefold().startswith("rights-restricted-")
+            for element in by_name.get("publicationDisposition", [])
+        )
+        availability_kind = any(
+            isinstance(element.text, str)
+            and "instrument_availab" in element.text.casefold()
+            for element in by_name.get("kind", [])
+        )
+        human_marker = RSS_AVAILABILITY_MARKER.search(item_text) is not None
+        restricted_identity = (
+            derived_route
+            or derived_source
+            or source_rights_url
+            or machine_signal
+            or rights_disposition
+        )
+        unsafe_availability_prose = (
+            (human_marker or availability_kind)
+            and AVAILABILITY_VALUE_TEXT.search(item_text) is not None
+        )
+        if not (restricted_identity or unsafe_availability_prose):
+            continue
+        if not _is_safe_rss_availability_item(item):
+            return True
+    return False
+
+
+def _is_safe_rss_availability_item(item: ElementTree.Element) -> bool:
+    identity_tags = [
+        "title",
+        "link",
+        "guid",
+        "pubDate",
+        "description",
+        "category",
+        "source",
+        f"{{{PALIMPSEST_RSS_NAMESPACE}}}kind",
+        f"{{{PALIMPSEST_RSS_NAMESPACE}}}signal",
+        f"{{{PALIMPSEST_RSS_NAMESPACE}}}publicationDisposition",
+        f"{{{PALIMPSEST_RSS_NAMESPACE}}}valueState",
+    ]
+    children = list(item)
+    if [child.tag for child in children] != identity_tags:
+        return False
+    if item.attrib:
+        return False
+    values = {child.tag: child for child in children}
+    signal_element = values[f"{{{PALIMPSEST_RSS_NAMESPACE}}}signal"]
+    signal_id = signal_element.text
+    if not _is_derived_signal(signal_id):
+        return False
+    identity = DERIVED_AVAILABILITY_IDENTITIES[signal_id]
+    statement = _availability_claim(signal_id)
+    claim_core = {
+        "claim_type": "availability",
+        "metric": _availability_metric(),
+        "signal_id": signal_id,
+        "statement": statement,
+        "status": "degraded",
+    }
+    fingerprint = "sha256:" + hashlib.sha256(
+        _contract_json_bytes(claim_core)
+    ).hexdigest()
+    description = (
+        "Item type: Palimpsest availability. Availability: "
+        + statement
+        + " Limit: Current finding withheld: public value publication is restricted "
+        + "Availability is not a zero, a normal reading, or evidence of direction. "
+        + "Evidence: "
+        + PUBLIC_RIGHTS_EVIDENCE_URL
+    )
+    expected_text = {
+        "title": (
+            f"[Palimpsest availability] {identity['label']}: public value unavailable"
+        ),
+        "link": f"https://palimpsest.info/news/{identity['slug']}/",
+        "guid": f"palimpsest-news:{signal_id}:{fingerprint}",
+        "description": description,
+        "category": identity["section"],
+        "source": signal_id,
+        f"{{{PALIMPSEST_RSS_NAMESPACE}}}kind": "instrument_availability",
+        f"{{{PALIMPSEST_RSS_NAMESPACE}}}signal": signal_id,
+        f"{{{PALIMPSEST_RSS_NAMESPACE}}}publicationDisposition": (
+            "rights-restricted-availability-v1"
+        ),
+        f"{{{PALIMPSEST_RSS_NAMESPACE}}}valueState": "withheld",
+    }
+    if any(values[tag].text != expected for tag, expected in expected_text.items()):
+        return False
+    if values["guid"].attrib != {"isPermaLink": "false"}:
+        return False
+    if values["source"].attrib != {"url": PUBLIC_RIGHTS_EVIDENCE_URL}:
+        return False
+    if any(
+        values[tag].attrib
+        for tag in identity_tags
+        if tag not in {"guid", "source"}
+    ):
+        return False
+    pub_date = values["pubDate"].text
+    if not isinstance(pub_date, str):
+        return False
+    try:
+        parsed = parsedate_to_datetime(pub_date).astimezone(UTC)
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return format_datetime(parsed, usegmt=True) == pub_date
+
+
 def _token_has_denied_lineage(
     token: str,
     *,
@@ -882,7 +2228,6 @@ def _mapping_lineage(
 ) -> bool:
     series_id = value.get("series_id")
     field = value.get("field")
-    instrument_id = value.get("instrument_id")
     mapping_scope = policy_scope or (
         isinstance(series_id, str) and series_id.startswith("cn.")
     )
@@ -891,7 +2236,7 @@ def _mapping_lineage(
         or any(str(key).lower() in denied_source_ids for key in value)
         or (isinstance(series_id, str) and series_id.startswith("cn.cfets."))
         or field in DIRECT_VALUE_KEYS
-        or instrument_id in DERIVED_INSTRUMENTS
+        or any(_is_derived_signal(token) for token in _mapping_signal_ids(value))
     ):
         return True
     for key in LINEAGE_FIELDS & value.keys():
@@ -908,6 +2253,240 @@ def _mapping_lineage(
     return False
 
 
+_RAWWIRE_STRUCTURAL_FIELDS = frozenset(
+    {
+        "generated_at",
+        "source_registry",
+        "source_registry_sha256",
+        "window",
+        "scope",
+        "method",
+        "mutation_semantics",
+        "coverage",
+        "n_items",
+        "n_events",
+        "items",
+        "events",
+    }
+)
+
+_NEWSROOM_AGGREGATE_FIELDS = frozenset(
+    {
+        "schema_version",
+        "feed_id",
+        "title",
+        "headline",
+        "url",
+        "generated_at",
+        "n_stories",
+        "source",
+        "source_commit",
+        "method",
+        "scope",
+        "coverage",
+        "sections",
+        "stories",
+    }
+)
+_NEWSROOM_COVERAGE_FIELDS = frozenset(
+    {"total", "reporting", "live", "status", "counts"}
+)
+_NEWSROOM_COVERAGE_COUNT_FIELDS = frozenset(
+    {"live", "degraded", "stale", "missing", "corrupt"}
+)
+_NEWSROOM_SECTION_FIELDS = frozenset({"id", "title", "dek", "order"})
+_NEWSROOM_STORY_FIELDS = frozenset(
+    {
+        "id",
+        "slug",
+        "url",
+        "signal_id",
+        "headline",
+        "dek",
+        "section",
+        "order",
+        "type",
+        "priority",
+        "status",
+        "published_at",
+        "modified_at",
+        "claim_fingerprint",
+        "metric",
+        "claims",
+        "evidence",
+        "method",
+        "limitations",
+        "related_signal_ids",
+    }
+)
+_MAX_JSON_SAFE_INTEGER = 9_007_199_254_740_991
+
+
+def _is_raw_newswire_document(value: Mapping[str, Any]) -> bool:
+    """Recognize a raw wire by schema or its closed high-entropy root shape."""
+
+    return _RAWWIRE_STRUCTURAL_FIELDS <= set(value) and (
+        isinstance(value.get("items"), list)
+        and isinstance(value.get("events"), list)
+        and isinstance(value.get("coverage"), Mapping)
+        and isinstance(value.get("source_registry"), str)
+    )
+
+
+def _is_safe_restricted_availability_mapping(value: Mapping[str, Any]) -> bool:
+    return (
+        _is_derived_availability_story(value)
+        and _is_safe_derived_availability_story(value)
+    ) or (
+        _is_derived_availability_analysis(value)
+        and _is_safe_derived_availability_analysis(value)
+    ) or (
+        _is_derived_json_feed_availability(value)
+        and _is_safe_derived_json_feed_availability(value)
+    )
+
+
+def _contains_safe_restricted_availability_mapping(value: Any) -> bool:
+    """Find an exact safe availability below one mapping-key subtree.
+
+    Lists are traversed only to classify their containing mapping key. The
+    caller never treats one list element as lineage for another element.
+    """
+
+    pending = [value]
+    while pending:
+        child = pending.pop()
+        if isinstance(child, Mapping):
+            if _is_safe_restricted_availability_mapping(child):
+                return True
+            pending.extend(child.values())
+        elif isinstance(child, list):
+            pending.extend(child)
+    return False
+
+
+def _is_closed_newsroom_aggregate(
+    value: Mapping[str, Any], availability_keys: set[str]
+) -> bool:
+    """Recognize the exact aggregate envelope whose numbers are feed metadata."""
+
+    if (
+        availability_keys != {"stories"}
+        or set(value) != _NEWSROOM_AGGREGATE_FIELDS
+        or value.get("schema_version") != "palimpsest-news.v1"
+        or value.get("feed_id") != "palimpsest-china-newsroom"
+        or value.get("url") != "https://palimpsest.info/news/"
+        or value.get("source")
+        != "https://palimpsest.info/readings/osint-china-latest.json"
+        or not _valid_contract_clock(value.get("generated_at"))
+        or not isinstance(value.get("source_commit"), str)
+        or PUBLICATION_SHA_RE.fullmatch(value["source_commit"]) is None
+    ):
+        return False
+    if not all(
+        isinstance(value.get(key), str) and bool(value[key])
+        for key in ("title", "headline", "method", "scope")
+    ):
+        return False
+
+    stories = value.get("stories")
+    sections = value.get("sections")
+    coverage = value.get("coverage")
+    if (
+        not isinstance(stories, list)
+        or not 1 <= len(stories) <= 512
+        or not all(
+            isinstance(story, Mapping) and set(story) == _NEWSROOM_STORY_FIELDS
+            for story in stories
+        )
+        or not isinstance(sections, list)
+        or not 1 <= len(sections) <= 32
+        or not all(
+            isinstance(section, Mapping)
+            and set(section) == _NEWSROOM_SECTION_FIELDS
+            for section in sections
+        )
+        or not isinstance(coverage, Mapping)
+        or set(coverage) != _NEWSROOM_COVERAGE_FIELDS
+    ):
+        return False
+
+    def safe_integer(candidate: Any, *, minimum: int = 0) -> bool:
+        return (
+            type(candidate) is int
+            and minimum <= candidate <= _MAX_JSON_SAFE_INTEGER
+        )
+
+    n_stories = value.get("n_stories")
+    counts = coverage.get("counts")
+    if (
+        not safe_integer(n_stories, minimum=1)
+        or n_stories != len(stories)
+        or not isinstance(counts, Mapping)
+        or set(counts) != _NEWSROOM_COVERAGE_COUNT_FIELDS
+        or not all(safe_integer(counts[key]) for key in counts)
+        or not all(
+            safe_integer(coverage[key]) for key in ("total", "reporting", "live")
+        )
+        or coverage.get("status") not in {"healthy", "degraded"}
+        or coverage["total"] != n_stories
+        or sum(counts.values()) != n_stories
+        or coverage["live"] != counts["live"]
+        or coverage["reporting"]
+        != counts["live"] + counts["degraded"] + counts["stale"]
+    ):
+        return False
+
+    if any(
+        not isinstance(section.get(key), str) or not section[key]
+        for section in sections
+        for key in ("id", "title", "dek")
+    ) or any(
+        not safe_integer(section.get("order"), minimum=1) for section in sections
+    ):
+        return False
+    section_ids = {section["id"] for section in sections}
+    section_orders = {section["order"] for section in sections}
+    if len(section_ids) != len(sections) or len(section_orders) != len(sections):
+        return False
+
+    if any(
+        not isinstance(story.get("signal_id"), str)
+        or not story["signal_id"]
+        or not isinstance(story.get("status"), str)
+        or story["status"] not in _NEWSROOM_COVERAGE_COUNT_FIELDS
+        or story.get("section") not in section_ids
+        or not safe_integer(story.get("order"), minimum=1)
+        for story in stories
+    ):
+        return False
+    statuses = Counter(story.get("status") for story in stories)
+    return (
+        len({story["signal_id"] for story in stories}) == len(stories)
+        and all(statuses[key] == counts[key] for key in counts)
+    )
+
+
+def _has_numeric_sibling_to_restricted_availability(
+    value: Mapping[str, Any],
+) -> bool:
+    """Close a wrapper leak without borrowing lineage across array records."""
+
+    availability_keys = {
+        key
+        for key, child in value.items()
+        if _contains_safe_restricted_availability_mapping(child)
+    }
+    if not availability_keys:
+        return False
+    if _is_closed_newsroom_aggregate(value, availability_keys):
+        return False
+    return any(
+        key not in availability_keys and bool(_numeric_paths(child))
+        for key, child in value.items()
+    )
+
+
 def _contains_denied_json_value(
     value: Any,
     *,
@@ -917,6 +2496,18 @@ def _contains_denied_json_value(
     inherited_lineage: bool = False,
 ) -> bool:
     if isinstance(value, dict):
+        if _is_raw_newswire_document(value):
+            return True
+        if _has_numeric_sibling_to_restricted_availability(value):
+            return True
+        if _is_derived_availability_story(value):
+            return not _is_safe_derived_availability_story(value)
+        if _is_derived_availability_analysis(value):
+            return not _is_safe_derived_availability_analysis(value)
+        if _is_derived_json_feed_availability(value):
+            return not _is_safe_derived_json_feed_availability(value)
+        if _is_derived_json_feed_measurement(value):
+            return True
         lineage = _mapping_lineage(
             value,
             inherited_lineage,
@@ -1083,19 +2674,34 @@ def _structured_documents(path: Path, text: str) -> list[Any]:
 def _decoded_payloads(raw: bytes) -> Iterable[bytes]:
     """Yield bounded common encodings used to conceal a textual derivative."""
 
-    lowered = raw.lower()
-    if not any(
-        token in lowered for token in (b";base64,", b"base64", b"encoded", b"payload")
-    ):
-        if BASE64_WHOLE.fullmatch(raw) is None:
-            return
-    tokens = [
+    explicit_tokens = [
         *BASE64_DATA_URI.findall(raw),
         *BASE64_FIELD.findall(raw),
         *BASE64_WHOLE.findall(raw),
     ]
-    if len(tokens) > MAX_ENCODED_TOKENS:
+    if len(explicit_tokens) > MAX_ENCODED_TOKENS:
         raise PagesRightsError("public artifact exceeds encoded-token scan cap")
+    tokens: list[bytes] = []
+    seen: set[bytes] = set()
+    for token in explicit_tokens:
+        if token not in seen:
+            seen.add(token)
+            tokens.append(token)
+    candidate_strings = 0
+    for match in BASE64_QUOTED.finditer(raw):
+        candidate_strings += 1
+        if candidate_strings > MAX_BASE64_CANDIDATE_STRINGS:
+            raise PagesRightsError("public artifact exceeds base64 candidate scan cap")
+        token = match.group(1)
+        # Hex digests and content addresses are ubiquitous public identifiers,
+        # not encoded payloads. Explicit base64 fields above remain eligible.
+        if re.fullmatch(rb"[0-9a-fA-F]{32,}", token) is not None:
+            continue
+        if token not in seen:
+            seen.add(token)
+            tokens.append(token)
+    expanded = 0
+    decoded_payloads = 0
     for token in tokens:
         normalized = token.replace(b"-", b"+").replace(b"_", b"/")
         try:
@@ -1104,13 +2710,45 @@ def _decoded_payloads(raw: bytes) -> Iterable[bytes]:
             )
         except (binascii.Error, ValueError):
             continue
-        if len(decoded) > MAX_DECODED_BYTES:
-            raise PagesRightsError("base64 public payload exceeds expansion cap")
-        if decoded and (
-            _decode_public_text(decoded) is not None
-            or decoded.startswith((b"\x1f\x8b", b"PK\x03\x04"))
+        if len(decoded) > min(
+            MAX_BASE64_TOKEN_DECODED_BYTES,
+            MAX_DECODED_BYTES,
         ):
-            yield decoded
+            raise PagesRightsError("base64 public token exceeds expansion cap")
+        if not decoded:
+            continue
+        decoded_text = _decode_public_text(decoded)
+        container = decoded.startswith((b"\x1f\x8b", b"PK\x03\x04"))
+        nested_base64 = BASE64_WHOLE.fullmatch(decoded) is not None
+        plausible_text = False
+        if decoded_text is not None:
+            stripped = decoded_text.lstrip()
+            lowered = decoded.lower()
+            plausible_text = stripped.startswith(("{", "[", "<")) or any(
+                marker in lowered
+                for marker in (
+                    b"schema_version",
+                    b"source_id",
+                    b"series_id",
+                    b"signal_id",
+                    b"cfets",
+                    b"chinamoney",
+                    b"shibor",
+                    b"fdr001",
+                    b"fdr007",
+                    b"fdr014",
+                    b"usdcny",
+                )
+            )
+        if not (container or nested_base64 or plausible_text):
+            continue
+        decoded_payloads += 1
+        if decoded_payloads > MAX_ENCODED_TOKENS:
+            raise PagesRightsError("public artifact exceeds encoded-token scan cap")
+        expanded += len(decoded)
+        if expanded > MAX_DECODED_BYTES:
+            raise PagesRightsError("base64 public payloads exceed expansion cap")
+        yield decoded
 
 
 def _container_payloads(path: Path, raw: bytes) -> Iterable[bytes]:
@@ -1178,11 +2816,76 @@ def _contains_denied_payload(
         semantic_raw = (
             text.encode("utf-8") if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else raw
         )
-        has_direct_key = DIRECT_KEY_BYTES.search(semantic_raw) is not None
-        has_known_lineage = (
-            lineage_pattern.search(semantic_raw) is not None
-            or DERIVED_INSTRUMENT_BYTES.search(semantic_raw) is not None
+        semantic_lower = semantic_raw.lower()
+        has_availability_representation = any(
+            marker.lower() in semantic_lower
+            for marker in AVAILABILITY_REPRESENTATION_BYTES
         )
+        has_newsroom_availability = any(
+            marker.lower() in semantic_lower
+            for marker in HTML_NEWSROOM_AVAILABILITY_BYTES
+        )
+        has_restricted_newsroom_route = (
+            "<article" in text.casefold()
+            and DERIVED_PUBLIC_ROUTE.search(html.unescape(text)) is not None
+        )
+        scan_newsroom_availability = (
+            has_newsroom_availability or has_restricted_newsroom_route
+        )
+        if scan_newsroom_availability and (
+            _html_has_unsafe_derived_newsroom_availability(text)
+        ):
+            return True
+        if scan_newsroom_availability:
+            text = _without_safe_derived_newsroom_availability_blocks(text)
+            semantic_raw = text.encode("utf-8")
+            semantic_lower = semantic_raw.lower()
+        has_direct_key = DIRECT_KEY_BYTES.search(semantic_raw) is not None
+        has_policy_lineage = lineage_pattern.search(semantic_raw) is not None
+        has_derived_signal = DERIVED_INSTRUMENT_BYTES.search(semantic_raw) is not None
+        has_known_lineage = has_policy_lineage or has_derived_signal
+        has_newsroom_metric = any(
+            marker.lower() in semantic_lower for marker in HTML_NEWSROOM_METRIC_BYTES
+        )
+        if has_newsroom_metric and _html_has_derived_newsroom_metric(text):
+            return True
+        rss_shape = b"<rss" in semantic_lower or b"<item" in semantic_lower
+        has_rss_representation = rss_shape and (
+            any(
+                marker.lower() in semantic_lower
+                for marker in RSS_REPRESENTATION_BYTES
+            )
+            or (path.suffix.lower() == ".xml" and has_derived_signal)
+        )
+        if has_rss_representation:
+            if _rss_has_derived_measurement(text):
+                return True
+            if _rss_has_unsafe_derived_availability(text):
+                return True
+        if (
+            has_availability_representation
+            and AVAILABILITY_VALUE_TEXT.search(text) is not None
+        ):
+            return True
+        documents: list[Any] = []
+        stripped_text = text.lstrip()
+        if (
+            depth == 0 and path.suffix.lower() in {".json", ".jsonl"}
+        ) or stripped_text.startswith(("{", "[")):
+            # JSON escapes change semantic identity (for example board\u002dalarm).
+            # Parse JSON-shaped content before raw-byte prefilters regardless of
+            # filename, so renamed or decoded wire objects cannot hide their shape.
+            documents = _structured_documents(path, text)
+            if any(
+                _contains_denied_json_value(
+                    document,
+                    denied_source_ids=denied_source_ids,
+                    allowed_source_ids=allowed_source_ids,
+                    policy_scope=policy_scope,
+                )
+                for document in documents
+            ):
+                return True
         has_value_field = (
             VALUE_FIELD_BYTES.search(semantic_raw) is not None
             if has_known_lineage or policy_scope
@@ -1193,7 +2896,11 @@ def _contains_denied_payload(
             if policy_scope and has_value_field
             else False
         )
-        has_encoded_shape = ENCODED_SHAPE_BYTES.search(semantic_raw) is not None
+        has_encoded_shape = (
+            ENCODED_SHAPE_BYTES.search(semantic_raw) is not None
+            or BASE64_QUOTED.search(semantic_raw) is not None
+            or BASE64_WHOLE.fullmatch(semantic_raw) is not None
+        )
         if not (
             has_direct_key
             or (has_known_lineage and has_value_field)
@@ -1206,22 +2913,18 @@ def _contains_denied_payload(
         scoped_unknown_interest = policy_scope and (
             has_scoped_lineage and has_value_field
         )
-        documents = (
-            _structured_documents(path, text)
-            if known_interest or scoped_unknown_interest
-            else []
-        )
-        if any(
-            _contains_denied_json_value(
-                document,
-                denied_source_ids=denied_source_ids,
-                allowed_source_ids=allowed_source_ids,
-                policy_scope=policy_scope,
-            )
-            for document in documents
-        ):
-            return True
-        has_lineage = has_known_lineage
+        if not documents and (known_interest or scoped_unknown_interest):
+            documents = _structured_documents(path, text)
+            if any(
+                _contains_denied_json_value(
+                    document,
+                    denied_source_ids=denied_source_ids,
+                    allowed_source_ids=allowed_source_ids,
+                    policy_scope=policy_scope,
+                )
+                for document in documents
+            ):
+                return True
         has_mapping_key = any(
             token in lowered_raw for token in (b"cfets_benchmarks", b"chinamoney")
         )
@@ -1233,7 +2936,7 @@ def _contains_denied_payload(
             (has_direct_key and TEXT_DIRECT_VALUE_SHAPE.search(text) is not None)
             or (has_mapping_key and TEXT_DENIED_MAPPING_VALUE.search(text) is not None)
             or (
-                has_lineage
+                has_policy_lineage
                 and has_html_value_key
                 and HTML_VALUE_SHAPE.search(text) is not None
             )
@@ -1250,6 +2953,7 @@ def _contains_denied_payload(
                 HTML_LINEAGE.search(decoded_text) is not None
                 or any(source_id in lowered_decoded for source_id in denied_source_ids)
                 or any(key in lowered_decoded for key in DIRECT_VALUE_KEYS)
+                or DERIVED_INSTRUMENT_TOKEN.search(decoded_text) is not None
             )
             if (
                 decoded_text != text
@@ -1322,6 +3026,53 @@ def _contains_denied_value(
     )
 
 
+def _current_newsroom_generated_at(root: Path) -> str | None:
+    """Read the projected newsroom clock when the staged tree carries it."""
+
+    path = root / "readings/newsroom-latest.json"
+    if not path.is_file() or not _within_root(root, path):
+        return None
+    documents = _json_documents(path, _read_bounded(path))
+    if len(documents) != 1 or not isinstance(documents[0], Mapping):
+        return None
+    document = documents[0]
+    generated_at = document.get("generated_at")
+    if (
+        document.get("schema_version") != "palimpsest-news.v1"
+        or not _valid_contract_clock(generated_at)
+    ):
+        return None
+    return generated_at
+
+
+def _invalid_china_analysis_availability_feeds(root: Path) -> set[str]:
+    """Require a byte-exact, same-clock denied feed pair whenever either exists."""
+
+    json_path = root / CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH
+    rss_path = root / CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH
+    present = (json_path.is_file(), rss_path.is_file())
+    if not any(present):
+        return set()
+    if not all(present):
+        raise PagesRightsError(
+            "denied China-analysis availability feed pair is incomplete"
+        )
+    json_clock = _china_analysis_availability_json_clock(_read_bounded(json_path))
+    rss_clock = _china_analysis_availability_rss_clock(_read_bounded(rss_path))
+    newsroom_clock = _current_newsroom_generated_at(root)
+    if (
+        json_clock is None
+        or rss_clock is None
+        or json_clock != rss_clock
+        or (newsroom_clock is not None and json_clock != newsroom_clock)
+    ):
+        return {
+            CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH.as_posix(),
+            CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH.as_posix(),
+        }
+    return set()
+
+
 def find_denied_value_paths(
     root: Path,
     *,
@@ -1361,6 +3112,7 @@ def find_denied_value_paths(
         allowed_source_ids=allowed_source_ids,
         lineage_pattern=lineage_pattern,
     )
+    invalid_analysis_feeds = _invalid_china_analysis_availability_feeds(root)
     violations = []
     for path in _public_candidates(root):
         relative = path.relative_to(root).as_posix()
@@ -1374,6 +3126,20 @@ def find_denied_value_paths(
             # re-rendered every PNG, and rights-scanned each spec independently.
             # Scanning the aggregate would let lineage from one safe no-metric
             # card combine with a value from an unrelated card.
+            continue
+        if relative == NEWSWIRE_RELATIVE_PATH.as_posix():
+            # The canonical freshness input is schema-validated before staging
+            # and is always quarantined by path. Structural detection below is
+            # for renamed, copied, or encoded raw-wire payloads elsewhere.
+            continue
+        if relative in {
+            CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH.as_posix(),
+            CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH.as_posix(),
+        }:
+            if relative in invalid_analysis_feeds:
+                violations.append(relative)
+            # Exact valid feeds are closed no-value objects. Invalid feeds are
+            # quarantined/fail closed as a pair rather than partially scanned.
             continue
         raw = _read_bounded(path)
         decoded_text = _decode_public_text(raw)
@@ -1944,6 +3710,7 @@ def stage_pages_tree(
         _canonical_json(freshness_attestation),
         durable=False,
     )
+    _reconcile_datapackage_sizes(root)
 
     remaining = find_denied_value_paths(root, policy=policy, evaluated_at=admission)
     if remaining:
@@ -2001,6 +3768,7 @@ def verify_staged_tree(
         evaluated_at=staged_at,
         rights_status_raw=status_raw,
     )
+    _verify_datapackage_sizes(root)
     master_sha256 = hashlib.sha256(status_raw).hexdigest()
     required = {path for path in ALWAYS_RESTRICT if (root / path).is_file()}
     if not required.issubset(quarantined):

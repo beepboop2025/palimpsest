@@ -34,7 +34,7 @@
             <a href="/osint-china.html"><b>Signal board</b><span>Inspect every signal and its freshness</span></a>
             <a href="/china-brief.html"><b>China Brief</b><span>Read the current six-hour measurement brief</span></a>
             <a href="/weekly-situation.html"><b>Weekly situation report<span class="ps-tag">new</span></b><span>Sealed multi-layer fusion of what the censor is working on</span></a>
-            <a href="/news/china/analysis/"><b>Censorship analysis</b><span>Open the latest cross-instrument result</span></a>
+            <a href="/news/china/analysis/"><b>Censorship analysis</b><span>Open the current finding or explicit availability notice</span></a>
           </div>
           <div class="ps-flyout__col">
             <p class="ps-flyout__head">Inspect the record</p>
@@ -136,12 +136,12 @@
           <div><dl><div><dt>Use when</dt><dd>You want method changes, failed assumptions and longer explanations.</dd></div><div><dt>Adds</dt><dd>Named claims, falsifiers, evidence attachments and a content hash.</dd></div><div><dt>Does not</dt><dd>Replace the live findings feed when you need the current run state.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/evals/feed.xml">RSS</a><a class="pn-chip" href="/evals/feed.json">JSON Feed</a><a class="pn-chip" href="/evals/">Reader view</a></div></div>
         </article>
         <article class="pn-feed">
-          <div><h3>Instrument measurements</h3><p class="pn-feed__kind">Palimpsest result</p></div>
-          <div><dl><div><dt>Use when</dt><dd>You only want Palimpsest's own observatory measurements.</dd></div><div><dt>Adds</dt><dd>Current metric, denominator, source receipt, status and explicit limitation.</dd></div><div><dt>Does not</dt><dd>Include the external publisher source index or infer a cause from co-movement.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/instruments/feed.xml">RSS</a><a class="pn-chip" href="/news/instruments/feed.json">JSON Feed</a><a class="pn-chip" href="/news/#instruments">Reader view</a></div></div>
+          <div><h3>Instrument records</h3><p class="pn-feed__kind">Measurement or explicit no-result notice</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You only want Palimpsest's own observatory records.</dd></div><div><dt>Adds</dt><dd>A current metric when one exists; otherwise an availability notice that says why no result is published. Both retain the source receipt, edition-time status and limitation.</dd></div><div><dt>Does not</dt><dd>Turn unavailable into zero, include the external publisher source index or infer a cause from co-movement.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/instruments/feed.xml">RSS</a><a class="pn-chip" href="/news/instruments/feed.json">JSON Feed</a><a class="pn-chip" href="/news/#instruments">Reader view</a></div></div>
         </article>
         <article class="pn-feed">
-          <div><h3>Source index + measurements</h3><p class="pn-feed__kind">Mixed and explicitly labeled</p></div>
-          <div><dl><div><dt>Use when</dt><dd>You need one machine-readable stream of indexed publisher reports and Palimpsest measurements.</dd></div><div><dt>Adds</dt><dd>Source grouping, revision identity, evidence-strength labels and measurement updates.</dd></div><div><dt>Does not</dt><dd>Independently verify a publisher report. Single-source entries stay labeled as source reports.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/feed.xml">RSS</a><a class="pn-chip" href="/news/feed.json">JSON Feed</a><a class="pn-chip" href="/news/">Reader view</a></div></div>
+          <div><h3>Source index + instrument records</h3><p class="pn-feed__kind">Mixed and explicitly labeled</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You need one machine-readable stream of indexed publisher reports, Palimpsest measurements and explicit availability notices.</dd></div><div><dt>Adds</dt><dd>Source grouping, revision identity, evidence-strength labels and instrument state updates.</dd></div><div><dt>Does not</dt><dd>Independently verify a publisher report or disguise a missing result as a measurement. Single-source entries stay labeled as source reports.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/feed.xml">RSS</a><a class="pn-chip" href="/news/feed.json">JSON Feed</a><a class="pn-chip" href="/news/">Reader view</a></div></div>
         </article>
         <article class="pn-feed">
           <div><h3>China source index</h3><p class="pn-feed__kind">Publisher report + next checks</p></div>
@@ -156,8 +156,8 @@
           <div><dl><div><dt>Use when</dt><dd>You want publisher reports, exact-link social observations and Observatory measurements in one event view.</dd></div><div><dt>Adds</dt><dd>Layer coverage, source-lineage counts, current measurements, missing context and next checks.</dd></div><div><dt>Does not</dt><dd>Turn social circulation or topic-level measurement context into verification, causation or another independent source.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/china/situation/feed.xml">RSS</a><a class="pn-chip" href="/news/china/situation/feed.json">JSON Feed</a><a class="pn-chip" href="/news/china/situation/">Reader view</a></div></div>
         </article>
         <article class="pn-feed">
-          <div><h3>China censorship analysis</h3><p class="pn-feed__kind">Palimpsest analysis</p></div>
-          <div><dl><div><dt>Use when</dt><dd>You want the latest cross-instrument China censorship finding.</dd></div><div><dt>Adds</dt><dd>Sentence-level receipts, citation coverage, finding state and a revision ID.</dd></div><div><dt>Does not</dt><dd>Collapse unlike instruments or convert missing data into evidence of calm.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/china/analysis/feed.xml">RSS</a><a class="pn-chip" href="/news/china/analysis/feed.json">JSON Feed</a><a class="pn-chip" href="/news/china/analysis/">Reader view</a></div></div>
+          <div><h3>China censorship analysis</h3><p class="pn-feed__kind">Palimpsest analysis or explicit no-result notice</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You want the current cross-instrument China censorship finding or a clear explanation that no finding can be published.</dd></div><div><dt>Adds</dt><dd>Sentence-level receipts, citation coverage, finding state and revision identity when analysis is allowed; otherwise one current rights-linked availability item in both formats.</dd></div><div><dt>Does not</dt><dd>Collapse unlike instruments, recycle an old finding, hide a missing result, or convert unavailable data into evidence of calm.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/china/analysis/feed.xml">RSS</a><a class="pn-chip" href="/news/china/analysis/feed.json">JSON Feed</a><a class="pn-chip" href="/news/china/analysis/">Reader view</a></div></div>
         </article>
         <article class="pn-feed">
           <div><h3>Reviewed Telegram context</h3><p class="pn-feed__kind">Unverified context</p></div>
@@ -169,9 +169,10 @@
 
   <section class="pn-section" aria-labelledby="labels-title">
     <div class="pn-wrap">
-      <header class="pn-section__head"><div><p class="pn-kicker">Reading labels</p><h2 id="labels-title">Four kinds of item</h2></div><p>The label tells you what kind of responsibility Palimpsest takes for the item.</p></header>
+      <header class="pn-section__head"><div><p class="pn-kicker">Reading labels</p><h2 id="labels-title">Five kinds of item</h2></div><p>The label tells you what kind of responsibility Palimpsest takes for the item.</p></header>
       <div class="pn-legend">
         <div><strong>Palimpsest result</strong><p>A reproducible output from a named instrument or sealed eval.</p></div>
+        <div><strong>Palimpsest availability</strong><p>An instrument record that explicitly publishes no current result. Unavailable does not mean zero, normal or unchanged.</p></div>
         <div><strong>Palimpsest analysis</strong><p>A bounded interpretation with citations, countercases and limits.</p></div>
         <div><strong>Source report</strong><p>A publisher's claim, kept attributed and linked to the original.</p></div>
         <div><strong>Unverified context</strong><p>A reviewed lead for follow-up that does not count as corroboration.</p></div>

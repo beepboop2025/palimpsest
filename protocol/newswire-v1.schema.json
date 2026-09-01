@@ -43,7 +43,118 @@
       "items": {"$ref": "#/$defs/event"}
     }
   },
+  "oneOf": [
+    {
+      "properties": {
+        "source_registry_sha256": {
+          "const": "134ef2c8193731e2d9014d3af9be0b1818e90595c63845021edd0c09bfb6bd80"
+        },
+        "coverage": {
+          "properties": {
+            "registry_sources": {"const": 58},
+            "sources": {
+              "$ref": "#/$defs/activeRegistryReceiptIdentities",
+              "minItems": 58,
+              "maxItems": 58
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "source_registry_sha256": {
+          "const": "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14"
+        },
+        "coverage": {
+          "properties": {
+            "registry_sources": {"const": 60},
+            "sources": {
+              "minItems": 60,
+              "maxItems": 60,
+              "allOf": [
+                {"$ref": "#/$defs/activeRegistryReceiptIdentities"},
+                {"$ref": "#/$defs/legacyRegistryTombstoneReceipts"}
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
+    "activeRegistryReceiptIdentities": {
+      "type": "array",
+      "description": "Every reviewed active source identity must occur exactly once at its canonical feed endpoint.",
+      "allOf": [
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"access-now"},"feed_url":{"const":"https://www.accessnow.org/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"apnic-blog"},"feed_url":{"const":"https://blog.apnic.net/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"article19"},"feed_url":{"const":"https://www.article19.org/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"asia-times-china"},"feed_url":{"const":"https://asiatimes.com/category/china/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"bbc-chinese"},"feed_url":{"const":"https://feeds.bbci.co.uk/zhongwen/trad/rss.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"business-recorder-pakistan"},"feed_url":{"const":"https://www.brecorder.com/feeds/pakistan/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"cecc"},"feed_url":{"const":"https://www.cecc.gov/rss.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"cgtn-china"},"feed_url":{"const":"https://www.cgtn.com/subscribe/rss/section/china.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"china-digital-times"},"feed_url":{"const":"https://chinadigitaltimes.net/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"china-media-project"},"feed_url":{"const":"https://chinamediaproject.org/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"china-news-service-finance"},"feed_url":{"const":"https://www.chinanews.com.cn/rss/finance.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"china-news-service-politics"},"feed_url":{"const":"https://www.chinanews.com.cn/rss/china.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"china-power-csis"},"feed_url":{"const":"https://chinapower.csis.org/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"chrd"},"feed_url":{"const":"https://www.nchrd.org/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"citizen-lab"},"feed_url":{"const":"https://citizenlab.ca/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"citizen-lab-chat-censorship"},"feed_url":{"const":"https://github.com/citizenlab/chat-censorship/commits/master.atom"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"cloudflare-radar"},"feed_url":{"const":"https://blog.cloudflare.com/tag/cloudflare-radar/rss"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"daily-cpec-china-pakistan"},"feed_url":{"const":"https://thedailycpec.com/category/china-pakistan/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"daily-cpec-gwadar"},"feed_url":{"const":"https://thedailycpec.com/category/gwadar/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"dawn-pakistan"},"feed_url":{"const":"https://www.dawn.com/feeds/pakistan/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"diplomat-china"},"feed_url":{"const":"https://thediplomat.com/tag/china/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"dvb-english"},"feed_url":{"const":"https://english.dvb.no/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"dw-chinese"},"feed_url":{"const":"https://rss.dw.com/rdf/rss-chi-all"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"economist-china"},"feed_url":{"const":"https://www.economist.com/china/rss.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"express-tribune-balochistan"},"feed_url":{"const":"https://tribune.com.pk/feed/balochistan"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"financial-times-china"},"feed_url":{"const":"https://www.ft.com/china?format=rss"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"foreign-policy-china"},"feed_url":{"const":"https://foreignpolicy.com/tag/china/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"gfw-report"},"feed_url":{"const":"https://gfw.report/index.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"github-dmca"},"feed_url":{"const":"https://github.com/github/dmca/commits/master.atom"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"github-government-takedowns"},"feed_url":{"const":"https://github.com/github/gov-takedowns/commits/master.atom"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"github-site-policy"},"feed_url":{"const":"https://github.com/github/site-policy/commits/main.atom"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"global-voices-china"},"feed_url":{"const":"https://globalvoices.org/-/world/east-asia/china/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"guardian-china"},"feed_url":{"const":"https://www.theguardian.com/world/china/rss"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"hk-censtat-releases"},"feed_url":{"const":"https://www.censtatd.gov.hk/data/en/press_release/rss.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"hksar-releases"},"feed_url":{"const":"https://www.info.gov.hk/gia/rss/general_en.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"hong-kong-free-press"},"feed_url":{"const":"https://hongkongfp.com/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"hrc-balochistan"},"feed_url":{"const":"https://hrcbalochistan.com/category/news-reports/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"hrcp-pakistan"},"feed_url":{"const":"https://hrcp-web.org/hrcpweb/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"kachin-news-group"},"feed_url":{"const":"https://kachinnews.com/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"made-in-china-journal"},"feed_url":{"const":"https://madeinchinajournal.com/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"measurement-lab"},"feed_url":{"const":"https://www.measurementlab.net/feed.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"myanmar-now"},"feed_url":{"const":"https://myanmar-now.org/en/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"new-bloom"},"feed_url":{"const":"https://newbloommag.net/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"ooni"},"feed_url":{"const":"https://ooni.org/index.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"pandaily"},"feed_url":{"const":"https://pandaily.com/feed"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"rfa-mandarin"},"feed_url":{"const":"https://www.rfa.org/arc/outboundfeeds/mandarin/rss/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"rfi-chinese"},"feed_url":{"const":"https://www.rfi.fr/cn/rss"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"ripe-labs"},"feed_url":{"const":"https://labs.ripe.net/feed.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"rthk-finance"},"feed_url":{"const":"https://rthk9.rthk.hk/rthk/news/rss/e_expressnews_efinance.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"rthk-greater-china"},"feed_url":{"const":"https://rthk9.rthk.hk/rthk/news/rss/e_expressnews_egreaterchina.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"scmp-china"},"feed_url":{"const":"https://www.scmp.com/rss/4/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"scmp-china-economy"},"feed_url":{"const":"https://www.scmp.com/rss/318421/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"scmp-china-tech"},"feed_url":{"const":"https://www.scmp.com/rss/320663/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"shan-news-english"},"feed_url":{"const":"https://english.shannews.org/feed"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"taipei-times"},"feed_url":{"const":"https://www.taipeitimes.com/xml/index.rss"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"taiwan-insight"},"feed_url":{"const":"https://taiwaninsight.org/feed/"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"tor-project"},"feed_url":{"const":"https://blog.torproject.org/feed.xml"}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url"],"properties":{"source_id":{"const":"voa-chinese"},"feed_url":{"const":"https://www.voachinese.com/api/zm_yql-vomx-tpeybti"}}},"minContains":1,"maxContains":1}
+      ]
+    },
+    "legacyRegistryTombstoneReceipts": {
+      "type": "array",
+      "description": "Both retired identities remain exact stale, zero-accepted tombstones in the admitted historical registry.",
+      "allOf": [
+        {"contains":{"required":["source_id","feed_url","status","accepted_items"],"properties":{"source_id":{"const":"arab-news-pakistan-cpec"},"feed_url":{"const":"https://www.arabnews.pk/taxonomy/term/20166/feed"},"status":{"const":"stale"},"accepted_items":{"const":0}}},"minContains":1,"maxContains":1},
+        {"contains":{"required":["source_id","feed_url","status","accepted_items"],"properties":{"source_id":{"const":"arab-news-pakistan-gwadar-port"},"feed_url":{"const":"https://www.arabnews.pk/taxonomy/term/314116/feed"},"status":{"const":"stale"},"accepted_items":{"const":0}}},"minContains":1,"maxContains":1}
+      ]
+    },
     "count": {
       "type": "integer",
       "minimum": 0,
@@ -215,8 +326,11 @@
         "rejected_items": {"$ref": "#/$defs/count"},
         "sources": {
           "type": "array",
-          "minItems": 60,
-          "maxItems": 60,
+          "description": "Exactly 58 active-registry receipts, or the exact 60-receipt shape retained by pre-retirement v1 snapshots.",
+          "oneOf": [
+            {"minItems": 58, "maxItems": 58},
+            {"minItems": 60, "maxItems": 60}
+          ],
           "items": {"$ref": "#/$defs/sourceReceipt"}
         }
       }

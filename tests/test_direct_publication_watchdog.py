@@ -11,6 +11,7 @@ import time
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable
@@ -420,8 +421,11 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
         "schema_version": watchdog.CANDIDATE_SCHEMA,
         "status": "mutation_unresolved",
         "prepared_at": "2026-08-30T12:01:00Z",
+        "receipt_deadline_at": "2026-08-30T12:13:00Z",
         "message": message,
         "input_sha256": input_sha256,
+        "news_source_tail": {"count": 8, "sha256": "9" * 64},
+        "wire_canonical_sha256": "8" * 64,
         "wire_generated_at": "2026-08-30T12:00:00Z",
         "host_deployed_sha": host_sha,
         "base_sha": base_sha,
@@ -545,6 +549,8 @@ def test_v2_allows_publication_base_to_differ_from_host_deployment(
     assert proof["host_deployed_sha"] == lineage.host_sha
     assert proof["publication_base_sha"] == lineage.base_sha
     assert proof["release_sha"] == lineage.release_sha
+    assert proof["recorded_at"] == lineage.receipt["recorded_at"]
+    assert proof["live"]["built_at"] == "2026-08-30T12:00:00Z"
     assert candidate == {"status": "none"}
 
 
@@ -982,6 +988,138 @@ def test_consumed_pending_candidate_remains_data_hold_until_cleanup(
     assert watchdog._outcome_status(problems=[], data_hold=True) == "DATA HOLD"
 
 
+def _legacy_v1_candidate(lineage: Fixture) -> dict[str, Any]:
+    archived = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived.read_bytes())
+    candidate["schema_version"] = watchdog.LEGACY_CANDIDATE_SCHEMA
+    candidate.pop("news_source_tail")
+    candidate.pop("receipt_deadline_at")
+    candidate.pop("wire_canonical_sha256")
+    return candidate
+
+
+def test_historical_v1_completed_candidate_archive_remains_readable(
+    lineage: Fixture,
+) -> None:
+    candidate = _legacy_v1_candidate(lineage)
+    raw = _json_bytes(candidate)
+    digest = _sha(raw)
+    archive_path = lineage.config.state_root / "candidates" / f"{digest}.json"
+    _write(archive_path, raw, 0o600)
+    lineage.receipt["candidate"] = {
+        "archive_path": str(archive_path),
+        "journal_sha256": digest,
+        "message": candidate["message"],
+    }
+    lineage.rewrite_receipt()
+
+    proof, candidate_status = lineage.validate()
+
+    assert proof["release_sha"] == lineage.release_sha
+    assert candidate_status == {"status": "none"}
+
+
+def test_legacy_v1_candidate_is_never_accepted_as_pending(lineage: Fixture) -> None:
+    candidate = _legacy_v1_candidate(lineage)
+    _write(lineage.config.pending_candidate, _json_bytes(candidate), 0o600)
+
+    with pytest.raises(
+        watchdog.WatchdogError,
+        match="legacy v1 candidate is not accepted as pending",
+    ):
+        lineage.validate()
+
+
+@pytest.mark.parametrize(
+    ("mutate", "error"),
+    [
+        pytest.param(
+            lambda candidate: candidate.pop("news_source_tail"),
+            "closed schema",
+            id="missing-tail",
+        ),
+        pytest.param(
+            lambda candidate: candidate.__setitem__("news_source_tail", None),
+            "tail proof is invalid",
+            id="non-object-tail",
+        ),
+        pytest.param(
+            lambda candidate: candidate["news_source_tail"].pop("sha256"),
+            "closed schema",
+            id="missing-tail-digest",
+        ),
+        pytest.param(
+            lambda candidate: candidate["news_source_tail"].__setitem__(
+                "extra", "forbidden"
+            ),
+            "closed schema",
+            id="open-tail-schema",
+        ),
+        pytest.param(
+            lambda candidate: candidate["news_source_tail"].__setitem__("count", True),
+            "tail count is invalid",
+            id="boolean-count",
+        ),
+        pytest.param(
+            lambda candidate: candidate["news_source_tail"].__setitem__("count", -1),
+            "tail count is invalid",
+            id="negative-count",
+        ),
+        pytest.param(
+            lambda candidate: candidate["news_source_tail"].__setitem__("count", 8.0),
+            "tail count is invalid",
+            id="floating-count",
+        ),
+        pytest.param(
+            lambda candidate: candidate["news_source_tail"].__setitem__(
+                "sha256", "A" * 64
+            ),
+            "tail digest",
+            id="uppercase-digest",
+        ),
+        pytest.param(
+            lambda candidate: candidate["news_source_tail"].__setitem__(
+                "sha256", "9" * 63
+            ),
+            "tail digest",
+            id="short-digest",
+        ),
+        pytest.param(
+            lambda candidate: candidate["news_source_tail"].__setitem__("sha256", 9),
+            "tail digest",
+            id="non-string-digest",
+        ),
+    ],
+)
+def test_pending_v2_candidate_requires_exact_closed_news_source_tail(
+    lineage: Fixture,
+    mutate: Callable[[dict[str, Any]], Any],
+    error: str,
+) -> None:
+    archived = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived.read_bytes())
+    mutate(candidate)
+    _write(lineage.config.pending_candidate, _json_bytes(candidate), 0o600)
+
+    with pytest.raises(watchdog.WatchdogError, match=error):
+        lineage.validate()
+
+
+def test_completed_v2_tail_is_authenticated_by_candidate_archive_digest(
+    lineage: Fixture,
+) -> None:
+    archived = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived.read_bytes())
+    candidate["news_source_tail"]["sha256"] = "a" * 64
+    _write(archived, _json_bytes(candidate), 0o600)
+
+    with pytest.raises(
+        watchdog.WatchdogError,
+        match="candidate journal archive digest changed",
+    ):
+        lineage.validate()
+
+
 def test_candidate_submission_identity_is_full_entropy_and_message_bound(
     lineage: Fixture,
 ) -> None:
@@ -998,12 +1136,190 @@ def test_candidate_submission_identity_is_full_entropy_and_message_bound(
         lineage.validate()
 
 
+@pytest.mark.parametrize(
+    ("mutate", "error"),
+    [
+        pytest.param(
+            lambda candidate: candidate.pop("receipt_deadline_at"),
+            "closed schema",
+            id="missing",
+        ),
+        pytest.param(
+            lambda candidate: candidate.__setitem__(
+                "receipt_deadline_at", "2026-08-30T12:13:00.000000Z"
+            ),
+            "candidate receipt_deadline_at is invalid",
+            id="fractional",
+        ),
+        pytest.param(
+            lambda candidate: candidate.__setitem__(
+                "receipt_deadline_at", "2026-08-30T12:13:00+00:00"
+            ),
+            "candidate receipt_deadline_at is invalid",
+            id="offset",
+        ),
+        pytest.param(
+            lambda candidate: candidate.__setitem__(
+                "receipt_deadline_at", "2026-02-30T12:13:00Z"
+            ),
+            "candidate receipt_deadline_at is invalid",
+            id="invalid-calendar-date",
+        ),
+    ],
+)
+def test_candidate_receipt_deadline_is_required_strict_utc(
+    lineage: Fixture,
+    mutate: Callable[[dict[str, Any]], Any],
+    error: str,
+) -> None:
+    archived = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived.read_bytes())
+    mutate(candidate)
+    _write(lineage.config.pending_candidate, _json_bytes(candidate), 0o600)
+
+    with pytest.raises(watchdog.WatchdogError, match=error):
+        lineage.validate()
+
+
+@pytest.mark.parametrize(
+    ("prepared_at", "receipt_deadline_at", "error"),
+    [
+        pytest.param(
+            "2026-08-30T12:01:00Z",
+            "2026-08-30T12:01:00Z",
+            "does not follow preparation",
+            id="not-after-preparation",
+        ),
+        pytest.param(
+            "2026-08-30T12:01:00Z",
+            "2026-08-30T12:13:01Z",
+            "preparation bound",
+            id="prepared-plus-721-seconds",
+        ),
+        pytest.param(
+            "2026-08-30T12:20:00Z",
+            "2026-08-30T12:25:01Z",
+            "wire freshness bound",
+            id="wire-plus-1501-seconds",
+        ),
+    ],
+)
+def test_candidate_receipt_deadline_cannot_extend_either_budget(
+    lineage: Fixture,
+    prepared_at: str,
+    receipt_deadline_at: str,
+    error: str,
+) -> None:
+    archived = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived.read_bytes())
+    candidate["prepared_at"] = prepared_at
+    candidate["receipt_deadline_at"] = receipt_deadline_at
+    _write(lineage.config.pending_candidate, _json_bytes(candidate), 0o600)
+
+    with pytest.raises(watchdog.WatchdogError, match=error):
+        lineage.validate()
+
+
+def test_candidate_receipt_deadline_accepts_exact_inclusive_bounds(
+    lineage: Fixture,
+) -> None:
+    assert watchdog.MAX_CANDIDATE_RECEIPT_AFTER_PREPARED_SECONDS == 720
+    assert watchdog.MAX_CANDIDATE_RECEIPT_AFTER_WIRE_SECONDS == 1500
+    archived = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived.read_bytes())
+    candidate["prepared_at"] = "2026-08-30T12:20:00Z"
+    candidate["receipt_deadline_at"] = "2026-08-30T12:25:00Z"
+    _write(lineage.config.pending_candidate, _json_bytes(candidate), 0o600)
+
+    _proof, candidate_status = lineage.validate()
+
+    assert candidate_status["status"] == "mutation_unresolved"
+
+
+@pytest.mark.parametrize(
+    "wire_canonical_sha256",
+    [
+        pytest.param(None, id="missing"),
+        pytest.param("A" * 64, id="uppercase"),
+        pytest.param("8" * 63, id="short"),
+        pytest.param(8, id="non-string"),
+    ],
+)
+def test_candidate_wire_canonical_digest_is_required_lowercase_sha256(
+    lineage: Fixture,
+    wire_canonical_sha256: Any,
+) -> None:
+    archived = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived.read_bytes())
+    if wire_canonical_sha256 is None:
+        candidate.pop("wire_canonical_sha256")
+        error = "closed schema"
+    else:
+        candidate["wire_canonical_sha256"] = wire_canonical_sha256
+        error = "candidate wire canonical digest"
+    _write(lineage.config.pending_candidate, _json_bytes(candidate), 0o600)
+
+    with pytest.raises(watchdog.WatchdogError, match=error):
+        lineage.validate()
+
+
 def test_outcome_status_never_cosmetically_hides_data_hold() -> None:
     problem = [{"check": "publication/candidate", "detail": "unresolved"}]
 
     assert watchdog._outcome_status(problems=[], data_hold=False) == "healthy"
     assert watchdog._outcome_status(problems=problem, data_hold=False) == "degraded"
     assert watchdog._outcome_status(problems=problem, data_hold=True) == "DATA HOLD"
+
+
+def test_age_check_allows_only_the_explicit_future_clock_skew() -> None:
+    now = datetime(2026, 8, 30, 12, 0, 0, tzinfo=UTC)
+    allowed_problems: list[dict[str, Any]] = []
+    allowed = {
+        "built_at": (now + timedelta(seconds=120))
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    }
+
+    assert (
+        watchdog.check_age(
+            allowed_problems,
+            "publication/freshness",
+            allowed,
+            "built_at",
+            3600,
+            now,
+        )
+        == 0.0
+    )
+    assert allowed_problems == []
+
+    for offset in (121, 86_400):
+        problems: list[dict[str, Any]] = []
+        future = {
+            "built_at": (now + timedelta(seconds=offset))
+            .isoformat(timespec="seconds")
+            .replace("+00:00", "Z")
+        }
+        assert (
+            watchdog.check_age(
+                problems,
+                "publication/freshness",
+                future,
+                "built_at",
+                3600,
+                now,
+            )
+            is None
+        )
+        assert problems == [
+            {
+                "check": "publication/freshness",
+                "detail": (
+                    f"built_at is {offset}s in the future; maximum clock "
+                    "skew is 120s"
+                ),
+            }
+        ]
 
 
 def _write_data_hold(
@@ -1235,7 +1551,11 @@ def test_main_reports_valid_root_hold_as_explicit_data_hold(
         watchdog,
         "validate_lineage",
         lambda *_args, **_kwargs: (
-            {"chain_checkpoint": None},
+            {
+                "chain_checkpoint": None,
+                "live": {"built_at": "2026-08-30T12:00:00Z"},
+                "recorded_at": "2026-08-30T12:05:00Z",
+            },
             {"status": "none"},
         ),
     )
@@ -1273,6 +1593,83 @@ def test_main_reports_valid_root_hold_as_explicit_data_hold(
     )
 
 
+def test_main_ages_publication_from_live_manifest_not_late_receipt(
+    lineage: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest_at = datetime(2026, 8, 30, 12, 0, 0, tzinfo=UTC)
+    receipt_at = manifest_at + timedelta(minutes=20)
+    now = manifest_at + timedelta(seconds=3601)
+
+    def stamp(value: datetime) -> str:
+        return value.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(watchdog, "utc_now", lambda: now)
+    monkeypatch.setattr(watchdog, "default_lineage_config", lambda: lineage.config)
+    monkeypatch.setattr(watchdog, "_load_prior_chain_checkpoint", lambda: None)
+    monkeypatch.setattr(
+        watchdog,
+        "load_json",
+        lambda _path: {
+            "events": [{}],
+            "generated_at": stamp(now),
+            "recorded_at": stamp(now),
+            "succeeded": 1,
+            "failed": 0,
+            "promoted_files": [],
+        },
+    )
+    monkeypatch.setattr(
+        watchdog,
+        "validate_lineage",
+        lambda *_args, **_kwargs: (
+            {
+                "chain_checkpoint": None,
+                "live": {"built_at": stamp(manifest_at)},
+                "recorded_at": stamp(receipt_at),
+            },
+            {"status": "none"},
+        ),
+    )
+    monkeypatch.setattr(
+        watchdog,
+        "command",
+        lambda *args: "enabled" if "is-enabled" in args else "active",
+    )
+    monkeypatch.setattr(
+        watchdog,
+        "unit_property",
+        lambda _unit, name: "active" if name == "ActiveState" else "success",
+    )
+    monkeypatch.setattr(
+        watchdog,
+        "fetch_json_url",
+        lambda _url: {
+            "schema_version": "palimpsest.regional-analysis.v1",
+            "revision_id": "revision",
+            "coverage": {"event_count": 1, "source_count": 1},
+            "wire": {"generated_at": stamp(now)},
+        },
+    )
+    monkeypatch.setattr(watchdog, "_write_status", captured.update)
+
+    assert watchdog.main([]) == 2
+    assert captured["status"] == "degraded"
+    assert captured["problem_count"] == 1
+    assert captured["problems"] == [
+        {
+            "check": "publication/freshness",
+            "detail": "built_at is 3601s old; maximum is 3600s",
+        }
+    ]
+    publication = captured["checks"]["publication"]
+    assert publication["live"]["built_at"] == stamp(manifest_at)
+    assert publication["recorded_at"] == stamp(receipt_at)
+    assert publication["age_seconds"] == 3601.0
+    assert publication["receipt_age_seconds"] == 2401.0
+
+
 def test_provider_and_public_manifests_must_be_byte_identical(
     lineage: Fixture,
 ) -> None:
@@ -1302,6 +1699,35 @@ def test_byte_identical_live_manifests_must_match_pre_mutation_anchor(
         watchdog.validate_lineage(
             lineage.config,
             fetch_manifest=lambda _origin: changed_raw,
+        )
+
+
+def test_live_manifest_and_receipt_clocks_are_causally_ordered(
+    lineage: Fixture,
+) -> None:
+    receipt = json.loads(json.dumps(lineage.receipt))
+    receipt["recorded_at"] = "2026-08-30T11:58:00Z"
+
+    live = watchdog._validate_live_manifest(
+        lineage.config,
+        lineage.manifest_raw,
+        receipt,
+        pin=None,
+    )
+
+    assert watchdog.MAX_FUTURE_CLOCK_SKEW_SECONDS == 120
+    assert live["built_at"] == "2026-08-30T12:00:00Z"
+
+    receipt["recorded_at"] = "2026-08-30T11:57:59Z"
+    with pytest.raises(
+        watchdog.WatchdogError,
+        match="receipt predates the live manifest.*120s clock skew",
+    ):
+        watchdog._validate_live_manifest(
+            lineage.config,
+            lineage.manifest_raw,
+            receipt,
+            pin=None,
         )
 
 

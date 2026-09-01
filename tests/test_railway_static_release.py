@@ -48,8 +48,16 @@ RIGHTS_CRITICAL_PATHS = {
     "protocol/publication-freshness-attestation-v1.schema.json",
     "protocol/restricted-publication-endpoint-v1.schema.json",
     "protocol/restricted-publication-v1.schema.json",
+    "news/index.html",
+    "news/feed.json",
+    "news/feed.xml",
+    "news/instruments/feed.json",
+    "news/instruments/feed.xml",
+    "news/china/analysis/feed.json",
+    "news/china/analysis/feed.xml",
     "readings/china-publication-rights-latest.json",
     "readings/china-situation-latest.json",
+    "readings/newsroom-latest.json",
     "readings/newswire-latest.json",
     "readings/osint-china-latest.json",
     "readings/publication-freshness-attestation-latest.json",
@@ -186,7 +194,44 @@ def _publication_root(tmp_path: Path) -> Path:
         destination = tmp_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(f"fixture:{relative}\n", encoding="utf-8")
+    (tmp_path / "readings/newsroom-latest.json").write_text(
+        json.dumps(
+            {"schema_version": "palimpsest-news.v1", "stories": []},
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     return tmp_path
+
+
+def _add_measurement_evidence(root: Path) -> tuple[Path, dict[str, object]]:
+    evidence_path = root / "readings/ddti-latest.json"
+    evidence_raw = b'{"aggregate":7}\n'
+    evidence_path.write_bytes(evidence_raw)
+    story: dict[str, object] = {
+        "claims": [{"statement": "Seven records.", "type": "finding"}],
+        "evidence": {
+            "input": {
+                "bytes": len(evidence_raw),
+                "filename": "ddti-latest.json",
+                "sha256": hashlib.sha256(evidence_raw).hexdigest(),
+            },
+            "source_timestamp": "2026-08-26T17:59:00Z",
+            "url": "https://palimpsest.info/readings/ddti-latest.json",
+        },
+        "published_at": "2026-08-26T17:59:00Z",
+        "status": "live",
+    }
+    (root / "readings/newsroom-latest.json").write_text(
+        json.dumps(
+            {"schema_version": "palimpsest-news.v1", "stories": [story]},
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return evidence_path, story
 
 
 def _write_freshness_attestation(
@@ -260,6 +305,58 @@ def test_manifest_is_canonical_local_release_evidence(tmp_path: Path) -> None:
     assert len(manifest["tree_sha256"]) == 64
     parsed = json.loads((root / "railway-release.json").read_text(encoding="utf-8"))
     assert parsed == manifest
+
+
+def test_manifest_dynamically_binds_live_measurement_evidence(tmp_path: Path) -> None:
+    root = _publication_root(tmp_path)
+    evidence_path, _story = _add_measurement_evidence(root)
+    manifest = manifest_module.build_manifest(
+        root, "a" * 40, "2026-08-26T18:00:00Z"
+    )
+    raw = evidence_path.read_bytes()
+
+    assert manifest["critical_files"]["readings/ddti-latest.json"] == {
+        "bytes": len(raw),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+    }
+    assert manifest["file_count"] == len(manifest_module.CRITICAL_PATHS) + 1
+
+
+@pytest.mark.parametrize("corruption", ["digest", "size", "url", "timestamp"])
+def test_manifest_rejects_forged_measurement_evidence_claim(
+    tmp_path: Path, corruption: str
+) -> None:
+    root = _publication_root(tmp_path)
+    _evidence_path, story = _add_measurement_evidence(root)
+    evidence = story["evidence"]
+    if corruption == "digest":
+        evidence["input"]["sha256"] = "0" * 64
+    elif corruption == "size":
+        evidence["input"]["bytes"] += 1
+    elif corruption == "url":
+        evidence["url"] = "https://palimpsest.info/readings/wrong-latest.json"
+    else:
+        evidence["source_timestamp"] = "2026-08-26T17:58:59Z"
+    (root / "readings/newsroom-latest.json").write_text(
+        json.dumps(
+            {"schema_version": "palimpsest-news.v1", "stories": [story]},
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(manifest_module.ManifestError, match="measurement"):
+        manifest_module.build_manifest(root, "a" * 40, "2026-08-26T18:00:00Z")
+
+
+def test_manifest_rejects_missing_measurement_evidence_file(tmp_path: Path) -> None:
+    root = _publication_root(tmp_path)
+    evidence_path, _story = _add_measurement_evidence(root)
+    evidence_path.unlink()
+
+    with pytest.raises(manifest_module.ManifestError, match="evidence is missing"):
+        manifest_module.build_manifest(root, "a" * 40, "2026-08-26T18:00:00Z")
 
 
 def test_manifest_binds_every_rights_critical_file(tmp_path: Path) -> None:
@@ -428,6 +525,18 @@ def test_server_fails_health_closed_without_manifest(tmp_path: Path) -> None:
             assert payload["status"] == "unavailable"
         else:
             raise AssertionError("missing manifest unexpectedly passed readiness")
+
+        with pytest.raises(urllib.error.HTTPError) as unavailable:
+            urllib.request.urlopen(
+                f"http://127.0.0.1:{server.server_port}/freshness?view=reader",
+                timeout=5,
+            )
+        assert unavailable.value.code == 503
+        assert unavailable.value.headers["Content-Type"] == ("text/html; charset=utf-8")
+        reader = unavailable.value.read().decode("utf-8")
+        assert "Palimpsest freshness: Freshness unavailable" in reader
+        assert "Do not treat an unavailable check as fresh" in reader
+        assert "<h2>Required clocks</h2>" not in reader
     finally:
         server.shutdown()
         server.server_close()
@@ -461,6 +570,9 @@ def test_server_reports_semantic_freshness_separately_from_readiness(
         with urllib.request.urlopen(base + "/freshness", timeout=5) as response:
             assert response.status == 200
             assert response.headers["Cache-Control"] == "no-store"
+            assert response.headers["Link"] == (
+                '</freshness?view=reader>; rel="alternate"; type="text/html"'
+            )
             freshness = json.loads(response.read())
         assert freshness == {
             "schema_version": "palimpsest.publication-freshness.v1",
@@ -511,6 +623,23 @@ def test_server_reports_semantic_freshness_separately_from_readiness(
             assert response.status == 200
             assert response.headers["Cache-Control"] == "no-store"
             assert response.read() == b""
+
+        with urllib.request.urlopen(
+            base + "/freshness?view=reader", timeout=5
+        ) as response:
+            assert response.status == 200
+            assert response.headers["Content-Type"] == "text/html; charset=utf-8"
+            assert response.headers["Cache-Control"] == "no-store"
+            assert response.headers["Link"] == (
+                '</freshness>; rel="alternate"; type="application/json"'
+            )
+            reader = response.read().decode("utf-8")
+        assert "Palimpsest freshness: Current" in reader
+        assert "10 minutes old (limit: 30 minutes" in reader
+        assert "5 minutes old (limit: 1 hour" in reader
+        assert "does not report how many measurements are available" in reader
+        assert "do not read that as a zero value" in reader
+        assert f"<code>{source_commit}</code>" in reader
     finally:
         server.shutdown()
         server.server_close()
@@ -546,6 +675,17 @@ def test_server_fails_freshness_closed_when_wire_clock_is_stale(
         assert payload["status"] == "stale"
         assert payload["clocks"]["wire"]["status"] == "stale"
         assert payload["clocks"]["publication"]["status"] == "fresh"
+
+        with pytest.raises(urllib.error.HTTPError) as reader_stale:
+            urllib.request.urlopen(url + "?view=reader", timeout=5)
+        assert reader_stale.value.code == 503
+        assert reader_stale.value.headers["Content-Type"] == (
+            "text/html; charset=utf-8"
+        )
+        reader = reader_stale.value.read().decode("utf-8")
+        assert "Palimpsest freshness: Out of date" in reader
+        assert "30 minutes 1 second old (limit: 30 minutes" in reader
+        assert "older snapshot until a new release is verified" in reader
     finally:
         server.shutdown()
         server.server_close()

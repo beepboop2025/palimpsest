@@ -69,6 +69,7 @@ TELEGRAM_WATCH_READING = ROOT / "readings" / "telegram-watch-latest.json"
 DRAGON_WHISPERS_READING = ROOT / "readings" / "dragon-whispers-latest.json"
 PEER_CONTEXT_READING = ROOT / "readings" / "peer-context-latest.json"
 PUBLIC_DATA_CATALOG = ROOT / "config" / "public_data_catalog.json"
+CHINA_ECON_SOURCE_POLICY = ROOT / "config" / "china_econ_source_policy.json"
 SITE = "https://palimpsest.info"
 PUBLISHER = "Palimpsest Observatory"
 DESCRIPTION = (
@@ -82,13 +83,48 @@ OG_IMAGE = f"{SITE}/brand/palimpsest-og2.png"
 # remain useful, but social previews must describe the restriction rather than
 # turn a restricted number into a separately shareable artifact.
 _PUBLIC_VALUE_WITHHELD_SHARE_CARDS = {
+    "board-alarm": (
+        "The combined board alarm is withheld under public source policy"
+    ),
+    "event-flags": (
+        "Cross-signal event flags are withheld under public source policy"
+    ),
+    "coverage-guard": (
+        "The derived coverage guard is withheld under public source policy"
+    ),
+    "forecast-ledger": (
+        "The derived forecast score is withheld under public source policy"
+    ),
+    "cross-layer": (
+        "Cross-layer timing results are withheld under public source policy"
+    ),
     "china-econ": (
         "Money-market benchmark values are withheld under public source policy"
     ),
-    "cny-fix-gap": (
-        "The yuan-fix comparison is withheld under public source policy"
+    "cny-fix-gap": ("The yuan-fix comparison is withheld under public source policy"),
+    "data-darkness": (
+        "The official-data availability score is withheld under public source policy"
     ),
 }
+
+# These are the canonical newsroom surfaces whose claims can be derived from,
+# or summarize, the denied ChinaMoney/CFETS value families.  A public policy
+# denial therefore projects the complete set to availability-only records
+# before any downstream representation is built.
+_RIGHTS_SAFE_PROJECTION_LABELS = {
+    "board-alarm": "Board alarm",
+    "event-flags": "Event flags",
+    "coverage-guard": "Coverage guard",
+    "forecast-ledger": "Forecast ledger",
+    "cross-layer": "Cross-layer comparison",
+    "china-econ": "China money-market benchmarks",
+    "cny-fix-gap": "Yuan-fix comparison",
+    "data-darkness": "Official-data availability",
+}
+_RIGHTS_SAFE_PROJECTION_SIGNAL_IDS = frozenset(_RIGHTS_SAFE_PROJECTION_LABELS)
+_REQUIRED_PUBLIC_VALUE_SOURCE_IDS = frozenset({"cfets_benchmarks", "chinamoney"})
+_PUBLIC_RIGHTS_EVIDENCE_URL = f"{SITE}/readings/china-publication-rights-latest.json"
+_PUBLIC_RIGHTS_EVIDENCE_FILENAME = "china-publication-rights-latest.json"
 
 DRAGON_DEN_TELEGRAM_CHANNELS = (
     (
@@ -141,6 +177,41 @@ HOME_EVENTS_PER_DESK = 5
 WIRE_PAGE_SIZE = 60
 CHINA_STREAM_PAGE_SIZE = 40
 CHINA_ANALYSIS_READING = ROOT / "readings" / "china-censorship-analysis-latest.json"
+CHINA_ANALYSIS_READING_RELATIVE = Path(
+    "readings/china-censorship-analysis-latest.json"
+)
+CHINA_ANALYSIS_JSON_FEED_RELATIVE = Path("news/china/analysis/feed.json")
+CHINA_ANALYSIS_RSS_FEED_RELATIVE = Path("news/china/analysis/feed.xml")
+CHINA_ANALYSIS_AVAILABILITY_ID = (
+    "palimpsest-news:china-censorship-analysis:availability"
+)
+CHINA_ANALYSIS_AVAILABILITY_KIND = "china_censorship_analysis_availability"
+CHINA_ANALYSIS_AVAILABILITY_DISPOSITION = "rights-restricted-availability-v1"
+CHINA_ANALYSIS_AVAILABILITY_TITLE = (
+    "[Palimpsest availability] China censorship analysis: public finding unavailable"
+)
+CHINA_ANALYSIS_AVAILABILITY_DESCRIPTION = (
+    "Availability updates for Palimpsest's China censorship analysis. No current "
+    "cross-instrument finding is published while required public values are "
+    "restricted."
+)
+CHINA_ANALYSIS_AVAILABILITY_SUMMARY = (
+    "No current cross-instrument finding is published because the active source "
+    "policy does not allow the required public values."
+)
+CHINA_ANALYSIS_AVAILABILITY_MEANING = (
+    "This is not a zero, normal, safe, unchanged, or directional reading. Publisher "
+    "source reports remain available separately and are not treated as Palimpsest "
+    "measurements."
+)
+CHINA_ANALYSIS_AVAILABILITY_RSS_DESCRIPTION = (
+    "Palimpsest availability notice. "
+    + CHINA_ANALYSIS_AVAILABILITY_SUMMARY
+    + " "
+    + CHINA_ANALYSIS_AVAILABILITY_MEANING
+    + " Evidence: "
+    + _PUBLIC_RIGHTS_EVIDENCE_URL
+)
 
 _GENERATED_MANIFEST_PATH = Path("news/generated-manifest.json")
 _WIRE_HISTORY_INTEGRITY_PATH = Path("news/wire-history-integrity.json")
@@ -1082,6 +1153,198 @@ def _parse_time(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _china_public_values_denied(
+    publication_at: str,
+    *,
+    policy_path: Path = CHINA_ECON_SOURCE_POLICY,
+) -> bool:
+    """Fail closed when either required public-value grant is not effective.
+
+    The feed clock is the decision clock. This keeps a replay of an old edition
+    deterministic instead of silently changing its rights outcome merely
+    because the renderer ran again later.
+    """
+
+    try:
+        decision_clock = _parse_time(publication_at)
+        policy = newswire_model.strict_json_loads(
+            policy_path.read_bytes(), label=str(policy_path)
+        )
+        if (
+            type(policy) is not dict
+            or policy.get("schema_version")
+            != "palimpsest.china-economic-source-policy.v1"
+            or type(policy.get("sources")) is not list
+        ):
+            return True
+        decisions: dict[str, Mapping[str, Any]] = {}
+        for row in policy["sources"]:
+            if type(row) is not dict or type(row.get("source_id")) is not str:
+                return True
+            source_id = row["source_id"]
+            if source_id in decisions:
+                return True
+            decisions[source_id] = row
+        for source_id in _REQUIRED_PUBLIC_VALUE_SOURCE_IDS:
+            row = decisions.get(source_id)
+            if (
+                row is None
+                or row.get("decision") != "allow"
+                or row.get("values_allowed") is not True
+                or type(row.get("reviewed_at")) is not str
+                or type(row.get("expires_at")) is not str
+            ):
+                return True
+            reviewed_at = _parse_time(row["reviewed_at"])
+            expires_at = _parse_time(row["expires_at"])
+            if not reviewed_at <= decision_clock < expires_at:
+                return True
+    except (KeyError, OSError, TypeError, ValueError, newsroom.NewsroomError):
+        return True
+    return False
+
+
+def _rights_safe_story(
+    story: Mapping[str, Any], *, publication_at: str
+) -> dict[str, Any]:
+    """Return an identity-preserving, availability-only public story."""
+
+    signal_id = story["signal_id"]
+    public_label = _RIGHTS_SAFE_PROJECTION_LABELS[signal_id]
+    statement = (
+        f"No current finding is published for {public_label} because public value "
+        "publication is restricted by the active source policy."
+    )
+    metric = {
+        "label": None,
+        "value": None,
+        "unit": None,
+        "denominator": {"label": None, "value": None},
+    }
+    claim_core = {
+        "claim_type": "availability",
+        "metric": metric,
+        "signal_id": signal_id,
+        "statement": statement,
+        "status": "degraded",
+    }
+    projected = copy.deepcopy(story)
+    projected.update(
+        {
+            "headline": f"{public_label}: public value unavailable",
+            "dek": (
+                "This route remains available, but its current result is withheld "
+                "until the source policy records an effective public-value grant."
+            ),
+            "status": "degraded",
+            "published_at": publication_at,
+            "modified_at": publication_at,
+            "claim_fingerprint": "sha256:"
+            + hashlib.sha256(newsroom.canonical_json_bytes(claim_core)).hexdigest(),
+            "metric": metric,
+            "claims": [{"type": "availability", "statement": statement}],
+            "evidence": {
+                "url": _PUBLIC_RIGHTS_EVIDENCE_URL,
+                "input": {
+                    # Keep the logical per-signal filename so its established
+                    # analysis sidecar route does not collapse into one shared
+                    # path. The URL, hash, bytes, and clock all bind only to the
+                    # rights-status projection.
+                    "filename": story["evidence"]["input"]["filename"],
+                    "sha256": None,
+                    "bytes": None,
+                },
+                "source_timestamp": None,
+            },
+            "method": {
+                "summary": (
+                    "Availability-only public projection under the active China "
+                    "economic source policy"
+                ),
+                "version": 1,
+            },
+            "limitations": [
+                "Current finding withheld: public value publication is restricted",
+                (
+                    "Availability is not a zero, a normal reading, or evidence of "
+                    "direction."
+                ),
+            ],
+        }
+    )
+    return projected
+
+
+def _rights_safe_newsroom_feed(feed: Mapping[str, Any]) -> dict[str, Any]:
+    """Project all policy-coupled stories before any public derivative exists."""
+
+    projected = copy.deepcopy(feed)
+    publication_at = projected["generated_at"]
+    observed_ids = {story["signal_id"] for story in projected["stories"]}
+    missing = sorted(_RIGHTS_SAFE_PROJECTION_SIGNAL_IDS - observed_ids)
+    if missing:
+        raise newsroom.NewsroomError(
+            "rights-safe newsroom projection is missing canonical signals: "
+            + ", ".join(missing)
+        )
+    projected["stories"] = [
+        (
+            _rights_safe_story(story, publication_at=publication_at)
+            if story["signal_id"] in _RIGHTS_SAFE_PROJECTION_SIGNAL_IDS
+            else story
+        )
+        for story in projected["stories"]
+    ]
+    counts = {
+        status: sum(story["status"] == status for story in projected["stories"])
+        for status in ("live", "degraded", "stale", "missing", "corrupt")
+    }
+    projected["headline"] = (
+        "Public-value availability is restricted under source policy"
+    )
+    projected["coverage"].update(
+        {
+            "live": counts["live"],
+            "reporting": counts["live"] + counts["degraded"] + counts["stale"],
+            "status": "degraded",
+            "counts": counts,
+        }
+    )
+    return projected
+
+
+def _rights_safe_analysis_feed(feed: Mapping[str, Any]) -> dict[str, Any]:
+    """Remove unavailable placeholders from cross-record analytical context."""
+
+    safe = copy.deepcopy(feed)
+    safe["stories"] = [
+        story
+        for story in safe["stories"]
+        if story["signal_id"] not in _RIGHTS_SAFE_PROJECTION_SIGNAL_IDS
+    ]
+    safe["n_stories"] = len(safe["stories"])
+    counts = {
+        status: sum(story["status"] == status for story in safe["stories"])
+        for status in ("live", "degraded", "stale", "missing", "corrupt")
+    }
+    safe["coverage"].update(
+        {
+            "total": len(safe["stories"]),
+            "reporting": counts["live"] + counts["degraded"] + counts["stale"],
+            "live": counts["live"],
+            "status": "degraded",
+            "counts": counts,
+        }
+    )
+    return safe
+
+
+def _deduplicated_tags(values: Sequence[str]) -> list[str]:
+    """Keep first-seen JSON Feed tag order while emitting each tag once."""
+
+    return list(dict.fromkeys(values))
+
+
 def _human_time(value: str | None) -> str:
     if not value:
         return "not observed"
@@ -1126,6 +1389,71 @@ def _metric_caption(story: Mapping[str, Any]) -> str:
     return text
 
 
+def _is_availability_story(story: Mapping[str, Any]) -> bool:
+    """Recognize an instrument record that explicitly publishes no result."""
+
+    metric = story.get("metric")
+    claims = story.get("claims")
+    return (
+        metric
+        == {
+            "label": None,
+            "value": None,
+            "unit": None,
+            "denominator": {"label": None, "value": None},
+        }
+        and isinstance(claims, list)
+        and len(claims) == 1
+        and isinstance(claims[0], Mapping)
+        and claims[0].get("type") == "availability"
+    )
+
+
+def _is_rights_safe_availability_story(story: Mapping[str, Any]) -> bool:
+    """Recognize the exact no-value public projection used for denied signals."""
+
+    evidence = story.get("evidence")
+    return (
+        _is_availability_story(story)
+        and story.get("signal_id") in _RIGHTS_SAFE_PROJECTION_SIGNAL_IDS
+        and story.get("status") == "degraded"
+        and isinstance(evidence, Mapping)
+        and evidence.get("url") == _PUBLIC_RIGHTS_EVIDENCE_URL
+        and evidence.get("source_timestamp") is None
+    )
+
+
+def _instrument_record_kind(story: Mapping[str, Any]) -> str:
+    """Return the reader-visible kind, rejecting ambiguous result semantics."""
+
+    if _is_availability_story(story):
+        return "availability"
+    metric = story.get("metric")
+    claims = story.get("claims")
+    if (
+        isinstance(metric, Mapping)
+        and metric.get("label") is not None
+        and metric.get("value") is not None
+        and isinstance(claims, list)
+        and len(claims) == 1
+        and isinstance(claims[0], Mapping)
+        and claims[0].get("type") != "availability"
+    ):
+        return "measurement"
+    raise newsroom.NewsroomError(
+        f"instrument {story.get('signal_id')!r} is neither a measurement nor an "
+        "availability notice"
+    )
+
+
+def _instrument_record_counts(feed: Mapping[str, Any]) -> tuple[int, int]:
+    """Return measurement and availability counts from the rendered item shape."""
+
+    stories = feed["stories"]
+    kinds = [_instrument_record_kind(story) for story in stories]
+    return kinds.count("measurement"), kinds.count("availability")
+
+
 def _status_label(status: str) -> str:
     return {
         "live": "Current evidence",
@@ -1141,8 +1469,13 @@ def _story_share_card_spec(
 ) -> dict[str, Any]:
     """Bind one instrument card to the same state and metric shown on its page."""
 
-    withheld_title = _PUBLIC_VALUE_WITHHELD_SHARE_CARDS.get(story["signal_id"])
-    status = "restricted" if withheld_title is not None else story["status"]
+    restricted = _is_rights_safe_availability_story(story)
+    withheld_title = (
+        _PUBLIC_VALUE_WITHHELD_SHARE_CARDS[story["signal_id"]]
+        if restricted
+        else None
+    )
+    status = "restricted" if restricted else story["status"]
     evidence = story["evidence"]
     source_input = evidence["input"]
     metric = None
@@ -1152,7 +1485,6 @@ def _story_share_card_spec(
             "label": _metric_caption(story),
     }
     digest = source_input.get("sha256")
-    restricted = withheld_title is not None
     return {
         "schema_version": share_cards.SPEC_VERSION,
         "kind": "instrument-reading",
@@ -1219,7 +1551,7 @@ def _edition_share_card_spec(feed: Mapping[str, Any]) -> dict[str, Any]:
     unrestricted = [
         story
         for story in feed["stories"]
-        if story["signal_id"] not in _PUBLIC_VALUE_WITHHELD_SHARE_CARDS
+        if not _is_availability_story(story)
     ]
     if not unrestricted:
         raise newsroom.NewsroomError(
@@ -1233,12 +1565,12 @@ def _edition_share_card_spec(feed: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": share_cards.SPEC_VERSION,
         "kind": "newsroom-edition",
-        "kicker": "PALIMPSEST WIRE / CURRENT EDITION",
+        "kicker": "PALIMPSEST WIRE / VERIFIED SNAPSHOT",
         "title": lead["headline"],
         "status": "edition",
         "status_label": (
-            f"{coverage['status'].upper()} COVERAGE / "
-            f"{coverage['live']} OF {coverage['total']} LIVE"
+            f"{coverage['status'].upper()} COVERAGE AT BUILD / "
+            f"{coverage['live']} OF {coverage['total']} AVAILABLE"
         ),
         "metric": metric,
         "as_of": feed["generated_at"],
@@ -1303,6 +1635,24 @@ def _china_analysis_share_card_spec(article: Mapping[str, Any]) -> dict[str, Any
         "source": "PALIMPSEST NEWSROOM EDITION",
         "receipt": article["revision_id"],
         "target_url": f"{SITE}{article['url']}",
+    }
+
+
+def _china_analysis_unavailable_share_card_spec(
+    feed: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "china-analysis",
+        "kicker": "CHINA CENSORSHIP ANALYSIS / AVAILABILITY NOTICE",
+        "title": "No cross-instrument finding is published in this edition.",
+        "status": "restricted",
+        "status_label": "PUBLIC VALUE UNAVAILABLE / SOURCE POLICY",
+        "metric": None,
+        "as_of": feed["generated_at"],
+        "source": _PUBLIC_RIGHTS_EVIDENCE_FILENAME,
+        "receipt": None,
+        "target_url": f"{SITE}/news/china/analysis/",
     }
 
 
@@ -1513,6 +1863,7 @@ def _head(
     extra_styles: Sequence[str] = (),
     image_url: str = OG_IMAGE,
     image_alt: str = "Palimpsest evidence observatory",
+    robots: str = "index, follow, max-image-preview:large, max-snippet:-1",
 ) -> str:
     article_meta = ""
     if published_at:
@@ -1534,7 +1885,7 @@ def _head(
 <title>{_h(title)}</title>
 <meta name="description" content="{_h(description)}">
 <meta name="author" content="{PUBLISHER}">
-<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="robots" content="{_h(robots)}">
 <link rel="canonical" href="{_h(canonical)}">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="alternate" type="application/feed+json" title="Palimpsest Wire JSON Feed" href="{_h(feed_base)}/feed.json">
@@ -1675,11 +2026,33 @@ def _story_card(story: Mapping[str, Any], section_title: str) -> str:
     digest = evidence["input"]["sha256"]
     short_hash = digest[:12] if digest else "no-source-hash"
     status_class = "" if story["status"] == "live" else " nw-kicker--warning"
-    return f"""<article class="nw-card" data-status="{_h(story["status"])}">
+    availability_only = _is_availability_story(story)
+    rights_restricted = _is_rights_safe_availability_story(story)
+    claim_type = ""
+    if availability_only:
+        claim_type = (
+            ' data-claim-type="availability"'
+            ' data-palimpsest-kind="instrument-availability"'
+            f' data-signal-id="{_h(story["signal_id"])}"'
+        )
+        if rights_restricted:
+            claim_type += (
+                ' data-publication-disposition="rights-restricted-availability-v1"'
+            )
+    availability_label = (
+        "Public value unavailable" if rights_restricted else "Current result unavailable"
+    )
+    result = (
+        f'<p class="nw-card__availability"><strong>{availability_label}</strong>'
+        "<span>Not zero; no current result is published.</span></p>"
+        if availability_only
+        else f'<p class="nw-card__metric"><strong>{_h(_metric_value(story))}</strong>{_h(_metric_caption(story))}</p>'
+    )
+    return f"""<article class="nw-card" data-status="{_h(story["status"])}"{claim_type}>
   <p class="nw-card__kicker{status_class}">{_h(section_title)} · {_h(_status_label(story["status"]))}</p>
   <h3><a class="nw-card__link" href="/{_h(story["url"].removeprefix(SITE).lstrip("/"))}">{_h(story["headline"])}</a></h3>
   <p class="nw-card__dek">{_h(story["dek"])}</p>
-  <p class="nw-card__metric"><strong>{_h(_metric_value(story))}</strong>{_h(_metric_caption(story))}</p>
+  {result}
   <p class="nw-card__meta"><time datetime="{_h(story["published_at"])}">{_h(_human_time(story["published_at"]))}</time><span class="nw-card__hash">sha {short_hash}</span></p>
 </article>"""
 
@@ -1696,16 +2069,21 @@ def _lead(
     heading = f"h{heading_level}"
     qualifier = story["limitations"][0]
     status_class = "" if story["status"] == "live" else " nw-kicker--warning"
+    item_type = (
+        "Palimpsest availability notice"
+        if _is_availability_story(story)
+        else "Palimpsest measurement"
+    )
     return f"""<section class="nw-lead" aria-labelledby="{_h(heading_id)}">
   <div>
-    <p class="nw-kicker{status_class}">Palimpsest measurement · {_h(section_title)} · {_h(_status_label(story["status"]))}</p>
+    <p class="nw-kicker{status_class}">{item_type} · {_h(section_title)} · {_h(_status_label(story["status"]))}</p>
     <{heading} id="{_h(heading_id)}">{_h(story["headline"])}</{heading}>
     <p class="nw-lead__dek">{_h(story["dek"])}</p>
     <p class="nw-lead__qualifier"><strong>Read with this qualifier:</strong> {_h(qualifier)}</p>
     <div class="nw-actions">
       <a class="nw-actions__primary" href="/{_h(story["url"].removeprefix(SITE).lstrip("/"))}">Open result and receipt</a>
       <a href="/readings/newsroom-latest.json">Structured edition</a>
-      <a href="/news/instruments/feed.xml">Measurements-only RSS</a>
+      <a href="/news/instruments/feed.xml">Instrument RSS</a>
     </div>
   </div>
   {_receipt(story)}
@@ -1746,8 +2124,9 @@ def _wire_index_json_ld(
                 "url": feed["url"],
                 "name": "Palimpsest evidence desk",
                 "description": (
-                    "Palimpsest measurements and an attributed publisher source "
-                    "index kept in separate, labeled sections."
+                    "Palimpsest instrument records, including explicit availability "
+                    "notices, and an attributed publisher source index kept in "
+                    "separate, labeled sections."
                 ),
                 "dateModified": max(feed["generated_at"], wire["generated_at"]),
                 "publisher": {"@id": f"{SITE}/#organization"},
@@ -1843,7 +2222,7 @@ def _event_lead(event: Mapping[str, Any], wire: Mapping[str, Any]) -> str:
     <div class="nw-actions">
       <a class="nw-actions__primary" href="{_h(event["evidence_refs"][0]["url"])}">Read the original report</a>
       <a href="{_h(_site_path(event["url"]))}">Open Palimpsest source record</a>
-      <a href="/readings/newswire-latest.json">Structured source index</a>
+      <a href="/news/feed.json">Structured instrument + source feed</a>
     </div>
   </div>
   <aside class="nw-wire-lead__rail">
@@ -2225,7 +2604,7 @@ def _instrument_sections(
         cards = "".join(_story_card(story, section["title"]) for story in stories)
         blocks.append(f"""<section class="nw-section nw-section--instruments" id="instrument-{_h(section["id"])}">
   <div class="nw-section__head">
-    <div><p class="nw-section__label">Palimpsest measurements</p><h2>{_h(section["title"])}</h2></div>
+    <div><p class="nw-section__label">Palimpsest instruments</p><h2>{_h(section["title"])}</h2></div>
     <p class="nw-section__dek">{_h(section["dek"])}</p>
   </div>
   <div class="nw-grid">{cards}</div>
@@ -2251,7 +2630,7 @@ def render_evidence_index(
         wire, lead_event_id=source_lead["event_id"]
     )
     coverage = wire["coverage"]
-    instrument_coverage = feed["coverage"]
+    measurement_count, availability_count = _instrument_record_counts(feed)
     investigations_nav = (
         '<li><a href="#investigations">Investigations</a></li>'
         if investigations is not None
@@ -2278,39 +2657,39 @@ def render_evidence_index(
   <header class="nw-masthead">
     <div class="nw-masthead__top">
       <p class="nw-wordmark">Palimpsest <span>Evidence desk</span></p>
-      <p class="nw-edition"><strong>Current edition</strong>{_h(_human_time(wire["generated_at"]))}<br>{feed["n_stories"]} measurements · {wire["n_events"]} source records{investigations_count}{analysis_count}</p>
+      <p class="nw-edition"><strong>Edition generated</strong>{_h(_human_time(wire["generated_at"]))}<br>{measurement_count} measurements · {availability_count} availability notices · {wire["n_events"]} source records{investigations_count}{analysis_count}</p>
     </div>
-    <h1 class="nw-masthead__headline">Measurements first. Source reports clearly labeled.</h1>
-    <p class="nw-masthead__dek">This is not a replacement newspaper. Palimpsest publishes its own measured results, then keeps publisher reports in a separate source index with attribution, source structure, revisions and unknowns visible.</p>
+    <h1 class="nw-masthead__headline">Instrument results first. Source reports clearly labeled.</h1>
+    <p class="nw-masthead__dek">This is not a replacement newspaper. Palimpsest publishes its own instrument records, labels unavailable results as availability notices, then keeps publisher reports in a separate source index with attribution, source structure, revisions and unknowns visible.</p>
   </header>
-  <div class="nw-meta-line"><span>Results · source index · investigations</span><span>Window {_h(_human_time(wire["window"]["from"]))} → {_h(_human_time(wire["window"]["to"]))}</span><a href="/news/instruments/feed.xml">Measurements-only RSS</a><a href="/feeds/">All feeds</a><a href="/readings/newswire-latest.json">Structured source index</a></div>
+  <div class="nw-meta-line"><span>Results · source index · investigations</span><span>Window {_h(_human_time(wire["window"]["from"]))} → {_h(_human_time(wire["window"]["to"]))}</span><a href="/news/instruments/feed.xml">Instrument RSS</a><a href="/feeds/">All feeds</a><a href="/news/feed.json">Structured instrument + source feed</a></div>
   <div class="nw-status-strip" role="status" aria-label="Edition coverage">
-    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{instrument_coverage["live"]}/{instrument_coverage["total"]}</strong> measurements live</span>
+    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{measurement_count}</strong> measurements · <strong>{availability_count}</strong> availability notices in this edition</span>
     <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{coverage["successful_sources"]}/{coverage["registry_sources"]}</strong> feeds answered</span>
     <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage["rejected_items"]}</strong> rejected / out-of-window</span>
     <span><strong>{wire["n_events"]}</strong> attributed source records</span>
   </div>
-  <nav class="nw-task-strip" aria-label="Start with a task"><a href="#latest-measurement"><strong>See a Palimpsest result</strong><span>Measurement + receipt + limit</span></a><a href="#source-index"><strong>Look up a publisher report</strong><span>Attributed source index</span></a><a href="/feeds/"><strong>Choose a feed</strong><span>Purpose and boundary first</span></a><a href="/developers.html"><strong>Use the data</strong><span>API + MCP + files</span></a></nav>
-  <nav aria-label="Evidence desk sections"><ul class="nw-section-nav"><li><a href="#latest-measurement">Latest measurement</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}<li><a href="#instruments">More measurements</a></li><li><a href="#source-index">Source index</a></li>{event_navigation}<li><a href="#tape-title">Feed coverage</a></li></ul></nav>
+  <nav class="nw-task-strip" aria-label="Start with a task"><a href="#latest-measurement"><strong>See a Palimpsest instrument record</strong><span>Measurement or availability + receipt + limit</span></a><a href="#source-index"><strong>Look up a publisher report</strong><span>Attributed source index</span></a><a href="/feeds/"><strong>Choose a feed</strong><span>Purpose and boundary first</span></a><a href="/developers.html"><strong>Use the data</strong><span>API + MCP + files</span></a></nav>
+  <nav aria-label="Evidence desk sections"><ul class="nw-section-nav"><li><a href="#latest-measurement">Featured instrument</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}<li><a href="#instruments">More instrument records</a></li><li><a href="#source-index">Source index</a></li>{event_navigation}<li><a href="#tape-title">Feed coverage</a></li></ul></nav>
   <div id="latest-measurement">{_lead(instrument_lead, sections[instrument_lead["section"]]["title"], heading_level=2, heading_id="latest-measurement-title")}</div>
   {_economic_panel(pulse)}
   {_machine_analysis_feature(machine_analyses)}
   {_investigations_feature(investigations)}
-  <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Palimpsest results</p><h2>More current measurements</h2><p>These are Palimpsest's own mutable latest-state briefs. Each one names its source bytes, freshness, denominator and limitation.</p></div>
+  <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Palimpsest instruments</p><h2>More instrument records in this edition</h2><p>Measurement briefs show a result; availability notices explicitly publish no result. Both show their state at the edition's generation time and retain their receipt and limitation.</p></div>
   {_instrument_sections(feed, exclude_signal_id=instrument_lead["signal_id"])}
   {_event_lead(source_lead, wire)}
   {event_blocks}
   {_accountability_tape(wire)}
 </main>
-<footer class="nw-footer"><div class="nw-shell">Palimpsest publishes measurements and maintains an attributed publisher source index. A source record is not an independent finding. <a href="/feeds/">Feeds by purpose</a> · <a href="/news/analysis/">Machine analysis</a> · <a href="/news/investigations/">Investigations register</a> · <a href="/news/standards/">Reporting standards</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
+<footer class="nw-footer"><div class="nw-shell">Palimpsest publishes measurements and explicit availability notices, and maintains an attributed publisher source index. A source record is not an independent finding. <a href="/feeds/">Feeds by purpose</a> · <a href="/news/analysis/">Machine analysis</a> · <a href="/news/investigations/">Investigations register</a> · <a href="/news/standards/">Reporting standards</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
 {site_nav.FOOT}
 </body>
 </html>
 """
     return (
         _head(
-            title="Palimpsest evidence desk · measurements and attributed source reports",
-            description="Palimpsest measurements first, plus a clearly labeled publisher source index with receipts, revisions, source independence and limits.",
+            title="Palimpsest evidence desk · instrument records and attributed source reports",
+            description="Palimpsest measurements and availability notices first, plus a clearly labeled publisher source index with receipts, revisions, source independence and limits.",
             canonical=feed["url"],
             page_type="website",
             modified_at=max(feed["generated_at"], wire["generated_at"]),
@@ -3395,6 +3774,7 @@ def render_index(
     feed: Mapping[str, Any], *, share_card: share_cards.RenderedCard | None = None
 ) -> str:
     stories = feed["stories"]
+    measurement_count, availability_count = _instrument_record_counts(feed)
     sections = {section["id"]: section for section in feed["sections"]}
     lead = _select_lead(stories)
     coverage = feed["coverage"]
@@ -3438,9 +3818,9 @@ def render_index(
   <header class="nw-masthead">
     <div class="nw-masthead__top">
       <p class="nw-wordmark">Palimpsest <span>Wire</span></p>
-      <p class="nw-edition"><strong>Verified edition</strong>{_h(_human_time(feed["generated_at"]))}<br>{feed["n_stories"]} evidence-linked dispatches</p>
+      <p class="nw-edition"><strong>Verified edition</strong>{_h(_human_time(feed["generated_at"]))}<br>{measurement_count} measurements · {availability_count} availability notices</p>
     </div>
-    <p class="nw-masthead__dek">Measurements become readable reports without losing their source, denominator, freshness or limits. Automated wording; no causal inference.</p>
+    <p class="nw-masthead__dek">Instrument records become readable reports without losing their source, denominator, freshness or limits. Availability notices publish no result. Automated wording; no causal inference.</p>
   </header>
   <div class="nw-meta-line"><span>China · open-source evidence</span><span>Updated <time datetime="{_h(feed["generated_at"])}">{_h(_human_time(feed["generated_at"]))}</time></span><a href="/news/feed.xml">RSS</a><a href="/news/feed.json">JSON Feed</a><a href="/readings/newsroom-latest.json">Full structured edition</a></div>
   <div class="nw-status-strip" role="status" aria-label="Edition coverage">
@@ -4021,7 +4401,7 @@ def render_event(
     </section>
   </article>
 </main>
-<footer class="nw-footer"><div class="nw-shell"><a href="/news/#source-index">← Publisher source index</a> · <a href="{_h(primary_ref["url"])}">Original report</a> · <a href="/readings/newswire-latest.json">Structured source index</a> · <a href="story.json">Current record JSON</a> · <a href="analysis.json">Palimpsest addition JSON</a></div></footer>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/#source-index">← Publisher source index</a> · <a href="{_h(primary_ref["url"])}">Original report</a> · <a href="/news/feed.json">Structured instrument + source feed</a> · <a href="story.json">Current record JSON</a> · <a href="analysis.json">Palimpsest addition JSON</a></div></footer>
 {site_nav.FOOT}
 </body>
 </html>
@@ -4094,7 +4474,7 @@ def render_wire_archive(
   {pagination}
   {_accountability_tape(wire)}
 </main>
-<footer class="nw-footer"><div class="nw-shell"><a href="/news/#source-index">← Evidence desk</a> · <a href="/news/instruments/feed.xml">Measurements-only RSS</a> · <a href="/readings/newswire-latest.json">Structured source index</a></div></footer>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/#source-index">← Evidence desk</a> · <a href="/news/instruments/feed.xml">Instrument RSS</a> · <a href="/news/feed.json">Structured instrument + source feed</a></div></footer>
 {site_nav.FOOT}
 </body></html>"""
     return (
@@ -4282,6 +4662,61 @@ def render_china_censorship_analysis(
     )
 
 
+def render_china_analysis_unavailable(
+    feed: Mapping[str, Any],
+    *,
+    share_card: share_cards.RenderedCard,
+) -> str:
+    """Keep the established route useful without deriving a denied finding."""
+
+    title = "China censorship analysis: public finding unavailable"
+    description = (
+        "Palimpsest did not publish a cross-instrument finding because the active "
+        "source policy does not allow the required public values."
+    )
+    generated_at = _h(feed["generated_at"])
+    body = f"""<body class="ps newsroom-page china-analysis-page">
+{site_nav.render("/news/china/analysis/")}
+<main id="main">
+  <header class="ca-hero">
+    <div class="ca-shell ca-hero__meta"><span>PALIMPSEST / AVAILABILITY NOTICE</span><time datetime="{generated_at}">{_h(_human_time(feed["generated_at"]))}</time></div>
+    <div class="ca-shell ca-hero__grid"><div><p class="ca-eyebrow">No current cross-instrument finding</p><h1>{_h(title)}</h1></div><div><p>{_h(description)}</p><a href="/readings/china-publication-rights-latest.json">Open the public rights receipt</a></div></div>
+  </header>
+  <section class="ca-section ca-shell" aria-labelledby="availability-meaning">
+    <header><span>01</span><h2 id="availability-meaning">What this means</h2></header>
+    <div><p>The page remains available so bookmarks and citations do not break. Palimpsest has not calculated, retained, or substituted a public result for this edition.</p><p>Unavailable is not zero, normal, safe, unchanged, or evidence of direction. Publisher source reports remain available separately and are not treated as Palimpsest measurements.</p></div>
+  </section>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/china/">← China publisher source index</a> · <a href="/news/">Evidence desk</a> · <a href="/readings/china-publication-rights-latest.json">Rights receipt</a> · <a href="/docs/NEWSROOM.md">Method</a></div></footer>
+{site_nav.FOOT}
+</body></html>"""
+    return (
+        _head(
+            title=f"{title} · Palimpsest",
+            description=description,
+            canonical=f"{SITE}/news/china/analysis/",
+            page_type="website",
+            modified_at=feed["generated_at"],
+            feed_base="/news/china",
+            extra_styles=("/assets/china-analysis.css",),
+            json_ld={
+                "@context": "https://schema.org",
+                "@type": "WebPage",
+                "name": title,
+                "description": description,
+                "url": f"{SITE}/news/china/analysis/",
+                "dateModified": feed["generated_at"],
+                "isBasedOn": _PUBLIC_RIGHTS_EVIDENCE_URL,
+            },
+            image_url=share_card.url,
+            image_alt=share_card.alt,
+            robots="noindex, follow, max-image-preview:large",
+        )
+        + "\n"
+        + body
+    )
+
+
 def build_china_analysis_json_feed(article: Mapping[str, Any]) -> dict[str, Any]:
     text = [article["thesis"]]
     for section in article["sections"]:
@@ -4346,6 +4781,87 @@ def build_china_analysis_rss(article: Mapping[str, Any]) -> bytes:
   <lastBuildDate>{_rfc2822(article["updated_at"])}</lastBuildDate>
   <atom:link href="{SITE}/news/china/analysis/feed.xml" rel="self" type="application/rss+xml" />
   <item><title>{xml_escape("[Palimpsest analysis] " + article["title"])}</title><link>{SITE}{xml_escape(article["url"])}</link><guid isPermaLink="false">{xml_escape(article["revision_id"])}</guid><pubDate>{_rfc2822(article["updated_at"])}</pubDate><description>{xml_escape("Palimpsest cross-instrument analysis. " + article["dek"])}</description><category>palimpsest-analysis</category><category>China censorship analysis</category></item>
+</channel>
+</rss>
+"""
+    return xml.encode("utf-8")
+
+
+def build_china_analysis_availability_json_feed(
+    generated_at: str,
+) -> dict[str, Any]:
+    """Return the closed no-value China-analysis feed for a denied edition."""
+
+    _parse_time(generated_at)
+    return {
+        "version": "https://jsonfeed.org/version/1.1",
+        "title": "Palimpsest China Censorship Analysis",
+        "home_page_url": f"{SITE}/news/china/analysis/",
+        "feed_url": f"{SITE}/news/china/analysis/feed.json",
+        "description": CHINA_ANALYSIS_AVAILABILITY_DESCRIPTION,
+        "items": [
+            {
+                "id": CHINA_ANALYSIS_AVAILABILITY_ID,
+                "url": f"{SITE}/news/china/analysis/",
+                "title": CHINA_ANALYSIS_AVAILABILITY_TITLE,
+                "summary": CHINA_ANALYSIS_AVAILABILITY_SUMMARY,
+                "content_text": "\n\n".join(
+                    [
+                        "ITEM TYPE: PALIMPSEST AVAILABILITY",
+                        "Availability: " + CHINA_ANALYSIS_AVAILABILITY_SUMMARY,
+                        "What this means: " + CHINA_ANALYSIS_AVAILABILITY_MEANING,
+                        "Evidence: " + _PUBLIC_RIGHTS_EVIDENCE_URL,
+                    ]
+                ),
+                "date_published": generated_at,
+                "date_modified": generated_at,
+                "authors": [
+                    {
+                        "name": "Palimpsest China Desk",
+                        "url": f"{SITE}/news/china/analysis/",
+                    }
+                ],
+                "tags": [
+                    "palimpsest-availability",
+                    "China",
+                    "censorship",
+                    "rights-restricted",
+                ],
+                "attachments": [
+                    {
+                        "url": _PUBLIC_RIGHTS_EVIDENCE_URL,
+                        "mime_type": "application/json",
+                        "title": _PUBLIC_RIGHTS_EVIDENCE_FILENAME,
+                    }
+                ],
+                "_palimpsest": {
+                    "kind": CHINA_ANALYSIS_AVAILABILITY_KIND,
+                    "publication_disposition": (
+                        CHINA_ANALYSIS_AVAILABILITY_DISPOSITION
+                    ),
+                    "value_state": "withheld",
+                    "verification_status": "public_finding_unavailable",
+                },
+            }
+        ],
+        "language": "en",
+    }
+
+
+def build_china_analysis_availability_rss(generated_at: str) -> bytes:
+    """Return the format-valid RSS companion to the denied JSON Feed."""
+
+    rss_clock = _rfc2822(generated_at)
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:palimpsest="https://palimpsest.info/ns/publication/1.0">
+<channel>
+  <title>Palimpsest China Censorship Analysis</title>
+  <link>{SITE}/news/china/analysis/</link>
+  <description>{xml_escape(CHINA_ANALYSIS_AVAILABILITY_DESCRIPTION)}</description>
+  <language>en</language>
+  <lastBuildDate>{rss_clock}</lastBuildDate>
+  <atom:link href="{SITE}/news/china/analysis/feed.xml" rel="self" type="application/rss+xml" />
+  <item><title>{xml_escape(CHINA_ANALYSIS_AVAILABILITY_TITLE)}</title><link>{SITE}/news/china/analysis/</link><guid isPermaLink="false">{CHINA_ANALYSIS_AVAILABILITY_ID}</guid><pubDate>{rss_clock}</pubDate><description>{xml_escape(CHINA_ANALYSIS_AVAILABILITY_RSS_DESCRIPTION)}</description><category>palimpsest-availability</category><category>China censorship analysis</category><source url="{_PUBLIC_RIGHTS_EVIDENCE_URL}">china-publication-rights</source><palimpsest:kind>{CHINA_ANALYSIS_AVAILABILITY_KIND}</palimpsest:kind><palimpsest:publicationDisposition>{CHINA_ANALYSIS_AVAILABILITY_DISPOSITION}</palimpsest:publicationDisposition><palimpsest:valueState>withheld</palimpsest:valueState></item>
 </channel>
 </rss>
 """
@@ -4564,16 +5080,18 @@ def build_china_stream_json_feed(stream: Mapping[str, Any]) -> dict[str, Any]:
                 "date_modified": entry["collected_at"],
                 "language": entry["language"],
                 "authors": [{"name": entry["publisher"]["name"]}],
-                "tags": [
-                    "source-report",
-                    (
-                        "multiple-independent-source-groups"
-                        if dossier["independent_groups"] > 1
-                        else "not-independently-verified"
-                    ),
-                    entry["desk"],
-                    *entry["topics"],
-                ],
+                "tags": _deduplicated_tags(
+                    [
+                        "source-report",
+                        (
+                            "multiple-independent-source-groups"
+                            if dossier["independent_groups"] > 1
+                            else "not-independently-verified"
+                        ),
+                        entry["desk"],
+                        *entry["topics"],
+                    ]
+                ),
                 "attachments": [
                     {
                         "url": dossier["url"],
@@ -4581,9 +5099,9 @@ def build_china_stream_json_feed(stream: Mapping[str, Any]) -> dict[str, Any]:
                         "title": "Palimpsest evidence dossier",
                     },
                     {
-                        "url": analysis["url"],
+                        "url": dossier["url"].rstrip("/") + "/story.json",
                         "mime_type": "application/json",
-                        "title": "Palimpsest structured analysis",
+                        "title": "Palimpsest structured publisher source record",
                     },
                 ],
                 "_palimpsest": {
@@ -4999,23 +5517,26 @@ def build_json_feed(
     feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None
 ) -> dict[str, Any]:
     sections = {section["id"]: section["title"] for section in feed["sections"]}
+    measurement_count, availability_count = _instrument_record_counts(feed)
     mixed = wire is not None
     feed_url = (
         f"{SITE}/news/feed.json" if mixed else f"{SITE}/news/instruments/feed.json"
     )
     home_page_url = feed["url"] if mixed else f"{SITE}/news/#instruments"
     title = (
-        "Palimpsest source index + measurements"
+        "Palimpsest source index + instrument records"
         if mixed
-        else "Palimpsest instrument measurements"
+        else "Palimpsest instrument records"
     )
     description = (
-        "Palimpsest measurements followed by clearly labeled publisher source "
-        "records. Source reports remain attributed and are not independently "
-        "verified unless the item states otherwise."
+        f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "availability notices, followed by clearly labeled publisher source records. "
+        "Source reports remain attributed and are not independently verified unless "
+        "the item states otherwise."
         if mixed
-        else "Only Palimpsest's own current instrument measurements, with a result, "
-        "source receipt, freshness state and limitation attached."
+        else f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "explicit no-result availability notices, each with a receipt, edition-time "
+        "state and limitation attached."
     )
     event_items = []
     if wire is not None:
@@ -5050,17 +5571,19 @@ def build_json_feed(
                 ),
                 "date_published": event["published_at"],
                 "date_modified": event["updated_at"],
-                "tags": [
-                    "source-report",
-                    (
-                        "multiple-independent-source-groups"
-                        if len(event["evidence_groups"]) > 1
-                        else "not-independently-verified"
-                    ),
-                    EVENT_DESKS[event["desk"]],
-                    event["evidence_strength"],
-                    *event["topics"],
-                ],
+                "tags": _deduplicated_tags(
+                    [
+                        "source-report",
+                        (
+                            "multiple-independent-source-groups"
+                            if len(event["evidence_groups"]) > 1
+                            else "not-independently-verified"
+                        ),
+                        EVENT_DESKS[event["desk"]],
+                        event["evidence_strength"],
+                        *event["topics"],
+                    ]
+                ),
                 "attachments": [
                     {
                         "url": ref["url"],
@@ -5088,11 +5611,35 @@ def build_json_feed(
             "id": story["id"] + ":" + story["claim_fingerprint"],
             "url": story["url"],
             "external_url": story["evidence"]["url"],
-            "title": "[Palimpsest measurement] " + story["headline"],
-            "summary": "Palimpsest measurement. " + story["dek"],
+            "title": (
+                "[Palimpsest availability] "
+                if _is_availability_story(story)
+                else "[Palimpsest measurement] "
+            )
+            + story["headline"],
+            "summary": (
+                "Palimpsest availability notice. "
+                if _is_availability_story(story)
+                else "Palimpsest measurement. "
+            )
+            + story["dek"],
             "content_text": "\n\n".join(
-                ["ITEM TYPE: PALIMPSEST MEASUREMENT"]
-                + ["Result: " + claim["statement"] for claim in story["claims"]]
+                [
+                    (
+                        "ITEM TYPE: PALIMPSEST AVAILABILITY"
+                        if _is_availability_story(story)
+                        else "ITEM TYPE: PALIMPSEST MEASUREMENT"
+                    )
+                ]
+                + [
+                    (
+                        "Availability: "
+                        if _is_availability_story(story)
+                        else "Result: "
+                    )
+                    + claim["statement"]
+                    for claim in story["claims"]
+                ]
                 + [
                     "Limit: " + " ".join(story["limitations"]),
                     "Evidence: " + story["evidence"]["url"],
@@ -5100,17 +5647,27 @@ def build_json_feed(
             ),
             "date_published": story["published_at"],
             "date_modified": story["modified_at"],
-            "tags": [
-                "palimpsest-measurement",
-                sections[story["section"]],
-                story["signal_id"],
-                story["status"],
-            ],
+            "tags": _deduplicated_tags(
+                [
+                    (
+                        "palimpsest-availability"
+                        if _is_availability_story(story)
+                        else "palimpsest-measurement"
+                    ),
+                    sections[story["section"]],
+                    story["signal_id"],
+                    story["status"],
+                ]
+            ),
             "attachments": [
                 {
                     "url": story["evidence"]["url"],
                     "mime_type": "application/json",
-                    "title": story["evidence"]["input"]["filename"],
+                    "title": (
+                        _PUBLIC_RIGHTS_EVIDENCE_FILENAME
+                        if story["evidence"]["url"] == _PUBLIC_RIGHTS_EVIDENCE_URL
+                        else story["evidence"]["input"]["filename"]
+                    ),
                     **(
                         {"size_in_bytes": story["evidence"]["input"]["bytes"]}
                         if story["evidence"]["input"]["bytes"] is not None
@@ -5119,9 +5676,32 @@ def build_json_feed(
                 }
             ],
             "_palimpsest": {
-                "kind": "instrument_measurement",
+                "kind": (
+                    "instrument_availability"
+                    if _is_availability_story(story)
+                    else "instrument_measurement"
+                ),
                 "revision_id": _revision_id(story, "storyv"),
-                "verification_status": "palimpsest_measurement",
+                **(
+                    {
+                        "signal_id": story["signal_id"],
+                        "publication_disposition": (
+                            "rights-restricted-availability-v1"
+                        ),
+                        "value_state": "withheld",
+                    }
+                    if _is_rights_safe_availability_story(story)
+                    else {}
+                ),
+                "verification_status": (
+                    "public_value_unavailable"
+                    if _is_rights_safe_availability_story(story)
+                    else (
+                        "current_result_unavailable"
+                        if _is_availability_story(story)
+                        else "palimpsest_measurement"
+                    )
+                ),
             },
         }
         for story in feed["stories"]
@@ -5141,24 +5721,33 @@ def build_json_feed(
 def build_rss(feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None) -> bytes:
     items = []
     mixed = wire is not None
+    measurement_count, availability_count = _instrument_record_counts(feed)
     channel_title = (
-        "Palimpsest source index + measurements"
+        "Palimpsest source index + instrument records"
         if mixed
-        else "Palimpsest instrument measurements"
+        else "Palimpsest instrument records"
     )
     channel_link = feed["url"] if mixed else f"{SITE}/news/#instruments"
     channel_description = (
-        "Palimpsest measurements followed by clearly labeled publisher source "
-        "records. Source reports remain attributed and are not independently "
-        "verified unless stated."
+        f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "availability notices, followed by clearly labeled publisher source records. "
+        "Source reports remain attributed and are not independently verified unless "
+        "stated."
         if mixed
-        else "Only Palimpsest's own current instrument measurements, each with its "
-        "source receipt, freshness state and limitation."
+        else f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "explicit no-result availability notices, each with its receipt, edition-time "
+        "state and limitation."
     )
     self_url = f"{SITE}/news/feed.xml" if mixed else f"{SITE}/news/instruments/feed.xml"
     for story in feed["stories"]:
+        availability_only = _is_availability_story(story)
+        rights_restricted = _is_rights_safe_availability_story(story)
+        item_type = (
+            "Palimpsest availability" if availability_only else "Palimpsest measurement"
+        )
+        result_label = "Availability" if availability_only else "Result"
         description = (
-            "Item type: Palimpsest measurement. Result: "
+            f"Item type: {item_type}. {result_label}: "
             + " ".join(claim["statement"] for claim in story["claims"])
             + " Limit: "
             + " ".join(story["limitations"])
@@ -5166,14 +5755,27 @@ def build_rss(feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None) ->
             + story["evidence"]["url"]
         )
         guid = story["id"] + ":" + story["claim_fingerprint"]
+        availability_metadata = ""
+        if availability_only:
+            availability_metadata = (
+                "\n"
+                "    <palimpsest:kind>instrument_availability</palimpsest:kind>\n"
+                f"    <palimpsest:signal>{xml_escape(story['signal_id'])}</palimpsest:signal>"
+            )
+            if rights_restricted:
+                availability_metadata += (
+                    "\n"
+                    "    <palimpsest:publicationDisposition>rights-restricted-availability-v1</palimpsest:publicationDisposition>\n"
+                    "    <palimpsest:valueState>withheld</palimpsest:valueState>"
+                )
         items.append(f"""  <item>
-    <title>{xml_escape("[Palimpsest measurement] " + story["headline"])}</title>
+    <title>{xml_escape(f"[{item_type}] " + story["headline"])}</title>
     <link>{xml_escape(story["url"])}</link>
     <guid isPermaLink="false">{xml_escape(guid)}</guid>
     <pubDate>{_rfc2822(story["published_at"])}</pubDate>
     <description>{xml_escape(description)}</description>
     <category>{xml_escape(story["section"])}</category>
-    <source url={xml_quoteattr(story["evidence"]["url"])}>{xml_escape(story["signal_id"])}</source>
+    <source url={xml_quoteattr(story["evidence"]["url"])}>{xml_escape(story["signal_id"])}</source>{availability_metadata}
   </item>""")
     if wire is not None:
         for event in wire["events"]:
@@ -5207,7 +5809,7 @@ def build_rss(feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None) ->
     <source url={xml_quoteattr(event["evidence_refs"][0]["url"])}>{xml_escape(event["evidence_refs"][0]["source_name"])}</source>
   </item>""")
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:palimpsest="https://palimpsest.info/ns/publication/1.0">
 <channel>
   <title>{xml_escape(channel_title)}</title>
   <link>{xml_escape(channel_link)}</link>
@@ -6183,9 +6785,14 @@ def build_outputs(
         telegram_watch_model.validate_telegram_watch(telegram_watch)
     if dragon_whispers is not None:
         dragon_whispers_model.validate_dragon_whispers(dragon_whispers)
+    public_values_denied = _china_public_values_denied(feed["generated_at"])
+    if public_values_denied:
+        feed = _rights_safe_newsroom_feed(feed)
+    analysis_feed = _rights_safe_analysis_feed(feed) if public_values_denied else feed
+    mixed_page_pulse = None if public_values_denied and wire is not None else pulse
     sections = {section["id"]: section for section in feed["sections"]}
     stories = {story["signal_id"]: story for story in feed["stories"]}
-    china_analysis = china_analysis_model.build(feed)
+    china_analysis = None if public_values_denied else china_analysis_model.build(feed)
     instrument_analyses = instrument_analysis_model.build_instrument_analyses(feed)
     event_analyses: dict[str, Mapping[str, Any]] = {}
     china_stream: Mapping[str, Any] | None = None
@@ -6199,7 +6806,7 @@ def build_outputs(
         )
         candidates = event_analysis_model.build_event_analyses(
             wire,
-            feed,
+            analysis_feed,
             live_families=event_analysis_model.load_optional_live_families(
                 readings_dir
             ),
@@ -6213,6 +6820,7 @@ def build_outputs(
                 readings_dir
             ),
             peer=peer,
+            allow_missing_collectors=public_values_denied,
             archive_refresh_status=load_archive_refresh_status(),
         )
         events_by_id = {event["event_id"]: event for event in wire["events"]}
@@ -6250,6 +6858,8 @@ def build_outputs(
     edition_share_card = share_cards.render_card(_edition_share_card_spec(feed))
     china_analysis_share_card = share_cards.render_card(
         _china_analysis_share_card_spec(china_analysis)
+        if china_analysis is not None
+        else _china_analysis_unavailable_share_card_spec(feed)
     )
     economic_share_card = (
         share_cards.render_card(_economic_share_card_spec(pulse))
@@ -6292,7 +6902,7 @@ def build_outputs(
                 render_evidence_index(
                     feed,
                     wire,
-                    pulse,
+                    mixed_page_pulse,
                     investigations,
                     machine_analyses,
                     share_card=edition_share_card,
@@ -6311,24 +6921,48 @@ def build_outputs(
                 whispers_document,
                 china_analysis,
             ),
-            Path("readings/china-censorship-analysis-latest.json"): (
-                china_analysis_model.pretty_json_bytes(china_analysis)
-            ),
-            Path("news/china/analysis/index.html"): (
-                render_china_censorship_analysis(
-                    china_analysis,
-                    feed=feed,
-                    share_card=china_analysis_share_card,
-                ).encode("utf-8")
-            ),
-            Path("news/china/analysis/feed.json"): _pretty_json(
-                build_china_analysis_json_feed(china_analysis)
-            ),
-            Path("news/china/analysis/feed.xml"): build_china_analysis_rss(
-                china_analysis
-            ),
         }
     )
+    if china_analysis is not None:
+        outputs.update(
+            {
+                Path("readings/china-censorship-analysis-latest.json"): (
+                    china_analysis_model.pretty_json_bytes(china_analysis)
+                ),
+                Path("news/china/analysis/index.html"): (
+                    render_china_censorship_analysis(
+                        china_analysis,
+                        feed=feed,
+                        share_card=china_analysis_share_card,
+                    ).encode("utf-8")
+                ),
+                Path("news/china/analysis/feed.json"): _pretty_json(
+                    build_china_analysis_json_feed(china_analysis)
+                ),
+                Path("news/china/analysis/feed.xml"): build_china_analysis_rss(
+                    china_analysis
+                ),
+            }
+        )
+    else:
+        outputs.update(
+            {
+                Path("news/china/analysis/index.html"): (
+                    render_china_analysis_unavailable(
+                        feed,
+                        share_card=china_analysis_share_card,
+                    ).encode("utf-8")
+                ),
+                CHINA_ANALYSIS_JSON_FEED_RELATIVE: _pretty_json(
+                    build_china_analysis_availability_json_feed(
+                        feed["generated_at"]
+                    )
+                ),
+                CHINA_ANALYSIS_RSS_FEED_RELATIVE: (
+                    build_china_analysis_availability_rss(feed["generated_at"])
+                ),
+            }
+        )
     outputs.update(historical_event_html)
     if wire is not None:
         outputs[Path("news/instruments/feed.json")] = _pretty_json(
@@ -6620,7 +7254,8 @@ def build_outputs(
             generated_times.append(machine_analyses["generated_at"])
         if whispers_document is not None:
             generated_times.append(whispers_document["generated_at"])
-        generated_times.append(china_analysis["generated_at"])
+        if china_analysis is not None:
+            generated_times.append(china_analysis["generated_at"])
         outputs[manifest_path] = _pretty_json(
             {
                 "schema_version": "palimpsest-news-manifest.v1",
@@ -7316,9 +7951,111 @@ def _safe_unlink_managed_share_card(relative: Path, *, root: Path) -> bool:
         os.close(directory_fd)
 
 
+def _denied_china_analysis_output_clock(
+    outputs: Mapping[Path, bytes],
+) -> str | None:
+    """Return the clock only when both denied feeds match the closed contract."""
+
+    if CHINA_ANALYSIS_READING_RELATIVE in outputs:
+        return None
+    json_raw = outputs.get(CHINA_ANALYSIS_JSON_FEED_RELATIVE)
+    rss_raw = outputs.get(CHINA_ANALYSIS_RSS_FEED_RELATIVE)
+    if json_raw is None or rss_raw is None:
+        return None
+    try:
+        document = newswire_model.strict_json_loads(
+            json_raw,
+            label=str(CHINA_ANALYSIS_JSON_FEED_RELATIVE),
+        )
+        item = document["items"][0]
+        generated_at = item["date_published"]
+        expected_json = _pretty_json(
+            build_china_analysis_availability_json_feed(generated_at)
+        )
+        expected_rss = build_china_analysis_availability_rss(generated_at)
+    except (KeyError, IndexError, TypeError, ValueError, newsroom.NewsroomError):
+        return None
+    if json_raw != expected_json or rss_raw != expected_rss:
+        return None
+    return generated_at
+
+
+def _stale_china_analysis_reading_state(
+    outputs: Mapping[Path, bytes], *, root: Path
+) -> bool | None:
+    """Return whether a denied edition has one proven stale generated reading."""
+
+    if _denied_china_analysis_output_clock(outputs) is None:
+        return None
+    path = root / CHINA_ANALYSIS_READING_RELATIVE
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return None
+    if not stat.S_ISREG(metadata.st_mode):
+        return False
+    try:
+        raw = path.read_bytes()
+        document = newswire_model.strict_json_loads(
+            raw,
+            label=str(CHINA_ANALYSIS_READING_RELATIVE),
+        )
+    except (OSError, ValueError, newsroom.NewsroomError):
+        return False
+    return bool(
+        isinstance(document, dict)
+        and document.get("schema_version") == china_analysis_model.SCHEMA_VERSION
+        and document.get("article_id") == china_analysis_model.ARTICLE_ID
+        and document.get("url") == china_analysis_model.URL
+        and isinstance(document.get("revision_id"), str)
+        and re.fullmatch(r"chinaarticlev-[0-9a-f]{24}", document["revision_id"])
+        is not None
+        and china_analysis_model.pretty_json_bytes(document) == raw
+    )
+
+
+def _safe_unlink_china_analysis_reading(*, root: Path) -> bool:
+    """Remove the fixed generated reading without following a parent symlink."""
+
+    flags = _directory_open_flags()
+    try:
+        directory_fd = os.open(root / "readings", flags)
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise newsroom.NewsroomError(
+            "cannot safely open readings for China-analysis cleanup: " + str(exc)
+        ) from exc
+    try:
+        try:
+            metadata = os.stat(
+                CHINA_ANALYSIS_READING_RELATIVE.name,
+                dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            return False
+        if not stat.S_ISREG(metadata.st_mode):
+            raise newsroom.NewsroomError(
+                "refusing to remove non-file China-analysis reading"
+            )
+        os.unlink(CHINA_ANALYSIS_READING_RELATIVE.name, dir_fd=directory_fd)
+        os.fsync(directory_fd)
+        return True
+    finally:
+        os.close(directory_fd)
+
+
 def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, int]:
     _verify_wire_history_integrity_output(outputs, root=root)
     changed = unchanged = 0
+    stale_china_analysis_reading = _stale_china_analysis_reading_state(
+        outputs, root=root
+    )
+    if stale_china_analysis_reading is False:
+        raise newsroom.NewsroomError(
+            "refusing to remove an unproven China-analysis reading"
+        )
     stale_analysis = _extra_managed_analysis_paths(outputs, root=root)
     stale_pagination = _extra_managed_pagination_paths(outputs, root=root)
     stale_share_cards = _extra_managed_share_card_paths(outputs, root=root)
@@ -7388,6 +8125,8 @@ def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, i
     for relative in sorted(stale_share_cards, key=str):
         if _safe_unlink_managed_share_card(relative, root=root):
             changed += 1
+    if stale_china_analysis_reading and _safe_unlink_china_analysis_reading(root=root):
+        changed += 1
     for relative, payload in manifest_items:
         destination = root / relative
         try:
@@ -7433,6 +8172,8 @@ def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
     }
     for relative in sorted(extras, key=str):
         drift.append(f"extra {relative}")
+    if _stale_china_analysis_reading_state(outputs, root=root) is not None:
+        drift.append(f"extra {CHINA_ANALYSIS_READING_RELATIVE}")
     return drift
 
 

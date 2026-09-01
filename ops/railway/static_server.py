@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import functools
 import hashlib
+import html
 import json
 import os
 import re
@@ -149,6 +150,114 @@ def _freshness_clock(
         "freshness_budget_seconds": budget_seconds,
         "status": "fresh" if age_seconds <= budget_seconds else "stale",
     }
+
+
+def _reader_duration(total_seconds: int) -> str:
+    """Render a non-negative clock age or budget without hiding its boundary."""
+    hours, remainder = divmod(total_seconds, 60 * 60)
+    minutes, seconds = divmod(remainder, 60)
+    parts: list[str] = []
+    for value, unit in ((hours, "hour"), (minutes, "minute"), (seconds, "second")):
+        if value:
+            parts.append(f"{value} {unit}{'' if value == 1 else 's'}")
+        if len(parts) == 2:
+            break
+    return " ".join(parts) or "0 seconds"
+
+
+def _freshness_reader_html(payload: dict[str, Any]) -> bytes:
+    """Project the machine verdict into a bounded, ordinary-reader explanation."""
+    status = str(payload["status"])
+    if status == "fresh":
+        headline = "Current"
+        explanation = (
+            "The news feed snapshot and this published website snapshot are within "
+            "their freshness limits."
+        )
+    elif status == "stale":
+        headline = "Out of date"
+        explanation = (
+            "At least one required clock is older than its freshness limit. "
+            "Treat the site as an older snapshot until a new release is verified."
+        )
+    else:
+        headline = "Freshness unavailable"
+        explanation = (
+            "Palimpsest could not verify the release-bound freshness record. "
+            "Do not treat an unavailable check as fresh."
+        )
+
+    clock_items = ""
+    clocks = payload.get("clocks")
+    if isinstance(clocks, dict):
+        labels = {
+            "wire": "News feed snapshot",
+            "publication": "Published website snapshot",
+        }
+        rows: list[str] = []
+        for key in ("wire", "publication"):
+            clock = clocks.get(key)
+            if not isinstance(clock, dict):
+                continue
+            age = _reader_duration(int(clock["age_seconds"]))
+            budget = _reader_duration(int(clock["freshness_budget_seconds"]))
+            generated_at = html.escape(str(clock["generated_at"]))
+            clock_status = html.escape(str(clock["status"]))
+            rows.append(
+                "<li><strong>"
+                + labels[key]
+                + ":</strong> "
+                + age
+                + " old (limit: "
+                + budget
+                + '; generated: <time datetime="'
+                + generated_at
+                + '">'
+                + generated_at
+                + "</time>; status: "
+                + clock_status
+                + ").</li>"
+            )
+        if rows:
+            clock_items = "<h2>Required clocks</h2><ul>" + "".join(rows) + "</ul>"
+
+    checked_at = html.escape(str(payload["checked_at"]))
+    source_commit = payload.get("source_commit")
+    release_text = ""
+    if isinstance(source_commit, str):
+        release_text = (
+            "<p><strong>Release:</strong> <code>"
+            + html.escape(source_commit)
+            + "</code></p>"
+        )
+    document = (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        "<title>Palimpsest freshness: "
+        + html.escape(headline)
+        + "</title></head><body><main>"
+        "<h1>Palimpsest freshness: "
+        + html.escape(headline)
+        + "</h1><p>"
+        + html.escape(explanation)
+        + '</p><p><strong>Checked:</strong> <time datetime="'
+        + checked_at
+        + '">'
+        + checked_at
+        + "</time></p>"
+        + clock_items
+        + "<h2>How to interpret this</h2>"
+        "<p>This check only tells you how recently the news feed and website snapshot "
+        "were produced. It does not report how many measurements are available.</p>"
+        "<p><strong>Rights note:</strong> If evidence is restricted or unavailable, "
+        "do not read that as a zero value or as a sign that conditions are normal, "
+        "safe, or healthy. It means Palimpsest cannot make that public claim from "
+        "this release.</p>"
+        + release_text
+        + '<p><a href="/freshness">View the machine-readable JSON</a></p>'
+        "</main></body></html>\n"
+    )
+    return document.encode("utf-8")
 
 
 def _require_exact_object(
@@ -509,7 +618,7 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
         if include_body:
             self.wfile.write(body)
 
-    def _freshness(self, include_body: bool) -> None:
+    def _freshness(self, include_body: bool, *, reader_view: bool = False) -> None:
         now = _utc_now()
         try:
             release = _load_release(self.site_root)
@@ -562,18 +671,27 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
                 "service": "palimpsest-publication",
                 "checked_at": _clock_text(now),
             }
-        body = (
-            json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
-        ).encode()
+        if reader_view:
+            body = _freshness_reader_html(payload)
+            content_type = "text/html; charset=utf-8"
+            alternate = '</freshness>; rel="alternate"; type="application/json"'
+        else:
+            body = (
+                json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+            ).encode()
+            content_type = "application/json; charset=utf-8"
+            alternate = '</freshness?view=reader>; rel="alternate"; type="text/html"'
         self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Type", content_type)
+        self.send_header("Link", alternate)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         if include_body:
             self.wfile.write(body)
 
     def do_GET(self) -> None:  # noqa: N802
-        path = urlsplit(self.path).path
+        parsed = urlsplit(self.path)
+        path = parsed.path
         if path == GROWTH_EVENT_PATH:
             self._growth_method_not_allowed()
             return
@@ -581,7 +699,10 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
             self._health(include_body=True)
             return
         if path in {"/freshness", "/freshnessz"}:
-            self._freshness(include_body=True)
+            self._freshness(
+                include_body=True,
+                reader_view=path == "/freshness" and parsed.query == "view=reader",
+            )
             return
         if path in {"/mcp", "/mcp/"}:
             self._mcp_not_here(include_body=True)
@@ -589,7 +710,8 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_HEAD(self) -> None:  # noqa: N802
-        path = urlsplit(self.path).path
+        parsed = urlsplit(self.path)
+        path = parsed.path
         if path == GROWTH_EVENT_PATH:
             self._growth_method_not_allowed()
             return
@@ -597,7 +719,10 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
             self._health(include_body=False)
             return
         if path in {"/freshness", "/freshnessz"}:
-            self._freshness(include_body=False)
+            self._freshness(
+                include_body=False,
+                reader_view=path == "/freshness" and parsed.query == "view=reader",
+            )
             return
         if path in {"/mcp", "/mcp/"}:
             self._mcp_not_here(include_body=False)

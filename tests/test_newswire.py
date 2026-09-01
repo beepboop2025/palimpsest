@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import html
 import json
 import stat
@@ -112,10 +113,46 @@ def _all_live_mapping(registry: SourceRegistry, *, title_prefix: str = "Source u
     }
 
 
+def _legacy_fetch_error_transition_input() -> dict:
+    """Return the exact live-style legacy failure state seen at retirement."""
+
+    document = json.loads(
+        (ROOT / "readings" / "newswire-latest.json").read_text(encoding="utf-8")
+    )
+    coverage = document["coverage"]
+    retired_receipts = [
+        receipt
+        for receipt in coverage["sources"]
+        if receipt["source_id"] in nw._RETIRED_SOURCE_TOMBSTONES
+    ]
+    assert {receipt["source_id"] for receipt in retired_receipts} == set(
+        nw._RETIRED_SOURCE_TOMBSTONES
+    )
+    for receipt in retired_receipts:
+        coverage["counts"][receipt["status"]] -= 1
+        coverage["counts"]["fetch_error"] += 1
+        coverage["successful_sources"] -= 1
+        coverage["rejected_items"] -= receipt["rejected_items"]
+        receipt.update(
+            {
+                "status": "fetch_error",
+                "items_seen": 0,
+                "accepted_items": 0,
+                "rejected_items": 0,
+                "out_of_window_items": 0,
+                "latest_published_at": None,
+                "document_sha256": None,
+                "reason": "fetch failed (HTTPError)",
+            }
+        )
+    coverage["status"] = "degraded"
+    return document
+
+
 def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
     registry = load_source_registry()
 
-    assert len(registry.sources) == 60
+    assert len(registry.sources) == 58
     assert {source.id for source in registry.sources} == set(nw._CLOSED_SOURCES)
     assert all(source.feed_url.startswith("https://") for source in registry.sources)
     assert all(source.rights_policy == "metadata-link-only" for source in registry.sources)
@@ -143,8 +180,6 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "pandaily",
         "new-bloom",
         "taipei-times",
-        "arab-news-pakistan-cpec",
-        "arab-news-pakistan-gwadar-port",
         "daily-cpec-china-pakistan",
         "daily-cpec-gwadar",
         "dawn-pakistan",
@@ -210,8 +245,6 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         _source("cecc").feed_url,
         _source("made-in-china-journal").feed_url,
         _source("chrd").feed_url,
-        _source("arab-news-pakistan-cpec").feed_url,
-        _source("arab-news-pakistan-gwadar-port").feed_url,
         _source("daily-cpec-china-pakistan").feed_url,
         _source("daily-cpec-gwadar").feed_url,
         _source("dawn-pakistan").feed_url,
@@ -254,8 +287,6 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "https://www.cecc.gov/rss.xml",
         "https://madeinchinajournal.com/feed/",
         "https://www.nchrd.org/feed/",
-        "https://www.arabnews.pk/taxonomy/term/20166/feed",
-        "https://www.arabnews.pk/taxonomy/term/314116/feed",
         "https://thedailycpec.com/category/china-pakistan/feed/",
         "https://thedailycpec.com/category/gwadar/feed/",
         "https://www.dawn.com/feeds/pakistan/",
@@ -288,8 +319,6 @@ def test_new_china_source_desks_topics_and_publisher_groups_are_locked():
         "cecc": ("documentation", "us-cecc-government", "rights", ("rights", "censorship", "politics")),
         "made-in-china-journal": ("research", "made-in-china-journal-editorial", "rights", ("rights", "politics", "economy")),
         "chrd": ("documentation", "chrd-documentation", "rights", ("rights", "censorship", "politics")),
-        "arab-news-pakistan-cpec": ("media", "arab-news-pakistan-editorial", "economy", ("economy", "politics")),
-        "arab-news-pakistan-gwadar-port": ("media", "arab-news-pakistan-editorial", "economy", ("economy", "politics", "security")),
         "daily-cpec-china-pakistan": ("media", "daily-cpec-editorial", "economy", ("economy", "politics")),
         "daily-cpec-gwadar": ("media", "daily-cpec-editorial", "economy", ("economy", "politics")),
         "dawn-pakistan": ("media", "dawn-editorial", "politics", ("politics", "economy", "rights")),
@@ -383,6 +412,46 @@ def test_registry_rejects_an_incomplete_or_extra_source_set(tmp_path: Path):
     path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(RegistryError, match="incomplete"):
         load_source_registry(path)
+
+
+def test_retired_source_ids_and_endpoints_cannot_reenter_the_closed_registry(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    tombstones = {
+        "arab-news-pakistan-cpec": (
+            "https://www.arabnews.pk/taxonomy/term/20166/feed",
+            "publisher-endpoint-404-no-scoped-official-feed",
+        ),
+        "arab-news-pakistan-gwadar-port": (
+            "https://www.arabnews.pk/taxonomy/term/314116/feed",
+            "publisher-endpoint-404-no-scoped-official-feed",
+        ),
+    }
+    assert nw._RETIRED_SOURCE_TOMBSTONES == tombstones
+    assert set(tombstones).isdisjoint(nw._CLOSED_SOURCES)
+    assert {row[0] for row in tombstones.values()}.isdisjoint(
+        {row[0] for row in nw._CLOSED_SOURCES.values()}
+    )
+
+    retired_id, (retired_url, _) = next(iter(tombstones.items()))
+    with monkeypatch.context() as scoped:
+        scoped.setitem(
+            nw._CLOSED_SOURCES,
+            retired_id,
+            (retired_url, ("www.arabnews.pk",), "media", "retired-editorial"),
+        )
+        with pytest.raises(RegistryError, match="retired source id"):
+            load_source_registry()
+
+    with monkeypatch.context() as scoped:
+        _, hosts, role, group = nw._CLOSED_SOURCES["chrd"]
+        scoped.setitem(
+            nw._CLOSED_SOURCES,
+            "chrd",
+            (retired_url, hosts, role, group),
+        )
+        with pytest.raises(RegistryError, match="retired source endpoint"):
+            load_source_registry()
 
 
 def test_rss_parser_retains_only_bounded_plain_metadata():
@@ -853,6 +922,34 @@ def test_event_id_persists_when_a_new_corroborating_source_is_added():
     assert second["events"][0]["lead"] is True
 
 
+def test_public_registry_digest_cannot_validate_a_prior_receipt_subset():
+    registry = load_source_registry()
+    cecc = _source("cecc")
+    prior_mapping = _all_live_mapping(registry)
+    prior_mapping[cecc.feed_url] = RuntimeError("offline")
+    prior = collect_newswire(registry, _fetch_map(prior_mapping), now=NOW)
+
+    cecc_receipt = next(
+        receipt
+        for receipt in prior["coverage"]["sources"]
+        if receipt["source_id"] == "cecc"
+    )
+    assert cecc_receipt["status"] == "fetch_error"
+    prior["coverage"]["sources"].remove(cecc_receipt)
+    prior["coverage"]["registry_sources"] -= 1
+    prior["coverage"]["counts"]["fetch_error"] -= 1
+    prior["coverage"]["status"] = "healthy"
+    assert prior["source_registry_sha256"] == nw.ACTIVE_SOURCE_REGISTRY_SHA256
+
+    with pytest.raises(NewswireError, match="identities"):
+        collect_newswire(
+            registry,
+            _fetch_map(_all_live_mapping(registry)),
+            now=NOW + timedelta(hours=1),
+            previous=prior,
+        )
+
+
 def test_prior_event_split_keeps_conflicting_partitions_separate_with_unique_ids():
     source = replace(_source("ooni"), declared_scan_ids=(), declared_economic_ids=())
 
@@ -906,7 +1003,11 @@ def test_prior_event_split_keeps_conflicting_partitions_separate_with_unique_ids
     assert {
         event["evidence_refs"][0]["item_id"] for event in current["events"]
     } == {item["item_id"] for item in current["items"]}
-    validate_newswire_document(current)
+    nw._validate_newswire_document(
+        current,
+        allow_prior_editorial_state=False,
+        expected_registry=registry,
+    )
 
     repeated = collect_newswire(
         registry,
@@ -1017,8 +1118,9 @@ def test_declared_scan_or_economic_link_is_visible_but_never_called_corroboratio
 
 def test_stale_source_is_retained_with_links_but_can_never_create_a_lead():
     source = replace(_source("scmp-china-economy"), stale_after_hours=1)
+    registry = _registry(source)
     document = collect_newswire(
-        _registry(source),
+        registry,
         lambda _u, **_k: _rss(
             source, title="China inflation and yuan markets enter a new phase"
         ),
@@ -1030,7 +1132,11 @@ def test_stale_source_is_retained_with_links_but_can_never_create_a_lead():
     assert event["declared_links"]["economic_signal_ids"]
     assert event["lead"] is False
     assert "stale" in event["lead_reason"].lower()
-    validate_newswire_document(document)
+    nw._validate_newswire_document(
+        document,
+        allow_prior_editorial_state=False,
+        expected_registry=registry,
+    )
 
 
 def test_every_accepted_item_is_partitioned_into_exactly_one_event():
@@ -1120,8 +1226,10 @@ def test_fetch_boundary_enforces_exact_no_redirect_transport_options():
 
 
 def test_runtime_validator_rejects_unknown_fields_and_broken_accounting():
-    source = _source("ooni")
-    document = collect_newswire(_registry(source), lambda _u, **_k: _rss(source), now=NOW)
+    document = json.loads(
+        (ROOT / "readings" / "newswire-latest.json").read_text(encoding="utf-8")
+    )
+    validate_newswire_document(document)
     unknown = copy.deepcopy(document)
     unknown["truth_score"] = 1.0
     with pytest.raises(NewswireError, match="top-level"):
@@ -1148,6 +1256,296 @@ def test_runtime_validator_rejects_unknown_fields_and_broken_accounting():
         validate_newswire_document(bad_coverage)
 
 
+def test_public_runtime_binds_active_and_legacy_registry_receipt_sets():
+    legacy = json.loads(
+        (ROOT / "readings" / "newswire-latest.json").read_text(encoding="utf-8")
+    )
+    validate_newswire_document(legacy)
+
+    def remove_receipts(document, source_ids):
+        projected = copy.deepcopy(document)
+        removed = [
+            row
+            for row in projected["coverage"]["sources"]
+            if row["source_id"] in source_ids
+        ]
+        projected["coverage"]["sources"] = [
+            row
+            for row in projected["coverage"]["sources"]
+            if row["source_id"] not in source_ids
+        ]
+        coverage = projected["coverage"]
+        coverage["registry_sources"] = len(coverage["sources"])
+        coverage["rejected_items"] -= sum(row["rejected_items"] for row in removed)
+        for row in removed:
+            coverage["counts"][row["status"]] -= 1
+        coverage["successful_sources"] = (
+            coverage["counts"]["success"] + coverage["counts"]["stale"]
+        )
+        coverage["status"] = (
+            "healthy"
+            if coverage["counts"]["empty"]
+            == coverage["counts"]["fetch_error"]
+            == coverage["counts"]["parse_error"]
+            == 0
+            else "degraded"
+        )
+        return projected
+
+    retired = set(nw._RETIRED_SOURCE_TOMBSTONES)
+    active = remove_receipts(legacy, retired)
+    active["source_registry_sha256"] = nw.ACTIVE_SOURCE_REGISTRY_SHA256
+    validate_newswire_document(active)
+
+    missing_one = remove_receipts(legacy, {next(iter(retired))})
+    with pytest.raises(NewswireError, match="identities"):
+        validate_newswire_document(missing_one)
+
+    arbitrary_60 = copy.deepcopy(legacy)
+    arbitrary_row = next(
+        row
+        for row in arbitrary_60["coverage"]["sources"]
+        if row["source_id"] not in retired and row["accepted_items"] == 0
+    )
+    arbitrary_row["source_id"] = "fabricated-news-source"
+    arbitrary_row["feed_url"] = "https://example.org/fabricated.xml"
+    with pytest.raises(NewswireError, match="identities"):
+        validate_newswire_document(arbitrary_60)
+
+    retired_in_active = copy.deepcopy(active)
+    replacement = next(
+        row
+        for row in retired_in_active["coverage"]["sources"]
+        if row["accepted_items"] == 0
+    )
+    retired_id = next(iter(retired))
+    replacement["source_id"] = retired_id
+    replacement["feed_url"] = nw._RETIRED_SOURCE_TOMBSTONES[retired_id][0]
+    with pytest.raises(NewswireError, match="identities"):
+        validate_newswire_document(retired_in_active)
+
+    nonzero_retired = copy.deepcopy(legacy)
+    retired_row = next(
+        row
+        for row in nonzero_retired["coverage"]["sources"]
+        if row["source_id"] in retired
+    )
+    retired_row["accepted_items"] = 1
+    retired_row["items_seen"] += 1
+    with pytest.raises(NewswireError):
+        validate_newswire_document(nonzero_retired)
+
+    wrong_endpoint = copy.deepcopy(legacy)
+    retired_row = next(
+        row
+        for row in wrong_endpoint["coverage"]["sources"]
+        if row["source_id"] in retired
+    )
+    retired_row["feed_url"] = "https://example.org/retired.xml"
+    with pytest.raises(NewswireError, match="endpoint"):
+        validate_newswire_document(wrong_endpoint)
+
+    unknown_digest = copy.deepcopy(legacy)
+    unknown_digest["source_registry_sha256"] = "f" * 64
+    with pytest.raises(NewswireError, match="not an admitted"):
+        validate_newswire_document(unknown_digest)
+
+
+def test_collector_privately_transitions_exact_legacy_fetch_errors_to_active_registry():
+    previous = _legacy_fetch_error_transition_input()
+    registry = load_source_registry()
+    transition_now = datetime.strptime(
+        previous["generated_at"], "%Y-%m-%dT%H:%M:%SZ"
+    ).replace(tzinfo=timezone.utc) + timedelta(hours=1)
+    published = (transition_now - timedelta(minutes=5)).strftime(
+        "%a, %d %b %Y %H:%M:%S +0000"
+    )
+    mapping = {
+        source.feed_url: _rss(
+            source,
+            title=f"China evidence update: {source.id}",
+            published=published,
+        )
+        for source in registry.sources
+    }
+
+    # The exception is collector-input-only. Neither public nor general prior
+    # readers may accept the live host's transient fetch-error representation.
+    with pytest.raises(NewswireError, match="must remain stale"):
+        validate_newswire_document(previous)
+    with pytest.raises(NewswireError, match="must remain stale"):
+        validate_prior_newswire_document(previous)
+    nw.validate_legacy_fetch_error_transition_prior(previous, registry)
+
+    current = collect_newswire(
+        registry,
+        _fetch_map(mapping),
+        now=transition_now,
+        previous=previous,
+    )
+
+    assert current["source_registry_sha256"] == nw.ACTIVE_SOURCE_REGISTRY_SHA256
+    assert current["coverage"]["registry_sources"] == len(registry.sources) == 58
+    assert {row["source_id"] for row in current["coverage"]["sources"]} == {
+        source.id for source in registry.sources
+    }
+    public_payload = json.dumps(
+        {
+            "items": current["items"],
+            "events": current["events"],
+            "coverage": current["coverage"],
+        },
+        ensure_ascii=False,
+    )
+    assert all(
+        source_id not in public_payload
+        for source_id in nw._RETIRED_SOURCE_TOMBSTONES
+    )
+    validate_newswire_document(current)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ("wrong_endpoint", "nonzero_accounting", "non_null_evidence", "wrong_status"),
+)
+def test_collector_transition_rejects_inexact_legacy_fetch_error_tombstones(
+    mutation: str,
+):
+    previous = _legacy_fetch_error_transition_input()
+    receipt = next(
+        row
+        for row in previous["coverage"]["sources"]
+        if row["source_id"] in nw._RETIRED_SOURCE_TOMBSTONES
+    )
+    coverage = previous["coverage"]
+    if mutation == "wrong_endpoint":
+        receipt["feed_url"] = "https://example.org/retired.xml"
+    elif mutation == "nonzero_accounting":
+        receipt["items_seen"] = 1
+        receipt["rejected_items"] = 1
+        receipt["out_of_window_items"] = 1
+        coverage["rejected_items"] += 1
+    elif mutation == "non_null_evidence":
+        receipt["latest_published_at"] = previous["generated_at"]
+        receipt["document_sha256"] = "a" * 64
+    else:
+        coverage["counts"]["fetch_error"] -= 1
+        coverage["counts"]["parse_error"] += 1
+        receipt["status"] = "parse_error"
+
+    registry = load_source_registry()
+    with pytest.raises(NewswireError):
+        collect_newswire(
+            registry,
+            _fetch_map(_all_live_mapping(registry)),
+            now=NOW,
+            previous=previous,
+        )
+
+
+def test_collector_transition_rejects_retired_item_reference():
+    previous = _legacy_fetch_error_transition_input()
+    retired_receipt = next(
+        row
+        for row in previous["coverage"]["sources"]
+        if row["source_id"] in nw._RETIRED_SOURCE_TOMBSTONES
+    )
+    injected = copy.deepcopy(previous["items"][0])
+    injected["source_id"] = retired_receipt["source_id"]
+    injected["source_name"] = retired_receipt["source_name"]
+    injected["item_id"] = nw._stable_id(
+        "item", {"source_id": injected["source_id"], "url": injected["url"]}
+    )
+    injected["version_id"] = nw._stable_id(
+        "itemv",
+        {
+            "item_id": injected["item_id"],
+            "title": injected["title"],
+            "url": injected["url"],
+            "excerpt": injected["excerpt"],
+            "published_at": injected["published_at"],
+            "desk": injected["desk"],
+            "topics": injected["topics"],
+        },
+    )
+    previous["items"].append(injected)
+    previous["n_items"] += 1
+    previous["coverage"]["accepted_items"] += 1
+
+    registry = load_source_registry()
+    with pytest.raises(NewswireError, match="must not contain retired-source items"):
+        collect_newswire(
+            registry,
+            _fetch_map(_all_live_mapping(registry)),
+            now=NOW,
+            previous=previous,
+        )
+
+
+def test_collector_transition_rejects_retired_event_reference():
+    previous = _legacy_fetch_error_transition_input()
+    retired_id = next(iter(nw._RETIRED_SOURCE_TOMBSTONES))
+    event = previous["events"][0]
+    ref = event["evidence_refs"][0]
+    original_source_id = ref["source_id"]
+    ref["source_id"] = retired_id
+    for group in event["evidence_groups"]:
+        group["source_ids"] = sorted(
+            retired_id if source_id == original_source_id else source_id
+            for source_id in group["source_ids"]
+        )
+    version_payload = {
+        key: value
+        for key, value in event.items()
+        if key not in {"event_id", "url", "version_id", "mutation"}
+    }
+    event["version_id"] = nw._stable_id("eventv", version_payload)
+
+    registry = load_source_registry()
+    with pytest.raises(NewswireError, match="must not reference retired sources"):
+        collect_newswire(
+            registry,
+            _fetch_map(_all_live_mapping(registry)),
+            now=NOW,
+            previous=previous,
+        )
+
+
+def test_collector_transition_does_not_weaken_current_fresh_source_requirement():
+    previous = _legacy_fetch_error_transition_input()
+    registry = load_source_registry()
+    transition_now = datetime.strptime(
+        previous["generated_at"], "%Y-%m-%dT%H:%M:%SZ"
+    ).replace(tzinfo=timezone.utc) + timedelta(hours=1)
+    failures = {
+        source.feed_url: RuntimeError("offline") for source in registry.sources
+    }
+
+    with pytest.raises(NoSuccessfulSources, match="zero registered sources"):
+        collect_newswire(
+            registry,
+            _fetch_map(failures),
+            now=transition_now,
+            previous=previous,
+        )
+
+
+def test_collector_rejects_previous_edition_newer_than_collection_clock():
+    previous = _legacy_fetch_error_transition_input()
+    registry = load_source_registry()
+
+    with pytest.raises(
+        NewswireError,
+        match="previous newswire generated_at exceeds the collection clock",
+    ):
+        collect_newswire(
+            registry,
+            _fetch_map(_all_live_mapping(registry)),
+            now=NOW,
+            previous=previous,
+        )
+
+
 def test_generated_document_conforms_to_the_published_json_schema():
     jsonschema = pytest.importorskip("jsonschema")
     registry = load_source_registry()
@@ -1155,6 +1553,95 @@ def test_generated_document_conforms_to_the_published_json_schema():
     schema = json.loads((ROOT / "protocol" / "newswire-v1.schema.json").read_text())
 
     jsonschema.Draft202012Validator(schema).validate(document)
+
+
+def test_json_schema_binds_registry_receipt_identities_and_endpoints():
+    jsonschema = pytest.importorskip("jsonschema")
+    registry = load_source_registry()
+    document = collect_newswire(
+        registry,
+        _fetch_map(_all_live_mapping(registry)),
+        now=NOW,
+    )
+    schema = json.loads((ROOT / "protocol" / "newswire-v1.schema.json").read_text())
+    validator = jsonschema.Draft202012Validator(schema)
+    legacy = json.loads(
+        (ROOT / "readings" / "newswire-latest.json").read_text(encoding="utf-8")
+    )
+    validator.validate(legacy)
+
+    for admitted in (document, legacy):
+        active_receipt_index = next(
+            index
+            for index, receipt in enumerate(admitted["coverage"]["sources"])
+            if receipt["source_id"] not in nw._RETIRED_SOURCE_TOMBSTONES
+        )
+        fabricated_identity = copy.deepcopy(admitted)
+        fabricated_identity["coverage"]["sources"][active_receipt_index][
+            "source_id"
+        ] = "fabricated-news-source"
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate(fabricated_identity)
+
+        wrong_endpoint = copy.deepcopy(admitted)
+        wrong_endpoint["coverage"]["sources"][active_receipt_index]["feed_url"] = (
+            "https://example.org/fabricated.xml"
+        )
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate(wrong_endpoint)
+
+    legacy_tombstone = copy.deepcopy(legacy)
+    tombstone = next(
+        receipt
+        for receipt in legacy_tombstone["coverage"]["sources"]
+        if receipt["source_id"] in nw._RETIRED_SOURCE_TOMBSTONES
+    )
+    tombstone["status"] = "empty"
+    with pytest.raises(jsonschema.ValidationError):
+        validator.validate(legacy_tombstone)
+
+    legacy_tombstone_endpoint = copy.deepcopy(legacy)
+    tombstone = next(
+        receipt
+        for receipt in legacy_tombstone_endpoint["coverage"]["sources"]
+        if receipt["source_id"] in nw._RETIRED_SOURCE_TOMBSTONES
+    )
+    tombstone["feed_url"] = "https://example.org/retired.xml"
+    with pytest.raises(jsonschema.ValidationError):
+        validator.validate(legacy_tombstone_endpoint)
+
+
+def test_schema_registry_inventory_matches_the_runtime_contract():
+    schema = json.loads((ROOT / "protocol" / "newswire-v1.schema.json").read_text())
+
+    def inventory(definition_name):
+        result = {}
+        for clause in schema["$defs"][definition_name]["allOf"]:
+            assert clause["minContains"] == clause["maxContains"] == 1
+            contained = clause["contains"]
+            properties = contained["properties"]
+            source_id = properties["source_id"]["const"]
+            assert source_id not in result
+            result[source_id] = {
+                key: value["const"] for key, value in properties.items()
+            }
+        return result
+
+    active = inventory("activeRegistryReceiptIdentities")
+    assert active == {
+        source_id: {"source_id": source_id, "feed_url": contract[0]}
+        for source_id, contract in nw._CLOSED_SOURCES.items()
+    }
+    tombstones = inventory("legacyRegistryTombstoneReceipts")
+    assert tombstones == {
+        source_id: {
+            "source_id": source_id,
+            "feed_url": tombstone[0],
+            "status": "stale",
+            "accepted_items": 0,
+        }
+        for source_id, tombstone in nw._RETIRED_SOURCE_TOMBSTONES.items()
+    }
 
 
 def test_cli_atomically_writes_latest_and_deduplicates_the_bounded_version_ledger(
@@ -1191,6 +1678,271 @@ def test_cli_atomically_writes_latest_and_deduplicates_the_bounded_version_ledge
     validate_newswire_document(second)
     assert stat.S_IMODE(output.stat().st_mode) == 0o644
     assert stat.S_IMODE(ledger.stat().st_mode) == 0o644
+
+
+def test_cli_performs_one_exact_legacy_transition_then_uses_normal_prior_validation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    import scripts.newswire_pull as cli
+
+    previous = _legacy_fetch_error_transition_input()
+    registry = load_source_registry()
+    transition_now = datetime.strptime(
+        previous["generated_at"], "%Y-%m-%dT%H:%M:%SZ"
+    ).replace(tzinfo=timezone.utc) + timedelta(hours=1)
+    published = (transition_now - timedelta(minutes=5)).strftime(
+        "%a, %d %b %Y %H:%M:%S +0000"
+    )
+    mapping = {
+        source.feed_url: _rss(
+            source,
+            title=f"CLI transition evidence: {source.id}",
+            published=published,
+        )
+        for source in registry.sources
+    }
+    monkeypatch.setattr(
+        cli, "safe_fetch_bytes", lambda url, **_kwargs: mapping[url]
+    )
+
+    output = tmp_path / "newswire-latest.json"
+    ledger = tmp_path / "newswire-versions.jsonl"
+    output.write_text(
+        json.dumps(previous, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    args = [
+        "--config",
+        str(ROOT / "config" / "news_sources.json"),
+        "--output",
+        str(output),
+        "--ledger",
+        str(ledger),
+        "--workers",
+        "1",
+        "--now",
+        transition_now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    ]
+
+    with pytest.raises(NewswireError, match="must remain stale"):
+        validate_newswire_document(previous)
+    with pytest.raises(NewswireError, match="must remain stale"):
+        validate_prior_newswire_document(previous)
+
+    assert cli.main(args) == 0
+    first = strict_json_loads(output.read_bytes())
+    assert first["source_registry_sha256"] == nw.ACTIVE_SOURCE_REGISTRY_SHA256
+    assert first["coverage"]["registry_sources"] == len(registry.sources) == 58
+    assert {row["source_id"] for row in first["coverage"]["sources"]} == {
+        source.id for source in registry.sources
+    }
+    public_payload = json.dumps(
+        {
+            "items": first["items"],
+            "events": first["events"],
+            "coverage": first["coverage"],
+        },
+        ensure_ascii=False,
+    )
+    assert all(
+        source_id not in public_payload
+        for source_id in nw._RETIRED_SOURCE_TOMBSTONES
+    )
+    validate_newswire_document(first)
+    validate_prior_newswire_document(first)
+    first_ledger = ledger.read_bytes()
+
+    def transition_must_not_be_reused(_document, _registry):
+        raise AssertionError("active output unexpectedly re-entered transition admission")
+
+    monkeypatch.setattr(
+        cli,
+        "validate_legacy_fetch_error_transition_prior",
+        transition_must_not_be_reused,
+    )
+    args[-1] = (transition_now + timedelta(hours=1)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    assert cli.main(args) == 0
+    second = strict_json_loads(output.read_bytes())
+    validate_newswire_document(second)
+    assert second["source_registry_sha256"] == nw.ACTIVE_SOURCE_REGISTRY_SHA256
+    assert second["coverage"]["registry_sources"] == 58
+    assert ledger.read_bytes() == first_ledger
+
+
+@pytest.mark.parametrize(
+    "failure_mode",
+    ("malformed_tombstone", "registry_digest_mismatch"),
+)
+def test_cli_rejects_inexact_transition_and_preserves_output_and_ledger(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_mode: str,
+):
+    import scripts.newswire_pull as cli
+
+    previous = _legacy_fetch_error_transition_input()
+    config = ROOT / "config" / "news_sources.json"
+    if failure_mode == "malformed_tombstone":
+        retired = next(
+            row
+            for row in previous["coverage"]["sources"]
+            if row["source_id"] in nw._RETIRED_SOURCE_TOMBSTONES
+        )
+        retired["items_seen"] = 1
+        retired["rejected_items"] = 1
+        previous["coverage"]["rejected_items"] += 1
+    else:
+        config_value = strict_json_loads(config.read_bytes())
+        config_value["window_hours"] -= 1
+        config = tmp_path / "mismatched-news-sources.json"
+        config.write_text(
+            json.dumps(config_value, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+
+    output = tmp_path / "newswire-latest.json"
+    ledger = tmp_path / "newswire-versions.jsonl"
+    output.write_text(
+        json.dumps(previous, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    ledger.write_bytes(
+        (ROOT / "readings" / "newswire-versions.jsonl")
+        .read_bytes()
+        .splitlines()[0]
+        + b"\n"
+    )
+    output_before = output.read_bytes()
+    ledger_before = ledger.read_bytes()
+
+    def must_not_fetch(_url, **_kwargs):
+        raise AssertionError("invalid transition reached the network boundary")
+
+    monkeypatch.setattr(cli, "safe_fetch_bytes", must_not_fetch)
+    with pytest.raises(NewswireError):
+        cli.main(
+            [
+                "--config",
+                str(config),
+                "--output",
+                str(output),
+                "--ledger",
+                str(ledger),
+                "--workers",
+                "1",
+                "--now",
+                "2026-09-01T20:00:00Z",
+            ]
+        )
+    assert output.read_bytes() == output_before
+    assert ledger.read_bytes() == ledger_before
+
+
+def test_cli_does_not_admit_a_synthetic_subset_prior(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    import scripts.newswire_pull as cli
+
+    source = _source("ooni")
+    synthetic_registry = _registry(source)
+    previous = collect_newswire(
+        synthetic_registry,
+        lambda _url, **_kwargs: _rss(source),
+        now=NOW,
+    )
+    output = tmp_path / "newswire-latest.json"
+    ledger = tmp_path / "newswire-versions.jsonl"
+    output.write_text(
+        json.dumps(previous, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    ledger.write_bytes(
+        (ROOT / "readings" / "newswire-versions.jsonl")
+        .read_bytes()
+        .splitlines()[0]
+        + b"\n"
+    )
+    output_before = output.read_bytes()
+    ledger_before = ledger.read_bytes()
+    monkeypatch.setattr(
+        cli,
+        "safe_fetch_bytes",
+        lambda _url, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("synthetic prior reached the network boundary")
+        ),
+    )
+
+    with pytest.raises(NewswireError, match="legacy registry digest"):
+        cli.main(
+            [
+                "--output",
+                str(output),
+                "--ledger",
+                str(ledger),
+                "--workers",
+                "1",
+                "--now",
+                "2026-08-11T13:00:00Z",
+            ]
+        )
+    assert output.read_bytes() == output_before
+    assert ledger.read_bytes() == ledger_before
+
+
+def test_cli_transition_all_current_sources_fail_closed_and_preserves_prior(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    import scripts.newswire_pull as cli
+
+    previous = _legacy_fetch_error_transition_input()
+    output = tmp_path / "newswire-latest.json"
+    ledger = tmp_path / "newswire-versions.jsonl"
+    status_path = tmp_path / "newswire-status.json"
+    output.write_text(
+        json.dumps(previous, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    ledger.write_bytes(
+        (ROOT / "readings" / "newswire-versions.jsonl")
+        .read_bytes()
+        .splitlines()[0]
+        + b"\n"
+    )
+    output_before = output.read_bytes()
+    ledger_before = ledger.read_bytes()
+
+    def offline(_url, **_kwargs):
+        raise OSError("offline")
+
+    monkeypatch.setattr(cli, "safe_fetch_bytes", offline)
+    transition_now = datetime.strptime(
+        previous["generated_at"], "%Y-%m-%dT%H:%M:%SZ"
+    ).replace(tzinfo=timezone.utc) + timedelta(hours=1)
+    assert (
+        cli.main(
+            [
+                "--output",
+                str(output),
+                "--ledger",
+                str(ledger),
+                "--status",
+                str(status_path),
+                "--workers",
+                "1",
+                "--now",
+                transition_now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            ]
+        )
+        == 2
+    )
+    assert output.read_bytes() == output_before
+    assert ledger.read_bytes() == ledger_before
+    status = strict_json_loads(status_path.read_bytes())
+    assert status["status"] == "no-fresh-sources"
+    assert status["fresh_sources"] == 0
+    assert status["output_generated_at"] == previous["generated_at"]
+    assert status["output_sha256"] == hashlib.sha256(output_before).hexdigest()
 
 
 def test_prior_validator_allows_only_derived_editorial_state_migration():

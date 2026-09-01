@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import fcntl
+import email.utils
 import grp
 import hashlib
 import json
+import math
 import os
 import pwd
 import re
@@ -17,6 +19,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -39,11 +42,17 @@ NODE_OPTIONS = os.environ.get("PALIMPSEST_RAILWAY_NODE_OPTIONS", "--jitless")
 ROLLBACK_TIMEOUT = int(os.environ.get("PALIMPSEST_RAILWAY_ROLLBACK_TIMEOUT_SECONDS", "300"))
 ROLLBACK_POLL = float(os.environ.get("PALIMPSEST_RAILWAY_ROLLBACK_POLL_SECONDS", "10"))
 
+WIRE_FRESHNESS_BUDGET_SECONDS = 1800
+DESIRED_LIVE_MARGIN_SECONDS = 300
+MAX_MUTATION_TO_RECEIPT_SECONDS = 720
+RECEIPT_COMMIT_RESERVE_SECONDS = 10
+LIVE_PROOF_CLOCK_SKEW_SECONDS = 120
+
 PIN_SCHEMA = "palimpsest.direct-publication-base-transition.v1"
 SUCCESSOR_PIN_SCHEMA = "palimpsest.direct-publication-base.v2"
 ROTATION_SCHEMA = "palimpsest.direct-publication-base-rotation.v1"
 PIN_INCIDENT = "palimpsest-direct-lineage-2026-08-30"
-CANDIDATE_SCHEMA = "palimpsest.direct-publication-candidate.v1"
+CANDIDATE_SCHEMA = "palimpsest.direct-publication-candidate.v2"
 ROLLBACK_EVIDENCE_SCHEMA = "palimpsest.direct-publication-rollback-evidence.v1"
 RECOVERY_SCHEMA = "palimpsest.direct-publication-recovery.v1"
 ATTEMPT_SCHEMA = "palimpsest.direct-publication-rollback-attempt.v1"
@@ -87,7 +96,197 @@ IMAGE = re.compile(r"^sha256:[0-9a-f]{64}$")
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 MAX_JSON = 8 * 1024 * 1024
 MAX_TOPOLOGY = 2 * 1024 * 1024
+MAX_FRESHNESS = 64 * 1024
+MAX_ATTESTATION = 256 * 1024
+MAX_NEWSROOM = 16 * 1024 * 1024
+MAX_MEASUREMENT_EVIDENCE = 64 * 1024 * 1024
+MAX_SAFE_INTEGER = 9_007_199_254_740_991
 TERMINAL_NONACTIVATING = {"CANCELED", "CANCELLED", "CRASHED", "FAILED", "REMOVED", "SKIPPED"}
+UTC_CLOCK = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+FRESHNESS_ATTESTATION_PATH = (
+    "readings/publication-freshness-attestation-latest.json"
+)
+RIGHTS_STATUS_PATH = "readings/china-publication-rights-latest.json"
+NEWSROOM_PATH = "readings/newsroom-latest.json"
+NEWSROOM_HTML_PATH = "news/index.html"
+NEWSROOM_FEED_PATHS = (
+    "news/feed.json",
+    "news/feed.xml",
+    "news/instruments/feed.json",
+    "news/instruments/feed.xml",
+)
+DENIED_CHINA_ANALYSIS_FEED_PATHS = (
+    "news/china/analysis/feed.json",
+    "news/china/analysis/feed.xml",
+)
+FRESHNESS_ATTESTATION_LIMITATIONS = (
+    "Metadata only; quarantined source artifacts are not republished here.",
+    "No source values, observations, or per-record identifiers are included.",
+    "This attestation conveys no observation or publication authority.",
+    "Unavailable or restricted evidence is not a directional signal.",
+)
+RESTRICTED_AVAILABILITY_SIGNALS = frozenset(
+    {
+        "board-alarm",
+        "event-flags",
+        "coverage-guard",
+        "forecast-ledger",
+        "cross-layer",
+        "china-econ",
+        "cny-fix-gap",
+        "data-darkness",
+    }
+)
+RIGHTS_EVIDENCE_URL = (
+    "https://palimpsest.info/readings/china-publication-rights-latest.json"
+)
+AVAILABILITY_LABELS = {
+    "board-alarm": "Board alarm",
+    "event-flags": "Event flags",
+    "coverage-guard": "Coverage guard",
+    "forecast-ledger": "Forecast ledger",
+    "cross-layer": "Cross-layer comparison",
+    "china-econ": "China money-market benchmarks",
+    "cny-fix-gap": "Yuan-fix comparison",
+    "data-darkness": "Official-data availability",
+}
+AVAILABILITY_SLUGS = {
+    "board-alarm": "board-alarm",
+    "event-flags": "event-flags",
+    "coverage-guard": "coverage-guard",
+    "forecast-ledger": "forecast-ledger",
+    "cross-layer": "cross-layer-lead-lag",
+    "china-econ": "china-money-market-benchmarks",
+    "cny-fix-gap": "cny-fix-gap",
+    "data-darkness": "official-data-darkness",
+}
+NEWSROOM_IDENTITY_ROWS = (
+    ("board-alarm", "board-alarm", "command", 1, "analysis", "lead", ("event-flags", "coverage-guard", "vantage-fusion")),
+    ("event-flags", "event-flags", "command", 2, "methodology", "high", ("board-alarm", "forecast-ledger", "coverage-guard")),
+    ("coverage-guard", "coverage-guard", "command", 3, "methodology", "high", ("board-alarm", "event-flags", "ddti")),
+    ("forecast-ledger", "forecast-ledger", "command", 4, "methodology", "standard", ("event-flags", "cross-layer")),
+    ("cross-layer", "cross-layer-lead-lag", "command", 5, "methodology", "background", ("forecast-ledger", "board-alarm")),
+    ("ddti", "deletion-directive-term-index", "attention", 1, "measurement", "high", ("gdelt", "weibo-hotsearch", "silence-index", "coverage-guard")),
+    ("gdelt", "global-coverage-cross-signal", "attention", 2, "measurement", "standard", ("ddti", "silence-index", "weibo-hotsearch")),
+    ("weibo-hotsearch", "weibo-hot-search-join", "attention", 3, "measurement", "high", ("ddti", "gdelt", "silence-index")),
+    ("silence-index", "silence-index", "attention", 4, "analysis", "high", ("ddti", "gdelt", "weibo-hotsearch")),
+    ("blocklist", "platform-blocklist-archaeology", "attention", 5, "measurement", "standard", ("ddti", "net4people")),
+    ("net4people", "community-blocking-log", "attention", 6, "measurement", "standard", ("ooni-gfw", "circumvention-demand", "vantage-fusion")),
+    ("public-deletion-ledgers", "public-deletion-ledgers", "attention", 7, "measurement", "standard", ("ddti", "undertext", "wayback")),
+    ("undertext", "undertext-differential-fusion", "attention", 8, "analysis", "high", ("wayback", "weibo-hotsearch", "ddti")),
+    ("research-corpus", "research-corpus-metadata", "attention", 9, "measurement", "standard", ("github-refuge", "wayback")),
+    ("peer-context", "attributed-peer-context", "attention", 10, "analysis", "background", ("greatfire-context", "ooni-gfw", "public-deletion-ledgers")),
+    ("ooni-gfw", "ooni-great-firewall-index", "network", 1, "measurement", "lead", ("in-path-interference", "censored-planet", "inside-view", "vantage-fusion")),
+    ("in-path-interference", "in-path-interference", "network", 2, "measurement", "high", ("ooni-gfw", "inside-view", "vantage-fusion")),
+    ("censored-planet", "censored-planet-china-interference", "network", 3, "measurement", "high", ("ooni-gfw", "inside-view", "vantage-fusion")),
+    ("inside-view", "inside-china-view", "network", 4, "measurement", "lead", ("ooni-gfw", "in-path-interference", "censored-planet", "vantage-fusion")),
+    ("ioda-outages", "ioda-china-outage-monitor", "network", 5, "measurement", "high", ("ooni-gfw", "vantage-fusion")),
+    ("circumvention-demand", "circumvention-demand", "network", 6, "measurement", "standard", ("net4people", "ooni-gfw", "vantage-fusion")),
+    ("vantage-fusion", "network-vantage-fusion", "network", 7, "analysis", "lead", ("ooni-gfw", "censored-planet", "inside-view", "net4people")),
+    ("bleedthrough", "bleedthrough-injector-tomography", "network", 8, "measurement", "background", ("in-path-interference", "vantage-fusion")),
+    ("greatfire-context", "greatfire-attributed-verdicts", "network", 9, "measurement", "background", ("ooni-gfw", "peer-context", "public-deletion-ledgers")),
+    ("erasure-observatory", "erasure-observatory", "erasure", 1, "analysis", "lead", ("wayback", "baike-redaction", "github-refuge", "app-storefront", "apple-censorship")),
+    ("wayback", "wayback-reconstruction", "erasure", 2, "measurement", "high", ("erasure-observatory", "baike-redaction", "anchors")),
+    ("baike-redaction", "baike-redaction", "erasure", 3, "measurement", "background", ("wayback", "erasure-observatory")),
+    ("github-refuge", "github-refuge-watch", "erasure", 4, "measurement", "standard", ("erasure-observatory", "wayback", "anchors")),
+    ("app-storefront", "app-storefront-panel", "erasure", 5, "measurement", "high", ("apple-censorship", "erasure-observatory")),
+    ("apple-censorship", "apple-censorship-corpus", "erasure", 6, "measurement", "high", ("app-storefront", "erasure-observatory")),
+    ("baike-public-snapshot", "baike-public-snapshot", "erasure", 7, "measurement", "background", ("baike-redaction", "wayback", "erasure-observatory")),
+    ("china-econ", "china-money-market-benchmarks", "economy", 1, "measurement", "standard", ("cny-fix-gap", "stock-connect", "data-darkness", "believability")),
+    ("cny-fix-gap", "cny-fix-gap", "economy", 2, "measurement", "high", ("china-econ", "stock-connect", "data-darkness")),
+    ("stock-connect", "stock-connect", "economy", 3, "measurement", "standard", ("china-econ", "cny-fix-gap")),
+    ("data-darkness", "official-data-darkness", "economy", 4, "analysis", "high", ("china-econ", "cny-fix-gap", "believability")),
+    ("believability", "believability-read", "economy", 5, "analysis", "background", ("china-econ", "data-darkness")),
+    ("generative-firewall", "generative-firewall-index", "models", 1, "measurement", "lead", ("board-alarm", "forecast-ledger")),
+    ("anchors", "integrity-anchors", "integrity", 1, "integrity", "high", ("wayback", "github-refuge", "erasure-observatory")),
+    ("nemesis", "private-runtime-bridge", "nemesis", 1, "intelligence", "background", ("ddti", "china-econ", "board-alarm")),
+)
+NEWSROOM_IDENTITY = {
+    signal_id: {
+        "slug": slug,
+        "section": section,
+        "order": order,
+        "type": story_type,
+        "priority": priority,
+        "related_signal_ids": list(related),
+    }
+    for signal_id, slug, section, order, story_type, priority, related in NEWSROOM_IDENTITY_ROWS
+}
+EXPECTED_NEWSROOM_ORDER = tuple(row[0] for row in NEWSROOM_IDENTITY_ROWS)
+AVAILABILITY_EDITORIAL = {
+    signal_id: {
+        key: value
+        for key, value in NEWSROOM_IDENTITY[signal_id].items()
+        if key != "slug"
+    }
+    for signal_id in RESTRICTED_AVAILABILITY_SIGNALS
+}
+SECTION_IDENTITIES = {
+    "command": (1, "The Board"),
+    "attention": (2, "Attention and Narrative"),
+    "network": (3, "Network and Circumvention"),
+    "erasure": (4, "Erasure and Distribution"),
+    "economy": (5, "Economic Undertext"),
+    "models": (6, "Generative Firewall"),
+    "integrity": (7, "Integrity and Witnessing"),
+    "nemesis": (8, "Intelligence Bridge"),
+}
+AVAILABILITY_DEK = (
+    "This route remains available, but its current result is withheld until "
+    "the source policy records an effective public-value grant."
+)
+AVAILABILITY_METHOD = {
+    "summary": (
+        "Availability-only public projection under the active China "
+        "economic source policy"
+    ),
+    "version": 1,
+}
+AVAILABILITY_LIMITATIONS = [
+    "Current finding withheld: public value publication is restricted",
+    "Availability is not a zero, a normal reading, or evidence of direction.",
+]
+NEWSROOM_STORY_FIELDS = {
+    "claim_fingerprint",
+    "claims",
+    "dek",
+    "evidence",
+    "headline",
+    "id",
+    "limitations",
+    "method",
+    "metric",
+    "modified_at",
+    "order",
+    "priority",
+    "published_at",
+    "related_signal_ids",
+    "section",
+    "signal_id",
+    "slug",
+    "status",
+    "type",
+    "url",
+}
+NULL_METRIC = {
+    "label": None,
+    "value": None,
+    "unit": None,
+    "denominator": {"label": None, "value": None},
+}
+MEASUREMENT_CLAIM_TYPES = frozenset(
+    {"finding", "observation", "method", "integrity"}
+)
+AVAILABILITY_STATUSES = frozenset({"degraded", "stale", "missing", "corrupt"})
+SOURCE_REPORT_DESKS = {
+    "economy": "Economy",
+    "politics": "Politics & law",
+    "rights": "Rights",
+    "security": "Security",
+    "censorship": "Censorship",
+    "connectivity": "Connectivity & networks",
+    "technology": "Technology",
+}
 
 
 class ReconciliationError(RuntimeError):
@@ -176,6 +375,54 @@ def _timestamp(value: Any, label: str) -> datetime:
     return parsed
 
 
+def _deadline_timestamp(value: Any, label: str) -> datetime:
+    if not isinstance(value, str) or UTC_CLOCK.fullmatch(value) is None:
+        raise ReconciliationError(f"{label} is not a strict UTC clock")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError as exc:
+        raise ReconciliationError(f"{label} is invalid") from exc
+
+
+def _candidate_receipt_deadline(candidate: dict[str, Any]) -> datetime:
+    prepared = _timestamp(candidate["prepared_at"], "candidate prepared_at")
+    wire = _timestamp(candidate["wire_generated_at"], "candidate wire_generated_at")
+    deadline = _deadline_timestamp(
+        candidate["receipt_deadline_at"], "candidate receipt_deadline_at"
+    )
+    if deadline <= prepared:
+        raise ReconciliationError("candidate receipt deadline does not follow preparation")
+    if deadline > prepared + timedelta(seconds=MAX_MUTATION_TO_RECEIPT_SECONDS):
+        raise ReconciliationError("candidate receipt deadline exceeds the mutation bound")
+    if deadline > wire + timedelta(
+        seconds=WIRE_FRESHNESS_BUDGET_SECONDS - DESIRED_LIVE_MARGIN_SECONDS
+    ):
+        raise ReconciliationError("candidate receipt deadline consumes the live wire margin")
+    return deadline
+
+
+def _candidate_adoption_is_timely(
+    candidate: dict[str, Any],
+    *,
+    now: datetime | None = None,
+    reserve_seconds: int = 0,
+) -> bool:
+    if not isinstance(reserve_seconds, int) or isinstance(reserve_seconds, bool) or reserve_seconds < 0:
+        raise ReconciliationError("candidate receipt reserve is invalid")
+    checked_at = datetime.now(UTC) if now is None else now.astimezone(UTC)
+    return checked_at + timedelta(seconds=reserve_seconds) <= _candidate_receipt_deadline(
+        candidate
+    )
+
+
+def _receipt_was_prepared_in_window(
+    receipt: dict[str, Any], candidate: dict[str, Any]
+) -> bool:
+    recorded = _timestamp(receipt.get("recorded_at"), "receipt recorded_at")
+    prepared = _timestamp(candidate["prepared_at"], "candidate prepared_at")
+    return prepared <= recorded <= _candidate_receipt_deadline(candidate)
+
+
 def _stable_metadata(metadata: os.stat_result) -> tuple[int, ...]:
     """Return fields that cannot legitimately change as a side effect of read(2)."""
     return (
@@ -251,7 +498,7 @@ def _ensure_directory(path: Path, *, uid: int, gid: int) -> None:
     _directory(path, uid=uid, gid=gid)
 
 
-def _canonical(value: dict[str, Any]) -> bytes:
+def _canonical(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"), sort_keys=True).encode() + b"\n"
 
 
@@ -623,14 +870,27 @@ def _validate_candidate_pin_binding(
 
 
 def _validate_candidate(candidate: dict[str, Any]) -> None:
-    _keys(candidate, {"base_sha", "host_deployed_sha", "input_sha256", "message", "predecessor", "prepared_at", "publication_base", "release_bundle", "release_manifest", "release_sha", "rollback_evidence", "schema_version", "status", "submission_id", "wire_generated_at"}, "candidate journal")
+    _keys(candidate, {"base_sha", "host_deployed_sha", "input_sha256", "message", "news_source_tail", "predecessor", "prepared_at", "publication_base", "receipt_deadline_at", "release_bundle", "release_manifest", "release_sha", "rollback_evidence", "schema_version", "status", "submission_id", "wire_canonical_sha256", "wire_generated_at"}, "candidate journal")
     if candidate["schema_version"] != CANDIDATE_SCHEMA or candidate["status"] != "mutation_unresolved":
         raise ReconciliationError("candidate identity is invalid")
     prepared = _timestamp(candidate["prepared_at"], "candidate prepared_at")
     wire = _timestamp(candidate["wire_generated_at"], "candidate wire_generated_at")
     if wire > prepared + timedelta(seconds=120):
         raise ReconciliationError("candidate wire timestamp follows preparation")
+    _candidate_receipt_deadline(candidate)
     _sha256(candidate["input_sha256"], "candidate input")
+    _sha256(candidate["wire_canonical_sha256"], "candidate wire canonical digest")
+    source_tail = candidate.get("news_source_tail")
+    if not isinstance(source_tail, dict):
+        raise ReconciliationError("candidate news source tail is invalid")
+    _keys(source_tail, {"count", "sha256"}, "candidate news source tail")
+    if (
+        not isinstance(source_tail.get("count"), int)
+        or isinstance(source_tail["count"], bool)
+        or source_tail["count"] < 0
+    ):
+        raise ReconciliationError("candidate news source tail count is invalid")
+    _sha256(source_tail.get("sha256"), "candidate news source tail digest")
     _sha40(candidate["host_deployed_sha"], "candidate host deployment")
     _sha40(candidate["base_sha"], "candidate base")
     release = _sha40(candidate["release_sha"], "candidate release")
@@ -810,8 +1070,10 @@ def _topology(raw: bytes, *, deployment: str | None = None, image: str | None = 
     return {"created_at": created_at, "deployment_id": deployment_id, "image_digest": image_digest, "reason": meta["reason"]}
 
 
-def _fetch(url: str, *, maximum: int = MAX_JSON) -> bytes:
-    request = urllib.request.Request(url, headers={"Accept": "application/json", "Cache-Control": "no-cache, no-store", "User-Agent": "palimpsest-candidate-reconciler/2"})
+def _fetch(
+    url: str, *, maximum: int = MAX_JSON, accept: str = "application/json"
+) -> bytes:
+    request = urllib.request.Request(url, headers={"Accept": accept, "Cache-Control": "no-cache, no-store", "User-Agent": "palimpsest-candidate-reconciler/2"})
     try:
         with urllib.request.build_opener(_NoRedirect()).open(request, timeout=30) as response:
             if response.status != 200 or response.geturl() != url:
@@ -824,6 +1086,1637 @@ def _fetch(url: str, *, maximum: int = MAX_JSON) -> bytes:
     if not raw or len(raw) > maximum:
         raise ReconciliationError(f"live response byte size is invalid: {url}")
     return raw
+
+
+def _critical_file_identity(
+    manifest: dict[str, Any], relative: str
+) -> tuple[int, str]:
+    critical = manifest.get("critical_files")
+    proof = critical.get(relative) if isinstance(critical, dict) else None
+    if not isinstance(proof, dict):
+        raise ReconciliationError(f"manifest omits critical live path: {relative}")
+    _keys(proof, {"bytes", "sha256"}, f"manifest critical path {relative}")
+    return (
+        _positive(proof["bytes"], f"manifest critical path {relative} bytes"),
+        _sha256(proof["sha256"], f"manifest critical path {relative} digest"),
+    )
+
+
+def _validate_live_attestations(
+    provider_raw: bytes,
+    public_raw: bytes,
+    *,
+    manifest: dict[str, Any],
+    candidate: dict[str, Any],
+) -> dict[str, Any]:
+    if provider_raw != public_raw:
+        raise ReconciliationError(
+            "provider and public freshness attestations differ"
+        )
+    expected_bytes, expected_digest = _critical_file_identity(
+        manifest, FRESHNESS_ATTESTATION_PATH
+    )
+    if (
+        len(public_raw) != expected_bytes
+        or _digest(public_raw) != expected_digest
+    ):
+        raise ReconciliationError(
+            "live freshness attestation is not byte-bound to the candidate manifest"
+        )
+
+    document = _object(public_raw, "live freshness attestation")
+    _keys(
+        document,
+        {
+            "artifacts",
+            "attested_at",
+            "limitations",
+            "mode",
+            "publication_allowed",
+            "publication_sha",
+            "rights_status",
+            "schema_version",
+        },
+        "live freshness attestation",
+    )
+    artifacts = document.get("artifacts")
+    rights_status = document.get("rights_status")
+    if not isinstance(artifacts, dict) or not isinstance(rights_status, dict):
+        raise ReconciliationError("live freshness attestation identity is invalid")
+    _keys(
+        artifacts,
+        {"china_situation", "newswire"},
+        "live freshness attestation artifacts",
+    )
+    newswire = artifacts.get("newswire")
+    situation = artifacts.get("china_situation")
+    if not isinstance(newswire, dict) or not isinstance(situation, dict):
+        raise ReconciliationError("live freshness attestation artifacts are invalid")
+    _keys(
+        newswire,
+        {"canonical_sha256", "generated_at", "path", "schema_version"},
+        "live freshness attestation Newswire",
+    )
+    _keys(
+        situation,
+        {
+            "canonical_sha256",
+            "generated_at",
+            "inputs",
+            "path",
+            "schema_version",
+        },
+        "live freshness attestation China situation",
+    )
+    inputs = situation.get("inputs")
+    if not isinstance(inputs, dict):
+        raise ReconciliationError(
+            "live freshness attestation China situation inputs are invalid"
+        )
+    _keys(
+        inputs,
+        {"newswire_canonical_sha256", "newswire_generated_at"},
+        "live freshness attestation China situation inputs",
+    )
+    _keys(
+        rights_status,
+        {"bytes", "path", "sha256"},
+        "live freshness attestation rights status",
+    )
+    rights_bytes, rights_digest = _critical_file_identity(
+        manifest, RIGHTS_STATUS_PATH
+    )
+    expected_wire = {
+        "canonical_sha256": candidate["wire_canonical_sha256"],
+        "generated_at": candidate["wire_generated_at"],
+        "path": "readings/newswire-latest.json",
+        "schema_version": "palimpsest-newswire.v1",
+    }
+    _sha256(
+        situation.get("canonical_sha256"),
+        "live freshness attestation China situation digest",
+    )
+    if (
+        document.get("schema_version")
+        != "palimpsest.publication-freshness-attestation.v1"
+        or document.get("publication_sha") != candidate["release_sha"]
+        or document.get("mode") != "rights-suppressed"
+        or document.get("publication_allowed") is not False
+        or document.get("limitations") != list(FRESHNESS_ATTESTATION_LIMITATIONS)
+        or newswire != expected_wire
+        or situation.get("path") != "readings/china-situation-latest.json"
+        or situation.get("schema_version") != "palimpsest-china-situation.v1"
+        or inputs
+        != {
+            "newswire_canonical_sha256": candidate["wire_canonical_sha256"],
+            "newswire_generated_at": candidate["wire_generated_at"],
+        }
+        or rights_status
+        != {
+            "bytes": rights_bytes,
+            "path": RIGHTS_STATUS_PATH,
+            "sha256": rights_digest,
+        }
+    ):
+        raise ReconciliationError(
+            "live freshness attestation is not bound to the candidate identity"
+        )
+    wire_at = _deadline_timestamp(
+        newswire["generated_at"], "live freshness attestation Newswire generated_at"
+    )
+    situation_at = _deadline_timestamp(
+        situation.get("generated_at"),
+        "live freshness attestation China situation generated_at",
+    )
+    attested_at = _deadline_timestamp(
+        document.get("attested_at"), "live freshness attestation attested_at"
+    )
+    built_at = _deadline_timestamp(
+        manifest.get("built_at"), "candidate manifest built_at"
+    )
+    if not wire_at <= situation_at <= attested_at <= built_at:
+        raise ReconciliationError(
+            "live freshness attestation clocks violate publication causality"
+        )
+    return document
+
+
+def _validate_live_freshness_proofs(
+    provider_raw: bytes,
+    public_raw: bytes,
+    *,
+    manifest: dict[str, Any],
+    candidate: dict[str, Any],
+    attestation: dict[str, Any],
+    now: datetime | None = None,
+) -> None:
+    top_keys = {
+        "checked_at",
+        "clocks",
+        "rights",
+        "schema_version",
+        "service",
+        "source_commit",
+        "status",
+        "tree_sha256",
+    }
+    clock_keys = {"age_seconds", "freshness_budget_seconds", "generated_at", "status"}
+    checked_now = datetime.now(UTC) if now is None else now.astimezone(UTC)
+    attested_wire = attestation["artifacts"]["newswire"]["generated_at"]
+    if attested_wire != candidate["wire_generated_at"]:
+        raise ReconciliationError(
+            "dynamic freshness does not match the candidate attestation"
+        )
+    expected = {
+        "wire": (
+            attested_wire,
+            WIRE_FRESHNESS_BUDGET_SECONDS,
+        ),
+        "publication": (manifest["built_at"], 3600),
+    }
+    checked_at_values: list[datetime] = []
+    for label, raw in (("provider", provider_raw), ("public", public_raw)):
+        proof = _object(raw, f"{label} live freshness proof")
+        _keys(proof, top_keys, f"{label} live freshness proof")
+        if (
+            proof.get("schema_version") != "palimpsest.publication-freshness.v1"
+            or proof.get("status") != "fresh"
+            or proof.get("service") != "palimpsest-publication"
+            or proof.get("source_commit") != candidate["release_sha"]
+            or proof.get("tree_sha256") != manifest["tree_sha256"]
+            or proof.get("rights")
+            != {"mode": "rights-suppressed", "publication_allowed": False}
+        ):
+            raise ReconciliationError(
+                f"{label} live freshness proof has the wrong release identity"
+            )
+        checked_at = _deadline_timestamp(
+            proof.get("checked_at"), f"{label} live freshness checked_at"
+        )
+        if (
+            abs((checked_now - checked_at).total_seconds())
+            > LIVE_PROOF_CLOCK_SKEW_SECONDS
+        ):
+            raise ReconciliationError(
+                f"{label} live freshness proof is not current"
+            )
+        checked_at_values.append(checked_at)
+        clocks = proof.get("clocks")
+        if not isinstance(clocks, dict) or set(clocks) != set(expected):
+            raise ReconciliationError(
+                f"{label} live freshness clock inventory is invalid"
+            )
+        for name, (generated_text, budget) in expected.items():
+            row = clocks.get(name)
+            if not isinstance(row, dict):
+                raise ReconciliationError(
+                    f"{label} {name} freshness clock is invalid"
+                )
+            _keys(row, clock_keys, f"{label} {name} freshness clock")
+            generated = _deadline_timestamp(
+                row.get("generated_at"), f"{label} {name} generated_at"
+            )
+            expected_age = max(0, int((checked_at - generated).total_seconds()))
+            if (
+                row.get("generated_at") != generated_text
+                or type(row.get("age_seconds")) is not int
+                or row["age_seconds"] != expected_age
+                or row["age_seconds"] > budget
+                or row.get("freshness_budget_seconds") != budget
+                or row.get("status") != "fresh"
+            ):
+                raise ReconciliationError(
+                    f"{label} {name} freshness proof is not live and bound"
+                )
+    if (
+        abs((checked_at_values[0] - checked_at_values[1]).total_seconds())
+        > LIVE_PROOF_CLOCK_SKEW_SECONDS
+    ):
+        raise ReconciliationError(
+            "provider and public freshness proofs are not contemporaneous"
+        )
+
+
+def _strict_availability_story(story: dict[str, Any], generated_at: str) -> bool:
+    signal_id = story.get("signal_id")
+    if signal_id not in RESTRICTED_AVAILABILITY_SIGNALS:
+        return False
+    label = AVAILABILITY_LABELS[signal_id]
+    slug = AVAILABILITY_SLUGS[signal_id]
+    statement = (
+        f"No current finding is published for {label} because public value "
+        "publication is restricted by the active source policy."
+    )
+    claims = story.get("claims")
+    evidence = story.get("evidence")
+    source = evidence.get("input") if isinstance(evidence, dict) else None
+    claim_core = {
+        "claim_type": "availability",
+        "metric": NULL_METRIC,
+        "signal_id": signal_id,
+        "statement": statement,
+        "status": "degraded",
+    }
+    claim_fingerprint = "sha256:" + _digest(
+        json.dumps(
+            claim_core,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    return (
+        set(story) == NEWSROOM_STORY_FIELDS
+        and story.get("id") == f"palimpsest-news:{signal_id}"
+        and story.get("slug") == slug
+        and story.get("url") == f"https://palimpsest.info/news/{slug}/"
+        and story.get("headline") == f"{label}: public value unavailable"
+        and story.get("dek") == AVAILABILITY_DEK
+        and story.get("status") == "degraded"
+        and story.get("metric") == NULL_METRIC
+        and isinstance(claims, list)
+        and len(claims) == 1
+        and isinstance(claims[0], dict)
+        and set(claims[0]) == {"statement", "type"}
+        and claims[0].get("type") == "availability"
+        and claims[0].get("statement") == statement
+        and isinstance(evidence, dict)
+        and set(evidence) == {"input", "source_timestamp", "url"}
+        and evidence.get("url") == RIGHTS_EVIDENCE_URL
+        and evidence.get("source_timestamp") is None
+        and isinstance(source, dict)
+        and set(source) == {"bytes", "filename", "sha256"}
+        and source.get("filename") == f"{signal_id}-latest.json"
+        and source.get("sha256") is None
+        and source.get("bytes") is None
+        and story.get("published_at") == generated_at
+        and story.get("modified_at") == generated_at
+        and story.get("claim_fingerprint") == claim_fingerprint
+        and story.get("method") == AVAILABILITY_METHOD
+        and story.get("limitations") == AVAILABILITY_LIMITATIONS
+        and {
+            key: story.get(key)
+            for key in ("section", "order", "type", "priority", "related_signal_ids")
+        }
+        == AVAILABILITY_EDITORIAL[signal_id]
+    )
+
+
+def _nonempty_text(value: Any, label: str, *, maximum: int) -> str:
+    if (
+        type(value) is not str
+        or not value.strip()
+        or len(value) > maximum
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        raise ReconciliationError(f"{label} is not bounded non-empty text")
+    return value
+
+
+def _story_revision_id(story: dict[str, Any]) -> str:
+    payload = json.dumps(
+        story,
+        allow_nan=False,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return "storyv-" + _digest(payload)[:24]
+
+
+def _newsroom_story_kind(story: dict[str, Any], generated_at: str) -> str:
+    signal_id = story.get("signal_id")
+    label = signal_id if isinstance(signal_id, str) else "unknown"
+    identity = NEWSROOM_IDENTITY.get(signal_id)
+    if (
+        set(story) != NEWSROOM_STORY_FIELDS
+        or identity is None
+        or story.get("id") != f"palimpsest-news:{signal_id}"
+        or story.get("slug") != identity["slug"]
+        or story.get("url")
+        != f"https://palimpsest.info/news/{identity['slug']}/"
+        or type(story.get("order")) is not int
+        or {
+            key: story.get(key)
+            for key in (
+                "section",
+                "order",
+                "type",
+                "priority",
+                "related_signal_ids",
+            )
+        }
+        != {
+            key: value for key, value in identity.items() if key != "slug"
+        }
+    ):
+        raise ReconciliationError(
+            f"live structured newsroom story identity is invalid: {label}"
+        )
+    _nonempty_text(story.get("headline"), f"story {label} headline", maximum=160)
+    _nonempty_text(story.get("dek"), f"story {label} dek", maximum=1000)
+    published_text = story.get("published_at")
+    modified_text = story.get("modified_at")
+    published = _deadline_timestamp(published_text, f"story {label} published_at")
+    modified = _deadline_timestamp(modified_text, f"story {label} modified_at")
+    edition = _deadline_timestamp(generated_at, "live structured newsroom generated_at")
+    if published != modified or published > edition:
+        raise ReconciliationError(
+            f"live structured newsroom story timestamps are invalid: {label}"
+        )
+    claims = story.get("claims")
+    metric = story.get("metric")
+    evidence = story.get("evidence")
+    method = story.get("method")
+    limitations = story.get("limitations")
+    if (
+        not isinstance(claims, list)
+        or len(claims) != 1
+        or not isinstance(claims[0], dict)
+        or set(claims[0]) != {"statement", "type"}
+        or not isinstance(claims[0].get("statement"), str)
+        or not claims[0]["statement"].strip()
+        or not isinstance(metric, dict)
+        or set(metric) != {"denominator", "label", "unit", "value"}
+        or not isinstance(metric.get("denominator"), dict)
+        or set(metric["denominator"]) != {"label", "value"}
+        or not isinstance(evidence, dict)
+        or set(evidence) != {"input", "source_timestamp", "url"}
+        or not isinstance(evidence.get("input"), dict)
+        or set(evidence["input"]) != {"bytes", "filename", "sha256"}
+        or not isinstance(method, dict)
+        or set(method) != {"summary", "version"}
+        or not isinstance(limitations, list)
+        or not 1 <= len(limitations) <= 9
+        or any(type(item) is not str for item in limitations)
+        or len(limitations) != len(set(limitations))
+    ):
+        raise ReconciliationError(
+            f"live structured newsroom story has invalid semantic shape: {label}"
+        )
+
+    _nonempty_text(claims[0]["statement"], f"story {label} claim", maximum=1000)
+    _nonempty_text(method.get("summary"), f"story {label} method", maximum=8192)
+    method_version = method.get("version")
+    if not (
+        method_version is None
+        or type(method_version) is int
+        and 1 <= method_version <= MAX_SAFE_INTEGER
+        or type(method_version) is str
+        and 1 <= len(method_version) <= 100
+        and not any(
+            ord(character) < 32 or ord(character) == 127
+            for character in method_version
+        )
+    ):
+        raise ReconciliationError(
+            f"live structured newsroom story method version is invalid: {label}"
+        )
+    for limitation in limitations:
+        _nonempty_text(limitation, f"story {label} limitation", maximum=1000)
+
+    source = evidence["input"]
+    filename = source.get("filename")
+    source_sha = source.get("sha256")
+    source_bytes = source.get("bytes")
+    source_timestamp = evidence.get("source_timestamp")
+    rights_evidence = (
+        signal_id in RESTRICTED_AVAILABILITY_SIGNALS
+        and evidence.get("url") == RIGHTS_EVIDENCE_URL
+        and source_sha is None
+        and source_bytes is None
+        and source_timestamp is None
+    )
+    if (
+        type(filename) is not str
+        or re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,126}\.json", filename) is None
+        or not rights_evidence
+        and (
+            evidence.get("url")
+            != f"https://palimpsest.info/readings/{filename}"
+            or (source_sha is None) != (source_bytes is None)
+            or source_sha is not None
+            and (
+                type(source_sha) is not str
+                or SHA256.fullmatch(source_sha) is None
+                or type(source_bytes) is not int
+                or not 0 <= source_bytes <= MAX_SAFE_INTEGER
+            )
+            or source_timestamp is not None
+            and _deadline_timestamp(
+                source_timestamp, f"story {label} evidence source_timestamp"
+            )
+            != published
+            or source_timestamp is None
+            and published != edition
+            or story.get("status") == "missing"
+            and (source_sha is not None or source_bytes is not None or source_timestamp is not None)
+        )
+    ):
+        raise ReconciliationError(
+            f"live structured newsroom story evidence is invalid: {label}"
+        )
+
+    claim_type = claims[0]["type"]
+    if (
+        claim_type in MEASUREMENT_CLAIM_TYPES
+        and story.get("status") == "live"
+        and (
+            evidence.get("url")
+            != f"https://palimpsest.info/readings/{filename}"
+            or type(source_sha) is not str
+            or SHA256.fullmatch(source_sha) is None
+            or type(source_bytes) is not int
+            or not 1 <= source_bytes <= MAX_SAFE_INTEGER
+            or type(source_timestamp) is not str
+            or source_timestamp != published_text
+        )
+    ):
+        raise ReconciliationError(
+            f"live structured newsroom measurement evidence is invalid: {label}"
+        )
+    claim_core = {
+        "claim_type": claim_type,
+        "metric": metric,
+        "signal_id": signal_id,
+        "statement": claims[0]["statement"],
+        "status": story.get("status"),
+    }
+    expected_fingerprint = "sha256:" + _digest(
+        json.dumps(
+            claim_core,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    if story.get("claim_fingerprint") != expected_fingerprint:
+        raise ReconciliationError(
+            f"live structured newsroom story fingerprint is invalid: {label}"
+        )
+
+    if (
+        claim_type == "availability"
+        and story.get("status") in AVAILABILITY_STATUSES
+        and metric == NULL_METRIC
+    ):
+        if len(limitations) < 2:
+            raise ReconciliationError(
+                f"live structured newsroom availability limitations are invalid: {label}"
+            )
+        if signal_id not in RESTRICTED_AVAILABILITY_SIGNALS:
+            serialized = json.dumps(story, ensure_ascii=False, sort_keys=True).casefold()
+            for marker in (
+                RIGHTS_EVIDENCE_URL.casefold(),
+                "rights-restricted-availability-v1",
+                "public value publication is restricted",
+                "active china economic source policy",
+            ):
+                if marker in serialized:
+                    raise ReconciliationError(
+                        "ordinary availability carries a rights-only marker: "
+                        f"{label}"
+                    )
+        return "availability"
+
+    value = metric.get("value")
+    denominator_label = metric["denominator"].get("label")
+    denominator_value = metric["denominator"].get("value")
+    metric_label = metric.get("label")
+    metric_unit = metric.get("unit")
+    if (
+        claim_type in MEASUREMENT_CLAIM_TYPES
+        and story.get("status") == "live"
+        and type(metric_label) is str
+        and type(metric_unit) is str
+        and isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and -MAX_SAFE_INTEGER <= value <= MAX_SAFE_INTEGER
+        and (
+            denominator_label is None
+            or (
+                type(denominator_label) is str
+            )
+        )
+        and (
+            denominator_value is None
+            or (
+                isinstance(denominator_value, int)
+                and not isinstance(denominator_value, bool)
+                and 0 <= denominator_value <= MAX_SAFE_INTEGER
+            )
+        )
+    ):
+        _nonempty_text(metric_label, f"story {label} metric label", maximum=1000)
+        _nonempty_text(metric_unit, f"story {label} metric unit", maximum=1000)
+        if denominator_label is not None:
+            _nonempty_text(
+                denominator_label,
+                f"story {label} denominator label",
+                maximum=1000,
+            )
+        return "measurement"
+    raise ReconciliationError(
+        f"live structured newsroom story mixes claim and metric semantics: {label}"
+    )
+
+
+def _validate_live_newsroom(
+    raw: bytes,
+    *,
+    expected_wire_generated_at: str,
+    manifest_built_at: str,
+) -> tuple[int, int]:
+    document = _object(raw, "live structured newsroom")
+    _keys(
+        document,
+        {
+            "coverage",
+            "feed_id",
+            "generated_at",
+            "headline",
+            "method",
+            "n_stories",
+            "schema_version",
+            "scope",
+            "sections",
+            "source",
+            "source_commit",
+            "stories",
+            "title",
+            "url",
+        },
+        "live structured newsroom",
+    )
+    generated_at = document.get("generated_at")
+    newsroom_at = _deadline_timestamp(
+        generated_at, "live structured newsroom generated_at"
+    )
+    wire_at = _deadline_timestamp(
+        expected_wire_generated_at, "candidate wire generated_at"
+    )
+    manifest_at = _deadline_timestamp(
+        manifest_built_at, "Railway manifest built_at"
+    )
+    if not wire_at <= newsroom_at <= manifest_at:
+        raise ReconciliationError(
+            "live structured newsroom clocks are not causally ordered"
+        )
+    if (
+        document.get("feed_id") != "palimpsest-china-newsroom"
+        or document.get("title") != "Palimpsest China Newsroom"
+        or document.get("url") != "https://palimpsest.info/news/"
+        or document.get("source")
+        != "https://palimpsest.info/readings/osint-china-latest.json"
+        or type(document.get("source_commit")) is not str
+        or SHA40.fullmatch(document["source_commit"]) is None
+        or type(document.get("headline")) is not str
+        or not document["headline"].strip()
+        or type(document.get("method")) is not str
+        or not document["method"].strip()
+        or type(document.get("scope")) is not str
+        or not document["scope"].strip()
+    ):
+        raise ReconciliationError("live structured newsroom identity is invalid")
+    _nonempty_text(
+        document["headline"], "live structured newsroom headline", maximum=1000
+    )
+    _nonempty_text(
+        document["method"], "live structured newsroom method", maximum=8192
+    )
+    _nonempty_text(
+        document["scope"], "live structured newsroom scope", maximum=8192
+    )
+    sections = document.get("sections")
+    if (
+        not isinstance(sections, list)
+        or len(sections) != len(SECTION_IDENTITIES)
+        or any(
+            not isinstance(section, dict)
+            or set(section) != {"dek", "id", "order", "title"}
+            or section.get("id") not in SECTION_IDENTITIES
+            or type(section.get("order")) is not int
+            or (section.get("order"), section.get("title"))
+            != SECTION_IDENTITIES[section["id"]]
+            or type(section.get("dek")) is not str
+            or not section["dek"].strip()
+            for section in sections
+        )
+        or [section["id"] for section in sections]
+        != [
+            section_id
+            for section_id, _identity in sorted(
+                SECTION_IDENTITIES.items(), key=lambda row: row[1][0]
+            )
+        ]
+    ):
+        raise ReconciliationError(
+            "live structured newsroom section inventory is invalid"
+        )
+    for section in sections:
+        _nonempty_text(
+            section["dek"],
+            f"live structured newsroom section {section['id']} dek",
+            maximum=1000,
+        )
+    stories = document.get("stories")
+    if (
+        document.get("schema_version") != "palimpsest-news.v1"
+        or type(document.get("n_stories")) is not int
+        or document.get("n_stories") != 39
+        or not isinstance(stories, list)
+        or len(stories) != 39
+        or any(not isinstance(story, dict) for story in stories)
+    ):
+        raise ReconciliationError(
+            "live structured newsroom lacks its exact story inventory"
+        )
+    signal_ids = [story.get("signal_id") for story in stories]
+    if tuple(signal_ids) != EXPECTED_NEWSROOM_ORDER:
+        raise ReconciliationError(
+            "live structured newsroom signal inventory is invalid"
+        )
+    by_signal = {story["signal_id"]: story for story in stories}
+    for signal_id in RESTRICTED_AVAILABILITY_SIGNALS:
+        if not _strict_availability_story(by_signal[signal_id], generated_at):
+            raise ReconciliationError(
+                f"live structured newsroom has an unsafe availability record: {signal_id}"
+            )
+    kinds = [_newsroom_story_kind(story, generated_at) for story in stories]
+    availability_count = kinds.count("availability")
+    measurement_count = kinds.count("measurement")
+    if measurement_count + availability_count != 39:
+        raise ReconciliationError(
+            "live structured newsroom has an invalid semantic story count"
+        )
+    coverage = document.get("coverage")
+    status_counts = {
+        status: sum(story["status"] == status for story in stories)
+        for status in ("live", "degraded", "stale", "missing", "corrupt")
+    }
+    if (
+        not isinstance(coverage, dict)
+        or set(coverage) != {"counts", "live", "reporting", "status", "total"}
+        or any(
+            type(coverage.get(key)) is not int
+            for key in ("live", "reporting", "total")
+        )
+        or not isinstance(coverage.get("counts"), dict)
+        or any(
+            type(value) is not int or value < 0
+            for value in coverage["counts"].values()
+        )
+        or coverage.get("total") != 39
+        or coverage.get("live") != measurement_count
+        or coverage.get("reporting")
+        != status_counts["live"]
+        + status_counts["degraded"]
+        + status_counts["stale"]
+        or coverage.get("status") != "degraded"
+        or coverage.get("counts") != status_counts
+    ):
+        raise ReconciliationError(
+            "live structured newsroom coverage is not bound to its stories"
+        )
+    return measurement_count, availability_count
+
+
+def _validate_live_newsroom_proofs(
+    provider_raw: bytes,
+    public_raw: bytes,
+    *,
+    manifest: dict[str, Any],
+    expected_wire_generated_at: str,
+) -> tuple[int, int]:
+    if provider_raw != public_raw:
+        raise ReconciliationError("provider and public structured newsrooms differ")
+    expected_bytes, expected_digest = _critical_file_identity(manifest, NEWSROOM_PATH)
+    if (
+        len(public_raw) != expected_bytes
+        or _digest(public_raw) != expected_digest
+    ):
+        raise ReconciliationError(
+            "live structured newsroom is not byte-bound to the candidate manifest"
+        )
+    return _validate_live_newsroom(
+        public_raw,
+        expected_wire_generated_at=expected_wire_generated_at,
+        manifest_built_at=manifest.get("built_at"),
+    )
+
+
+def _measurement_evidence_specs(
+    newsroom_raw: bytes, *, expected_count: int
+) -> dict[str, tuple[int, str]]:
+    document = _object(newsroom_raw, "measurement evidence newsroom")
+    stories = document.get("stories")
+    if not isinstance(stories, list):
+        raise ReconciliationError(
+            "measurement evidence newsroom story inventory is invalid"
+        )
+    specs: dict[str, tuple[int, str]] = {}
+    for story in stories:
+        claims = story.get("claims") if isinstance(story, dict) else None
+        if (
+            not isinstance(claims, list)
+            or len(claims) != 1
+            or not isinstance(claims[0], dict)
+            or claims[0].get("type") not in MEASUREMENT_CLAIM_TYPES
+            or story.get("status") != "live"
+        ):
+            continue
+        signal_id = story.get("signal_id")
+        evidence = story.get("evidence")
+        source = evidence.get("input") if isinstance(evidence, dict) else None
+        if not isinstance(source, dict):
+            raise ReconciliationError(
+                f"measurement evidence claim is invalid: {signal_id}"
+            )
+        filename = source.get("filename")
+        digest = source.get("sha256")
+        size = source.get("bytes")
+        published_at = story.get("published_at")
+        if (
+            not isinstance(filename, str)
+            or re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,126}\.json", filename)
+            is None
+            or not isinstance(digest, str)
+            or SHA256.fullmatch(digest) is None
+            or type(size) is not int
+            or not 1 <= size <= MAX_MEASUREMENT_EVIDENCE
+            or not isinstance(published_at, str)
+            or UTC_CLOCK.fullmatch(published_at) is None
+            or evidence.get("source_timestamp") != published_at
+            or evidence.get("url")
+            != f"https://palimpsest.info/readings/{filename}"
+        ):
+            raise ReconciliationError(
+                f"measurement evidence claim is invalid: {signal_id}"
+            )
+        relative = f"readings/{filename}"
+        identity = (size, digest)
+        if relative in specs and specs[relative] != identity:
+            raise ReconciliationError(
+                f"measurement evidence path has conflicting claims: {relative}"
+            )
+        specs[relative] = identity
+    if len(specs) != expected_count:
+        raise ReconciliationError(
+            "measurement evidence inventory count differs from the newsroom"
+        )
+    return dict(sorted(specs.items()))
+
+
+def _validate_live_newsroom_html(
+    raw: bytes, *, measurement_count: int, availability_count: int
+) -> None:
+    try:
+        text = raw.decode("utf-8", "strict")
+    except UnicodeError as exc:
+        raise ReconciliationError("live newsroom HTML is not UTF-8") from exc
+    expected = (str(measurement_count), str(availability_count))
+    strong_counts = re.findall(
+        r"<strong>([0-9]+)</strong> measurements · "
+        r"<strong>([0-9]+)</strong> availability notices in this edition",
+        text,
+    )
+    plain_counts = re.findall(
+        r"(?<![0-9])([0-9]+) measurements · "
+        r"([0-9]+) availability notices ·",
+        text,
+    )
+    if (
+        text.count("<strong>Edition generated</strong>") != 1
+        or strong_counts != [expected]
+        or plain_counts != [expected]
+    ):
+        raise ReconciliationError(
+            "live newsroom is not exactly bound to its structured counts"
+        )
+    if "measurements live" in text:
+        raise ReconciliationError(
+            "live newsroom falsely labels snapshot measurements as continuously live"
+        )
+
+
+def _validate_live_newsroom_html_proofs(
+    provider_raw: bytes,
+    public_raw: bytes,
+    *,
+    manifest: dict[str, Any],
+    measurement_count: int,
+    availability_count: int,
+) -> None:
+    if provider_raw != public_raw:
+        raise ReconciliationError("provider and public newsroom HTML differ")
+    expected_bytes, expected_digest = _critical_file_identity(
+        manifest, NEWSROOM_HTML_PATH
+    )
+    if len(public_raw) != expected_bytes or _digest(public_raw) != expected_digest:
+        raise ReconciliationError(
+            "live newsroom HTML is not byte-bound to the candidate manifest"
+        )
+    _validate_live_newsroom_html(
+        public_raw,
+        measurement_count=measurement_count,
+        availability_count=availability_count,
+    )
+
+
+def _manifest_bound_pair(
+    provider_raw: bytes,
+    public_raw: bytes,
+    *,
+    manifest: dict[str, Any],
+    relative: str,
+) -> bytes:
+    if provider_raw != public_raw:
+        raise ReconciliationError(
+            f"provider and public static artifacts differ: {relative}"
+        )
+    expected_bytes, expected_digest = _critical_file_identity(manifest, relative)
+    if len(public_raw) != expected_bytes or _digest(public_raw) != expected_digest:
+        raise ReconciliationError(
+            f"live static artifact is not byte-bound to the manifest: {relative}"
+        )
+    return public_raw
+
+
+def _instrument_json_item(story: dict[str, Any], section_title: str) -> dict[str, Any]:
+    availability = story["claims"][0]["type"] == "availability"
+    restricted = story["signal_id"] in RESTRICTED_AVAILABILITY_SIGNALS
+    item_type = "availability" if availability else "measurement"
+    attachment: dict[str, Any] = {
+        "url": story["evidence"]["url"],
+        "mime_type": "application/json",
+        "title": (
+            "china-publication-rights-latest.json"
+            if restricted
+            else story["evidence"]["input"]["filename"]
+        ),
+    }
+    if story["evidence"]["input"]["bytes"] is not None:
+        attachment["size_in_bytes"] = story["evidence"]["input"]["bytes"]
+    metadata: dict[str, Any] = {
+        "kind": f"instrument_{item_type}",
+        "revision_id": _story_revision_id(story),
+        "verification_status": (
+            "public_value_unavailable"
+            if restricted
+            else (
+                "current_result_unavailable"
+                if availability
+                else "palimpsest_measurement"
+            )
+        ),
+    }
+    if restricted:
+        metadata.update(
+            {
+                "signal_id": story["signal_id"],
+                "publication_disposition": "rights-restricted-availability-v1",
+                "value_state": "withheld",
+            }
+        )
+    label = "Availability" if availability else "Result"
+    title_label = "availability" if availability else "measurement"
+    return {
+        "id": story["id"] + ":" + story["claim_fingerprint"],
+        "url": story["url"],
+        "external_url": story["evidence"]["url"],
+        "title": f"[Palimpsest {title_label}] {story['headline']}",
+        "summary": (
+            f"Palimpsest {title_label}"
+            + (" notice" if availability else "")
+            + f". {story['dek']}"
+        ),
+        "content_text": "\n\n".join(
+            [
+                f"ITEM TYPE: PALIMPSEST {title_label.upper()}",
+                f"{label}: {story['claims'][0]['statement']}",
+                "Limit: " + " ".join(story["limitations"]),
+                "Evidence: " + story["evidence"]["url"],
+            ]
+        ),
+        "date_published": story["published_at"],
+        "date_modified": story["modified_at"],
+        "tags": [
+            f"palimpsest-{title_label}",
+            section_title,
+            story["signal_id"],
+            story["status"],
+        ],
+        "attachments": [attachment],
+        "_palimpsest": metadata,
+    }
+
+
+def _rss_clock(value: str) -> str:
+    parsed = _deadline_timestamp(value, "RSS publication clock")
+    return email.utils.format_datetime(parsed, usegmt=True)
+
+
+def _xml_record(element: ET.Element) -> tuple[Any, ...]:
+    return (
+        element.tag,
+        tuple(sorted(element.attrib.items())),
+        element.text or "",
+        tuple(_xml_record(child) for child in element),
+    )
+
+
+def _rss_items(raw: bytes, *, label: str) -> tuple[ET.Element, list[ET.Element]]:
+    if b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
+        raise ReconciliationError(f"{label} contains a prohibited XML declaration")
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise ReconciliationError(f"{label} is not strict XML") from exc
+    if root.tag != "rss" or root.attrib != {"version": "2.0"}:
+        raise ReconciliationError(f"{label} RSS root is invalid")
+    channels = root.findall("channel")
+    if len(channels) != 1:
+        raise ReconciliationError(f"{label} channel inventory is invalid")
+    return channels[0], channels[0].findall("item")
+
+
+def _validate_rss_channel(
+    channel: ET.Element,
+    items: list[ET.Element],
+    *,
+    label: str,
+    title: str,
+    link: str,
+    description: str,
+    self_url: str,
+    expected_build_at: datetime,
+) -> None:
+    channel_title = _only_child(channel, "title", label)
+    channel_link = _only_child(channel, "link", label)
+    channel_description = _only_child(channel, "description", label)
+    language = _only_child(channel, "language", label)
+    last_build = _only_child(channel, "lastBuildDate", label)
+    atom = channel.findall("{http://www.w3.org/2005/Atom}link")
+    try:
+        build_at = email.utils.parsedate_to_datetime(last_build.text or "")
+    except (TypeError, ValueError) as exc:
+        raise ReconciliationError(f"{label} build clock is invalid") from exc
+    if build_at.tzinfo is None:
+        raise ReconciliationError(f"{label} build clock has no timezone")
+    if (
+        len(list(channel)) != 6 + len(items)
+        or (channel_title.text or "") != title
+        or (channel_link.text or "") != link
+        or (channel_description.text or "") != description
+        or (language.text or "") != "en"
+        or build_at.astimezone(UTC) != expected_build_at
+        or len(atom) != 1
+        or atom[0].attrib
+        != {"href": self_url, "rel": "self", "type": "application/rss+xml"}
+    ):
+        raise ReconciliationError(f"{label} channel identity is invalid")
+
+
+def _only_child(item: ET.Element, tag: str, label: str) -> ET.Element:
+    rows = item.findall(tag)
+    if len(rows) != 1:
+        raise ReconciliationError(f"{label} has an invalid {tag} inventory")
+    return rows[0]
+
+
+def _validate_instrument_rss_item(
+    item: ET.Element, story: dict[str, Any], *, label: str
+) -> None:
+    availability = story["claims"][0]["type"] == "availability"
+    restricted = story["signal_id"] in RESTRICTED_AVAILABILITY_SIGNALS
+    item_type = "Palimpsest availability" if availability else "Palimpsest measurement"
+    result_label = "Availability" if availability else "Result"
+    expected_description = (
+        f"Item type: {item_type}. {result_label}: "
+        + story["claims"][0]["statement"]
+        + " Limit: "
+        + " ".join(story["limitations"])
+        + " Evidence: "
+        + story["evidence"]["url"]
+    )
+    title = _only_child(item, "title", label)
+    link = _only_child(item, "link", label)
+    guid = _only_child(item, "guid", label)
+    published = _only_child(item, "pubDate", label)
+    description = _only_child(item, "description", label)
+    categories = item.findall("category")
+    source = _only_child(item, "source", label)
+    kind = item.findall("{https://palimpsest.info/ns/publication/1.0}kind")
+    signal = item.findall("{https://palimpsest.info/ns/publication/1.0}signal")
+    disposition = item.findall(
+        "{https://palimpsest.info/ns/publication/1.0}publicationDisposition"
+    )
+    value_state = item.findall(
+        "{https://palimpsest.info/ns/publication/1.0}valueState"
+    )
+    if (
+        (title.text or "") != f"[{item_type}] {story['headline']}"
+        or (link.text or "") != story["url"]
+        or guid.attrib != {"isPermaLink": "false"}
+        or (guid.text or "")
+        != story["id"] + ":" + story["claim_fingerprint"]
+        or (published.text or "") != _rss_clock(story["published_at"])
+        or (description.text or "") != expected_description
+        or len(categories) != 1
+        or (categories[0].text or "") != story["section"]
+        or source.attrib != {"url": story["evidence"]["url"]}
+        or (source.text or "") != story["signal_id"]
+        or (
+            [(row.text or "") for row in kind]
+            != (["instrument_availability"] if availability else [])
+        )
+        or (
+            [(row.text or "") for row in signal]
+            != ([story["signal_id"]] if availability else [])
+        )
+        or [(row.text or "") for row in disposition]
+        != (["rights-restricted-availability-v1"] if restricted else [])
+        or [(row.text or "") for row in value_state]
+        != (["withheld"] if restricted else [])
+    ):
+        raise ReconciliationError(f"{label} does not bind its newsroom story")
+    expected_children = 7 + (2 if availability else 0) + (2 if restricted else 0)
+    if len(list(item)) != expected_children:
+        raise ReconciliationError(f"{label} has unexpected RSS fields")
+
+
+def _json_feed(raw: bytes, *, label: str) -> dict[str, Any]:
+    document = _object(raw, label)
+    _keys(
+        document,
+        {
+            "authors",
+            "description",
+            "feed_url",
+            "home_page_url",
+            "items",
+            "language",
+            "title",
+            "version",
+        },
+        label,
+    )
+    if (
+        document.get("version") != "https://jsonfeed.org/version/1.1"
+        or document.get("language") != "en"
+        or document.get("authors")
+        != [{"name": "Palimpsest Observatory", "url": "https://palimpsest.info/"}]
+        or not isinstance(document.get("description"), str)
+        or not isinstance(document.get("items"), list)
+    ):
+        raise ReconciliationError(f"{label} identity is invalid")
+    return document
+
+
+def _validate_source_tail(
+    json_items: list[Any], rss_items: list[ET.Element]
+) -> tuple[int, str]:
+    if len(json_items) != len(rss_items):
+        raise ReconciliationError("combined JSON/RSS source-report tails differ")
+    json_fields = {
+        "_palimpsest",
+        "attachments",
+        "content_text",
+        "date_modified",
+        "date_published",
+        "external_url",
+        "id",
+        "summary",
+        "tags",
+        "title",
+        "url",
+    }
+    metadata_fields = {
+        "evidence_strength",
+        "independent_groups",
+        "kind",
+        "verification_status",
+        "version_id",
+    }
+    for index, (json_item, rss_item) in enumerate(zip(json_items, rss_items)):
+        label = f"combined source-report item {index}"
+        if not isinstance(json_item, dict) or set(json_item) != json_fields:
+            raise ReconciliationError(f"{label} JSON shape is invalid")
+        metadata = json_item.get("_palimpsest")
+        attachments = json_item.get("attachments")
+        tags = json_item.get("tags")
+        if (
+            not isinstance(metadata, dict)
+            or set(metadata) != metadata_fields
+            or metadata.get("kind") != "publisher_source_record"
+            or type(metadata.get("independent_groups")) is not int
+            or metadata["independent_groups"] < 1
+            or not isinstance(attachments, list)
+            or not attachments
+            or any(
+                not isinstance(row, dict)
+                or set(row) != {"mime_type", "title", "url"}
+                or row.get("mime_type") != "text/html"
+                or not isinstance(row.get("title"), str)
+                or ": " not in row["title"]
+                or not all(part.strip() for part in row["title"].split(": ", 1))
+                or not isinstance(row.get("url"), str)
+                or not row["url"].startswith("https://")
+                for row in attachments
+            )
+            or not isinstance(tags, list)
+            or len(tags) < 4
+            or tags[0] != "source-report"
+            or not all(isinstance(value, str) and value for value in tags)
+            or len(tags) != len(set(tags))
+            or not all(
+                isinstance(json_item.get(key), str) and json_item[key]
+                for key in (
+                    "content_text",
+                    "date_modified",
+                    "date_published",
+                    "external_url",
+                    "id",
+                    "summary",
+                    "title",
+                    "url",
+                )
+            )
+        ):
+            raise ReconciliationError(f"{label} JSON identity is invalid")
+        published_at = _deadline_timestamp(
+            json_item["date_published"], f"{label} published clock"
+        )
+        modified_at = _deadline_timestamp(
+            json_item["date_modified"], f"{label} modified clock"
+        )
+        independent_groups = metadata["independent_groups"]
+        if independent_groups > 1:
+            title_prefix = "[Corroborated source report] "
+            source_label = (
+                f"Source report · {independent_groups} independent publisher groups"
+            )
+            boundary = (
+                f"{independent_groups} independent publisher groups reported related "
+                "facts. That is corroborated reporting, not proof of truth, intent, "
+                "impact or causation."
+            )
+            verification_tag = "multiple-independent-source-groups"
+            verification_status = "multiple_independent_source_groups"
+        else:
+            title_prefix = "[Source report] "
+            source_label = "Single-source report · not independently verified by Palimpsest"
+            boundary = (
+                "This record indexes one publisher group. Palimpsest has not "
+                "independently verified or refuted the publisher's claims."
+            )
+            verification_tag = "not-independently-verified"
+            verification_status = "not_independently_verified"
+        publishers = ", ".join(
+            dict.fromkeys(row["title"].split(": ", 1)[0] for row in attachments)
+        )
+        expected_content = "\n\n".join(
+            [
+                "ITEM TYPE: " + source_label,
+                "Published by: " + publishers,
+                (
+                    "Palimpsest adds: source grouping, timestamps, topic "
+                    "classification and a revision record."
+                ),
+                "Verification status: " + boundary,
+                "Read the original: " + json_item["external_url"],
+            ]
+        )
+        if (
+            modified_at < published_at
+            or re.fullmatch(r"event-[0-9a-f]{24}", json_item["id"]) is None
+            or not isinstance(metadata.get("version_id"), str)
+            or re.fullmatch(r"eventv-[0-9a-f]{24}", metadata["version_id"])
+            is None
+            or not isinstance(metadata.get("evidence_strength"), str)
+            or not metadata["evidence_strength"]
+            or metadata.get("verification_status") != verification_status
+            or tags[1] != verification_tag
+            or tags[3] != metadata["evidence_strength"]
+            or json_item["external_url"] != attachments[0]["url"]
+            or json_item["summary"] != boundary
+            or json_item["content_text"] != expected_content
+            or not json_item["title"].startswith(title_prefix)
+            or not json_item["title"][len(title_prefix) :].strip()
+            or not json_item["url"].startswith(
+                "https://palimpsest.info/news/wire/event-"
+            )
+        ):
+            raise ReconciliationError(f"{label} JSON source contract is invalid")
+        title = _only_child(rss_item, "title", label)
+        link = _only_child(rss_item, "link", label)
+        guid = _only_child(rss_item, "guid", label)
+        published = _only_child(rss_item, "pubDate", label)
+        description = _only_child(rss_item, "description", label)
+        categories = rss_item.findall("category")
+        source = _only_child(rss_item, "source", label)
+        desk = categories[1].text or "" if len(categories) == 2 else ""
+        expected_description = (
+            "Item type: "
+            + source_label
+            + ". Published by: "
+            + publishers
+            + ". Palimpsest adds source grouping, timestamps, topic "
+            "classification and a revision record. Verification status: "
+            + boundary
+            + " Read original: "
+            + json_item["external_url"]
+        )
+        if (
+            len(list(rss_item)) != 8
+            or (title.text or "") != json_item["title"]
+            or (link.text or "") != json_item["url"]
+            or guid.attrib != {"isPermaLink": "false"}
+            or (guid.text or "") != json_item["id"]
+            or (published.text or "") != _rss_clock(json_item["date_published"])
+            or (description.text or "") != expected_description
+            or len(categories) != 2
+            or (categories[0].text or "") != "source-report"
+            or desk not in SOURCE_REPORT_DESKS
+            or tags[2] != SOURCE_REPORT_DESKS.get(desk)
+            or source.attrib != {"url": json_item["external_url"]}
+            or (source.text or "") != attachments[0]["title"].split(": ", 1)[0]
+        ):
+            raise ReconciliationError(
+                f"{label} is not cross-bound between JSON and RSS"
+            )
+    canonical = _canonical(json_items)
+    return len(json_items), _digest(canonical)
+
+
+def _validate_live_newsroom_feeds(
+    provider: dict[str, bytes],
+    public: dict[str, bytes],
+    *,
+    manifest: dict[str, Any],
+    newsroom_raw: bytes,
+) -> tuple[int, str]:
+    if set(provider) != set(NEWSROOM_FEED_PATHS) or set(public) != set(
+        NEWSROOM_FEED_PATHS
+    ):
+        raise ReconciliationError("live newsroom feed proof inventory is invalid")
+    bound = {
+        path: _manifest_bound_pair(
+            provider[path], public[path], manifest=manifest, relative=path
+        )
+        for path in NEWSROOM_FEED_PATHS
+    }
+    newsroom = _object(newsroom_raw, "feed-bound structured newsroom")
+    stories = newsroom.get("stories")
+    sections = newsroom.get("sections")
+    if not isinstance(stories, list) or not isinstance(sections, list):
+        raise ReconciliationError("feed-bound structured newsroom is invalid")
+    section_titles = {section["id"]: section["title"] for section in sections}
+    expected_items = [
+        _instrument_json_item(story, section_titles[story["section"]])
+        for story in stories
+    ]
+    availability_count = sum(
+        story["claims"][0]["type"] == "availability" for story in stories
+    )
+    measurement_count = len(stories) - availability_count
+    instrument_description = (
+        f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "explicit no-result availability notices, each with a receipt, edition-time "
+        "state and limitation attached."
+    )
+    combined_description = (
+        f"{measurement_count} Palimpsest measurements and {availability_count} "
+        "availability notices, followed by clearly labeled publisher source records. "
+        "Source reports remain attributed and are not independently verified unless "
+        "the item states otherwise."
+    )
+
+    instrument_json = _json_feed(
+        bound["news/instruments/feed.json"], label="instrument JSON Feed"
+    )
+    combined_json = _json_feed(bound["news/feed.json"], label="combined JSON Feed")
+    if (
+        instrument_json.get("title") != "Palimpsest instrument records"
+        or instrument_json.get("home_page_url")
+        != "https://palimpsest.info/news/#instruments"
+        or instrument_json.get("feed_url")
+        != "https://palimpsest.info/news/instruments/feed.json"
+        or instrument_json.get("description") != instrument_description
+        or instrument_json["items"] != expected_items
+        or combined_json.get("title")
+        != "Palimpsest source index + instrument records"
+        or combined_json.get("home_page_url") != "https://palimpsest.info/news/"
+        or combined_json.get("feed_url") != "https://palimpsest.info/news/feed.json"
+        or combined_json.get("description") != combined_description
+        or combined_json["items"][:39] != instrument_json["items"]
+    ):
+        raise ReconciliationError(
+            "JSON feeds do not bind the exact newsroom instrument prefix"
+        )
+
+    instrument_channel, instrument_rss = _rss_items(
+        bound["news/instruments/feed.xml"], label="instrument RSS"
+    )
+    combined_channel, combined_rss = _rss_items(
+        bound["news/feed.xml"], label="combined RSS"
+    )
+    if (
+        len(instrument_rss) != 39
+        or len(combined_rss) < 39
+    ):
+        raise ReconciliationError("newsroom RSS channel identity is invalid")
+    newsroom_at = _deadline_timestamp(
+        newsroom.get("generated_at"), "feed-bound newsroom generated_at"
+    )
+    _validate_rss_channel(
+        instrument_channel,
+        instrument_rss,
+        label="instrument RSS",
+        title="Palimpsest instrument records",
+        link="https://palimpsest.info/news/#instruments",
+        description=(
+            f"{measurement_count} Palimpsest measurements and {availability_count} "
+            "explicit no-result availability notices, each with its receipt, "
+            "edition-time state and limitation."
+        ),
+        self_url="https://palimpsest.info/news/instruments/feed.xml",
+        expected_build_at=newsroom_at,
+    )
+    _validate_rss_channel(
+        combined_channel,
+        combined_rss,
+        label="combined RSS",
+        title="Palimpsest source index + instrument records",
+        link="https://palimpsest.info/news/",
+        description=(
+            f"{measurement_count} Palimpsest measurements and {availability_count} "
+            "availability notices, followed by clearly labeled publisher source "
+            "records. Source reports remain attributed and are not independently "
+            "verified unless stated."
+        ),
+        self_url="https://palimpsest.info/news/feed.xml",
+        expected_build_at=newsroom_at,
+    )
+    for index, (item, story) in enumerate(zip(instrument_rss, stories)):
+        _validate_instrument_rss_item(
+            item, story, label=f"instrument RSS item {index}"
+        )
+    for index, (item, story) in enumerate(zip(combined_rss[:39], stories)):
+        _validate_instrument_rss_item(
+            item, story, label=f"combined RSS instrument item {index}"
+        )
+    if [_xml_record(item) for item in combined_rss[:39]] != [
+        _xml_record(item) for item in instrument_rss
+    ]:
+        raise ReconciliationError(
+            "combined RSS instrument prefix differs from instrument RSS"
+        )
+    return _validate_source_tail(combined_json["items"][39:], combined_rss[39:])
+
+
+def _validate_denied_china_analysis_feeds(
+    provider: dict[str, bytes],
+    public: dict[str, bytes],
+    *,
+    manifest: dict[str, Any],
+    newsroom_raw: bytes,
+) -> None:
+    if set(provider) != set(DENIED_CHINA_ANALYSIS_FEED_PATHS) or set(
+        public
+    ) != set(DENIED_CHINA_ANALYSIS_FEED_PATHS):
+        raise ReconciliationError(
+            "denied China-analysis feed proof inventory is invalid"
+        )
+    bound = {
+        path: _manifest_bound_pair(
+            provider[path], public[path], manifest=manifest, relative=path
+        )
+        for path in DENIED_CHINA_ANALYSIS_FEED_PATHS
+    }
+    newsroom = _object(newsroom_raw, "denied-feed structured newsroom")
+    generated_at = newsroom.get("generated_at")
+    _deadline_timestamp(generated_at, "denied-feed newsroom generated_at")
+    site = "https://palimpsest.info"
+    rights_url = f"{site}/readings/china-publication-rights-latest.json"
+    identity = "palimpsest-news:china-censorship-analysis:availability"
+    title = (
+        "[Palimpsest availability] China censorship analysis: public finding "
+        "unavailable"
+    )
+    description = (
+        "Availability updates for Palimpsest's China censorship analysis. No "
+        "current cross-instrument finding is published while required public "
+        "values are restricted."
+    )
+    summary = (
+        "No current cross-instrument finding is published because the active "
+        "source policy does not allow the required public values."
+    )
+    meaning = (
+        "This is not a zero, normal, safe, unchanged, or directional reading. "
+        "Publisher source reports remain available separately and are not treated "
+        "as Palimpsest measurements."
+    )
+    expected = {
+        "version": "https://jsonfeed.org/version/1.1",
+        "title": "Palimpsest China Censorship Analysis",
+        "home_page_url": f"{site}/news/china/analysis/",
+        "feed_url": f"{site}/news/china/analysis/feed.json",
+        "description": description,
+        "items": [
+            {
+                "id": identity,
+                "url": f"{site}/news/china/analysis/",
+                "title": title,
+                "summary": summary,
+                "content_text": "\n\n".join(
+                    [
+                        "ITEM TYPE: PALIMPSEST AVAILABILITY",
+                        "Availability: " + summary,
+                        "What this means: " + meaning,
+                        "Evidence: " + rights_url,
+                    ]
+                ),
+                "date_published": generated_at,
+                "date_modified": generated_at,
+                "authors": [
+                    {
+                        "name": "Palimpsest China Desk",
+                        "url": f"{site}/news/china/analysis/",
+                    }
+                ],
+                "tags": [
+                    "palimpsest-availability",
+                    "China",
+                    "censorship",
+                    "rights-restricted",
+                ],
+                "attachments": [
+                    {
+                        "url": rights_url,
+                        "mime_type": "application/json",
+                        "title": "china-publication-rights-latest.json",
+                    }
+                ],
+                "_palimpsest": {
+                    "kind": "china_censorship_analysis_availability",
+                    "publication_disposition": (
+                        "rights-restricted-availability-v1"
+                    ),
+                    "value_state": "withheld",
+                    "verification_status": "public_finding_unavailable",
+                },
+            }
+        ],
+        "language": "en",
+    }
+    if _object(
+        bound["news/china/analysis/feed.json"],
+        "denied China-analysis JSON Feed",
+    ) != expected:
+        raise ReconciliationError(
+            "denied China-analysis JSON Feed is not canonical availability"
+        )
+
+    channel, items = _rss_items(
+        bound["news/china/analysis/feed.xml"],
+        label="denied China-analysis RSS",
+    )
+    rss_clock = _rss_clock(generated_at)
+    atom = channel.findall("{http://www.w3.org/2005/Atom}link")
+    if (
+        len(list(channel)) != 7
+        or (_only_child(channel, "title", "denied analysis RSS").text or "")
+        != "Palimpsest China Censorship Analysis"
+        or (_only_child(channel, "link", "denied analysis RSS").text or "")
+        != f"{site}/news/china/analysis/"
+        or (
+            _only_child(channel, "description", "denied analysis RSS").text
+            or ""
+        )
+        != description
+        or (_only_child(channel, "language", "denied analysis RSS").text or "")
+        != "en"
+        or (
+            _only_child(channel, "lastBuildDate", "denied analysis RSS").text
+            or ""
+        )
+        != rss_clock
+        or len(atom) != 1
+        or atom[0].attrib
+        != {
+            "href": f"{site}/news/china/analysis/feed.xml",
+            "rel": "self",
+            "type": "application/rss+xml",
+        }
+        or len(items) != 1
+    ):
+        raise ReconciliationError(
+            "denied China-analysis RSS channel identity is invalid"
+        )
+    item = items[0]
+    guid = _only_child(item, "guid", "denied analysis RSS item")
+    categories = item.findall("category")
+    source = _only_child(item, "source", "denied analysis RSS item")
+    namespace = "{https://palimpsest.info/ns/publication/1.0}"
+    rss_description = (
+        "Palimpsest availability notice. "
+        + summary
+        + " "
+        + meaning
+        + " Evidence: "
+        + rights_url
+    )
+    if (
+        len(list(item)) != 11
+        or (_only_child(item, "title", "denied analysis RSS item").text or "")
+        != title
+        or (_only_child(item, "link", "denied analysis RSS item").text or "")
+        != f"{site}/news/china/analysis/"
+        or guid.attrib != {"isPermaLink": "false"}
+        or (guid.text or "") != identity
+        or (_only_child(item, "pubDate", "denied analysis RSS item").text or "")
+        != rss_clock
+        or (
+            _only_child(item, "description", "denied analysis RSS item").text
+            or ""
+        )
+        != rss_description
+        or [(row.text or "") for row in categories]
+        != ["palimpsest-availability", "China censorship analysis"]
+        or source.attrib != {"url": rights_url}
+        or (source.text or "") != "china-publication-rights"
+        or (
+            _only_child(
+                item, namespace + "kind", "denied analysis RSS item"
+            ).text
+            or ""
+        )
+        != "china_censorship_analysis_availability"
+        or (
+            _only_child(
+                item,
+                namespace + "publicationDisposition",
+                "denied analysis RSS item",
+            ).text
+            or ""
+        )
+        != "rights-restricted-availability-v1"
+        or (
+            _only_child(
+                item, namespace + "valueState", "denied analysis RSS item"
+            ).text
+            or ""
+        )
+        != "withheld"
+    ):
+        raise ReconciliationError(
+            "denied China-analysis RSS item is not canonical availability"
+        )
 
 
 def _railway_env(token_name: str, token_value: str) -> dict[str, str]:
@@ -1105,8 +2998,19 @@ def _prove_predecessor(candidate: dict[str, Any], provider_saved: bytes, public_
     return final == active
 
 
-def _prove_candidate(candidate: dict[str, Any], deployment: dict[str, Any] | None, active: dict[str, Any], anchor_raw: bytes, token_name: str, token_value: str) -> tuple[dict[str, Any], bytes] | None:
+def _prove_candidate(
+    candidate: dict[str, Any],
+    deployment: dict[str, Any] | None,
+    active: dict[str, Any],
+    anchor_raw: bytes,
+    token_name: str,
+    token_value: str,
+) -> tuple[dict[str, Any], bytes] | None:
     if deployment is None:
+        return None
+    if not _candidate_adoption_is_timely(
+        candidate, reserve_seconds=RECEIPT_COMMIT_RESERVE_SECONDS
+    ):
         return None
     image = deployment["meta"].get("imageDigest")
     if deployment.get("status") != "SUCCESS" or not isinstance(image, str) or IMAGE.fullmatch(image) is None or active["deployment_id"] != deployment["id"] or active["image_digest"] != image or active["reason"] != "deploy":
@@ -1116,10 +3020,164 @@ def _prove_candidate(candidate: dict[str, Any], deployment: dict[str, Any] | Non
         if provider != public or provider != anchor_raw:
             return None
         manifest = _validate_manifest(provider, release=candidate["release_sha"], tree=candidate["release_manifest"]["tree_sha256"], digest=candidate["release_manifest"]["sha256"])
-        news = _fetch(f"{PUBLIC_ORIGIN}/news/?reconcile={time.time_ns()}", maximum=16 * 1024 * 1024)
+        nonce = time.time_ns()
+        provider_attestation = _fetch(
+            f"{PROVIDER_ORIGIN}/{FRESHNESS_ATTESTATION_PATH}?reconcile={nonce}",
+            maximum=MAX_ATTESTATION,
+        )
+        public_attestation = _fetch(
+            f"{PUBLIC_ORIGIN}/{FRESHNESS_ATTESTATION_PATH}?reconcile={nonce}",
+            maximum=MAX_ATTESTATION,
+        )
+        attestation = _validate_live_attestations(
+            provider_attestation,
+            public_attestation,
+            manifest=manifest,
+            candidate=candidate,
+        )
+        provider_news = _fetch(
+            f"{PROVIDER_ORIGIN}/news/?reconcile={nonce}",
+            maximum=MAX_NEWSROOM,
+            accept="text/html",
+        )
+        public_news = _fetch(
+            f"{PUBLIC_ORIGIN}/news/?reconcile={nonce}",
+            maximum=MAX_NEWSROOM,
+            accept="text/html",
+        )
+        provider_newsroom = _fetch(
+            f"{PROVIDER_ORIGIN}/{NEWSROOM_PATH}?reconcile={nonce}",
+            maximum=MAX_NEWSROOM,
+        )
+        public_newsroom = _fetch(
+            f"{PUBLIC_ORIGIN}/{NEWSROOM_PATH}?reconcile={nonce}",
+            maximum=MAX_NEWSROOM,
+        )
+        provider_feeds = {
+            path: _fetch(
+                f"{PROVIDER_ORIGIN}/{path}?reconcile={nonce}",
+                maximum=MAX_NEWSROOM,
+                accept=(
+                    "application/feed+json"
+                    if path.endswith(".json")
+                    else "application/rss+xml"
+                ),
+            )
+            for path in NEWSROOM_FEED_PATHS
+        }
+        public_feeds = {
+            path: _fetch(
+                f"{PUBLIC_ORIGIN}/{path}?reconcile={nonce}",
+                maximum=MAX_NEWSROOM,
+                accept=(
+                    "application/feed+json"
+                    if path.endswith(".json")
+                    else "application/rss+xml"
+                ),
+            )
+            for path in NEWSROOM_FEED_PATHS
+        }
+        provider_denied_analysis_feeds = {
+            path: _fetch(
+                f"{PROVIDER_ORIGIN}/{path}?reconcile={nonce}",
+                maximum=MAX_ATTESTATION,
+                accept=(
+                    "application/feed+json"
+                    if path.endswith(".json")
+                    else "application/rss+xml"
+                ),
+            )
+            for path in DENIED_CHINA_ANALYSIS_FEED_PATHS
+        }
+        public_denied_analysis_feeds = {
+            path: _fetch(
+                f"{PUBLIC_ORIGIN}/{path}?reconcile={nonce}",
+                maximum=MAX_ATTESTATION,
+                accept=(
+                    "application/feed+json"
+                    if path.endswith(".json")
+                    else "application/rss+xml"
+                ),
+            )
+            for path in DENIED_CHINA_ANALYSIS_FEED_PATHS
+        }
+        measurement_count, availability_count = _validate_live_newsroom_proofs(
+            provider_newsroom,
+            public_newsroom,
+            manifest=manifest,
+            expected_wire_generated_at=candidate["wire_generated_at"],
+        )
+        measurement_specs = _measurement_evidence_specs(
+            public_newsroom, expected_count=measurement_count
+        )
+        for relative, (expected_bytes, expected_digest) in measurement_specs.items():
+            if _critical_file_identity(manifest, relative) != (
+                expected_bytes,
+                expected_digest,
+            ):
+                raise ReconciliationError(
+                    f"{relative} manifest identity differs from its newsroom claim"
+                )
+            provider_evidence = _fetch(
+                f"{PROVIDER_ORIGIN}/{relative}?reconcile={nonce}",
+                maximum=expected_bytes,
+            )
+            public_evidence = _fetch(
+                f"{PUBLIC_ORIGIN}/{relative}?reconcile={nonce}",
+                maximum=expected_bytes,
+            )
+            _manifest_bound_pair(
+                provider_evidence,
+                public_evidence,
+                manifest=manifest,
+                relative=relative,
+            )
+        _validate_live_newsroom_html_proofs(
+            provider_news,
+            public_news,
+            manifest=manifest,
+            measurement_count=measurement_count,
+            availability_count=availability_count,
+        )
+        source_tail_proof = _validate_live_newsroom_feeds(
+            provider_feeds,
+            public_feeds,
+            manifest=manifest,
+            newsroom_raw=public_newsroom,
+        )
+        if source_tail_proof != (
+            candidate["news_source_tail"]["count"],
+            candidate["news_source_tail"]["sha256"],
+        ):
+            raise ReconciliationError(
+                "live news source tail differs from the pending candidate"
+            )
+        _validate_denied_china_analysis_feeds(
+            provider_denied_analysis_feeds,
+            public_denied_analysis_feeds,
+            manifest=manifest,
+            newsroom_raw=public_newsroom,
+        )
+        provider_freshness = _fetch(
+            f"{PROVIDER_ORIGIN}/freshness?reconcile={nonce}",
+            maximum=MAX_FRESHNESS,
+        )
+        public_freshness = _fetch(
+            f"{PUBLIC_ORIGIN}/freshness?reconcile={nonce}",
+            maximum=MAX_FRESHNESS,
+        )
+        _validate_live_freshness_proofs(
+            provider_freshness,
+            public_freshness,
+            manifest=manifest,
+            candidate=candidate,
+            attestation=attestation,
+        )
     except ReconciliationError:
         return None
-    if b"measurements live" not in news or b"The Board \xc2\xb7 Current evidence" not in news:
+    if not _candidate_adoption_is_timely(
+        candidate, reserve_seconds=RECEIPT_COMMIT_RESERVE_SECONDS
+    ):
         return None
     try:
         final = _topology(
@@ -1210,8 +3268,31 @@ def _clear_preparation(candidate: dict[str, Any], *, uid: int, gid: int) -> None
     _unlink(path)
 
 
-def _consume_success(document: dict[str, Any], candidate: dict[str, Any], *, uid: int, gid: int) -> None:
+def _consume_success(
+    document: dict[str, Any],
+    candidate: dict[str, Any],
+    predecessor_raw: bytes,
+    *,
+    uid: int,
+    gid: int,
+) -> None:
     _atomic(SUCCESS_RECEIPT, _canonical(document), uid=uid, gid=gid, mode=0o600, replace=True)
+    if not _candidate_adoption_is_timely(candidate):
+        # A receipt timestamp is written before fsync and therefore cannot prove
+        # when its directory entry became durable. Restore the authenticated
+        # predecessor while the pending journal remains as the inverse commit
+        # marker; a crash at either atomic replacement is safe to retry.
+        _atomic(
+            SUCCESS_RECEIPT,
+            predecessor_raw,
+            uid=uid,
+            gid=gid,
+            mode=0o600,
+            replace=True,
+        )
+        raise ReconciliationError(
+            "candidate adoption receipt became durable after its deadline"
+        )
     _clear_preparation(candidate, uid=uid, gid=gid)
     proof = document["candidate"]
     _clear_hold(candidate, journal=proof["journal_sha256"], archive=Path(proof["archive_path"]), gid=gid)
@@ -1579,17 +3660,20 @@ def _reconcile_locked(*, uid: int, gid: int, token_name: str, token_value: str) 
                 return _write_recovery(candidate, journal=journal, archive=archive, outcome="predecessor_rollback_reconciled", topology=active, uid=uid, gid=gid, attempt_digest=attempt[1])
         raise ReconciliationError("prior rollback attempt has not proved restoration", code="rollback_restore_unproven")
 
-    # Crash after receipt replacement but before journal removal: re-prove the
-    # exact live candidate before consuming the leftover journal.
+    # The pending journal is the inverse durable-commit marker. A crash after a
+    # candidate receipt replacement leaves no trustworthy proof that its fsync
+    # completed before the absolute deadline, even when recorded_at is earlier.
+    # Restore the authenticated predecessor first, then use the ordinary timely
+    # adoption/rollback state machine; never consume an unmarked candidate receipt.
     if _consumes(current, candidate, journal, archive):
-        railway = current.get("railway")
-        matching = deployment if isinstance(railway, dict) and deployment is not None and deployment.get("id") == railway.get("deployment_id") else None
-        if _prove_candidate(candidate, matching, active, release_manifest_anchor, token_name, token_value) is None:
-            raise ReconciliationError("consuming receipt no longer proves the candidate")
-        _clear_preparation(candidate, uid=uid, gid=gid)
-        _clear_hold(candidate, journal=journal, archive=archive, gid=gid)
-        _unlink(CANDIDATE_JOURNAL)
-        return current
+        _atomic(
+            SUCCESS_RECEIPT,
+            predecessor_raw,
+            uid=uid,
+            gid=gid,
+            mode=0o600,
+            replace=True,
+        )
 
     prior_recovery = _existing_recovery(journal, uid=uid, gid=gid)
     if (
@@ -1615,13 +3699,34 @@ def _reconcile_locked(*, uid: int, gid: int, token_name: str, token_value: str) 
             gid=gid,
         )
 
-    proof = _prove_candidate(candidate, deployment, active, release_manifest_anchor, token_name, token_value)
+    proof = _prove_candidate(
+        candidate,
+        deployment,
+        active,
+        release_manifest_anchor,
+        token_name,
+        token_value,
+    )
     if proof is not None:
         manifest, manifest_raw = proof
-        document = _build_success(candidate, journal=journal, archive=archive, deployment_id=deployment["id"], manifest=manifest, manifest_raw=manifest_raw)
         if _digest(_read(CANDIDATE_JOURNAL, uid=uid, gid=gid, mode=0o600)) != journal:
             raise ReconciliationError("candidate journal changed during adoption")
-        _consume_success(document, candidate, uid=uid, gid=gid)
+        if not _candidate_adoption_is_timely(
+            candidate, reserve_seconds=RECEIPT_COMMIT_RESERVE_SECONDS
+        ):
+            raise ReconciliationError(
+                "candidate adoption lacks the final receipt-commit reserve"
+            )
+        document = _build_success(candidate, journal=journal, archive=archive, deployment_id=deployment["id"], manifest=manifest, manifest_raw=manifest_raw)
+        if not _receipt_was_prepared_in_window(document, candidate):
+            raise ReconciliationError("candidate adoption missed the receipt deadline")
+        _consume_success(
+            document,
+            candidate,
+            predecessor_raw,
+            uid=uid,
+            gid=gid,
+        )
         return document
 
     # A terminal non-activating candidate can close as already preserved. An

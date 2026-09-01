@@ -377,18 +377,6 @@ _CLOSED_SOURCES: dict[str, tuple[str, tuple[str, ...], str, str]] = {
         "documentation",
         "chrd-documentation",
     ),
-    "arab-news-pakistan-cpec": (
-        "https://www.arabnews.pk/taxonomy/term/20166/feed",
-        ("www.arabnews.pk",),
-        "media",
-        "arab-news-pakistan-editorial",
-    ),
-    "arab-news-pakistan-gwadar-port": (
-        "https://www.arabnews.pk/taxonomy/term/314116/feed",
-        ("www.arabnews.pk",),
-        "media",
-        "arab-news-pakistan-editorial",
-    ),
     "daily-cpec-china-pakistan": (
         "https://thedailycpec.com/category/china-pakistan/feed/",
         ("thedailycpec.com",),
@@ -456,6 +444,31 @@ _CLOSED_SOURCES: dict[str, tuple[str, tuple[str, ...], str, str]] = {
         "hrcp-pakistan-documentation",
     ),
 }
+
+# These publisher routes were removed during Arab News Pakistan's 2026-09-01
+# site migration, and no current scoped official RSS/Atom replacement existed at
+# review time. Keep the exact identities and endpoints as tombstones: historical
+# provenance must not be made to look continuous by reusing either one later.
+_RETIRED_SOURCE_TOMBSTONES: dict[str, tuple[str, str]] = {
+    "arab-news-pakistan-cpec": (
+        "https://www.arabnews.pk/taxonomy/term/20166/feed",
+        "publisher-endpoint-404-no-scoped-official-feed",
+    ),
+    "arab-news-pakistan-gwadar-port": (
+        "https://www.arabnews.pk/taxonomy/term/314116/feed",
+        "publisher-endpoint-404-no-scoped-official-feed",
+    ),
+}
+
+# Public v1 readers admit exactly the active registry or the one historical
+# pre-retirement registry. A digest claim is not enough on its own: coverage
+# validation below also binds every receipt identity to its reviewed endpoint.
+ACTIVE_SOURCE_REGISTRY_SHA256 = (
+    "134ef2c8193731e2d9014d3af9be0b1818e90595c63845021edd0c09bfb6bd80"
+)
+LEGACY_SOURCE_REGISTRY_SHA256 = (
+    "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14"
+)
 
 _SOURCE_FIELDS = frozenset(
     {
@@ -583,8 +596,6 @@ _CHINA_SCOPED_SOURCE_IDS = frozenset(
         "cecc",
         "made-in-china-journal",
         "chrd",
-        "arab-news-pakistan-cpec",
-        "arab-news-pakistan-gwadar-port",
         "daily-cpec-china-pakistan",
         "daily-cpec-gwadar",
         "dvb-english",
@@ -784,6 +795,18 @@ def _identifier_array(value: Any, path: str, *, maximum: int = 32) -> tuple[str,
 def load_source_registry(path: Path | str = DEFAULT_CONFIG_PATH) -> SourceRegistry:
     """Load the complete, exact v1 source set and reject registry broadening."""
 
+    retired_ids = set(_RETIRED_SOURCE_TOMBSTONES)
+    retired_urls = {
+        tombstone[0] for tombstone in _RETIRED_SOURCE_TOMBSTONES.values()
+    }
+    active_urls = {source[0] for source in _CLOSED_SOURCES.values()}
+    if retired_ids.intersection(_CLOSED_SOURCES):
+        raise RegistryError("closed v1 registry reuses a retired source id")
+    if retired_urls.intersection(active_urls):
+        raise RegistryError("closed v1 registry reuses a retired source endpoint")
+    if len(retired_urls) != len(_RETIRED_SOURCE_TOMBSTONES):
+        raise RegistryError("retired source tombstones reuse an endpoint")
+
     raw = Path(path).read_bytes()
     data = strict_json_loads(raw, label="news source registry")
     if type(data) is not dict:
@@ -811,6 +834,8 @@ def load_source_registry(path: Path | str = DEFAULT_CONFIG_PATH) -> SourceRegist
         if source_id in seen:
             raise RegistryError(f"duplicate source id: {source_id}")
         seen.add(source_id)
+        if source_id in _RETIRED_SOURCE_TOMBSTONES:
+            raise RegistryError(f"source id is retired: {source_id}")
         if source_id not in _CLOSED_SOURCES:
             raise RegistryError(f"source is not in the closed v1 registry: {source_id}")
         endpoint, expected_hosts, expected_role, expected_group = _CLOSED_SOURCES[source_id]
@@ -1638,6 +1663,65 @@ def _fetch_one(source: SourceSpec, fetcher: FetchBytes) -> tuple[bytes | None, s
     return raw, None
 
 
+def _is_exact_active_transition_registry(registry: SourceRegistry) -> bool:
+    """Return whether ``registry`` is the exact active side of the 60 -> 58 bridge."""
+
+    expected_endpoints = {
+        source_id: source_contract[0]
+        for source_id, source_contract in _CLOSED_SOURCES.items()
+    }
+    return (
+        registry.schema_version == REGISTRY_SCHEMA_VERSION
+        and registry.sha256 == ACTIVE_SOURCE_REGISTRY_SHA256
+        and registry.window_hours == 168
+        and registry.max_items_per_source == 128
+        and registry.max_events == 8192
+        and len(registry.sources) == len(expected_endpoints) == 58
+        and {source.id: source.feed_url for source in registry.sources}
+        == expected_endpoints
+    )
+
+
+def validate_active_source_registry(registry: SourceRegistry) -> None:
+    """Require the exact reviewed 58-source registry at a publication boundary."""
+
+    if not _is_exact_active_transition_registry(registry):
+        raise RegistryError(
+            "newswire publication requires the exact active source registry"
+        )
+
+
+def validate_legacy_fetch_error_transition_prior(
+    document: Mapping[str, Any], registry: SourceRegistry
+) -> None:
+    """Admit only the exact collector-private legacy fetch-error retirement state.
+
+    This is deliberately narrower than general prior validation and is not a
+    public-document contract.  It exists only so an exact active 58-source
+    collector can consume the one transient 60-source state emitted when both
+    retired endpoints failed before the registry rotation landed.
+    """
+
+    if not _is_exact_active_transition_registry(registry):
+        raise NewswireError(
+            "legacy fetch-error transition requires the exact active 58-source registry"
+        )
+    if (
+        type(document) is not dict
+        or document.get("source_registry_sha256")
+        != LEGACY_SOURCE_REGISTRY_SHA256
+    ):
+        raise NewswireError(
+            "legacy fetch-error transition requires the exact legacy registry digest"
+        )
+    _validate_newswire_document(
+        document,
+        allow_prior_editorial_state=True,
+        expected_registry=None,
+        allow_legacy_fetch_error_transition=True,
+    )
+
+
 def collect_newswire(
     registry: SourceRegistry,
     fetcher: FetchBytes,
@@ -1656,7 +1740,80 @@ def collect_newswire(
         raise NewswireError("now must be timezone-aware")
     now = now.astimezone(timezone.utc).replace(microsecond=0)
     if previous is not None:
-        validate_prior_newswire_document(previous)
+        try:
+            validate_prior_newswire_document(previous)
+        except NewswireError:
+            prior_registry_sha256 = (
+                previous.get("source_registry_sha256")
+                if isinstance(previous, Mapping)
+                else None
+            )
+            if (
+                prior_registry_sha256 == LEGACY_SOURCE_REGISTRY_SHA256
+                and _is_exact_active_transition_registry(registry)
+            ):
+                validate_legacy_fetch_error_transition_prior(previous, registry)
+            else:
+                # A producer test or a reviewed registry addition may
+                # legitimately use a prior document whose source set is a strict
+                # subset of its injected registry. Bind only that non-public
+                # prior to the matching current specs. Production CLI loading
+                # does not use this synthetic-fixture path.
+                prior_expected_registry: SourceRegistry | None = None
+                prior_coverage = (
+                    previous.get("coverage")
+                    if isinstance(previous, Mapping)
+                    else None
+                )
+                prior_receipts = (
+                    prior_coverage.get("sources")
+                    if isinstance(prior_coverage, Mapping)
+                    else None
+                )
+                claims_public_registry = (
+                    type(prior_registry_sha256) is str
+                    and prior_registry_sha256
+                    in {
+                        ACTIVE_SOURCE_REGISTRY_SHA256,
+                        LEGACY_SOURCE_REGISTRY_SHA256,
+                    }
+                )
+                if (
+                    not claims_public_registry
+                    and isinstance(prior_receipts, list)
+                    and all(
+                        isinstance(receipt, Mapping)
+                        and isinstance(receipt.get("source_id"), str)
+                        for receipt in prior_receipts
+                    )
+                ):
+                    current_by_id = {source.id: source for source in registry.sources}
+                    prior_ids = {receipt["source_id"] for receipt in prior_receipts}
+                    if prior_ids <= set(current_by_id):
+                        prior_expected_registry = SourceRegistry(
+                            schema_version=registry.schema_version,
+                            window_hours=registry.window_hours,
+                            max_items_per_source=registry.max_items_per_source,
+                            max_events=registry.max_events,
+                            sources=tuple(
+                                current_by_id[source_id]
+                                for source_id in sorted(prior_ids)
+                            ),
+                            sha256=str(prior_registry_sha256),
+                        )
+                _validate_newswire_document(
+                    previous,
+                    allow_prior_editorial_state=True,
+                    expected_registry=prior_expected_registry,
+                    allow_legacy_fetch_error_transition=False,
+                )
+        previous_generated_at = datetime.strptime(
+            previous["generated_at"], "%Y-%m-%dT%H:%M:%SZ"
+        ).replace(tzinfo=timezone.utc)
+        if previous_generated_at > now:
+            raise NewswireError(
+                "previous newswire generated_at exceeds the collection clock"
+            )
     sources = list(registry.sources)
     if type(max_workers) is not int or max_workers < 1 or max_workers > 16:
         raise NewswireError("max_workers must be between 1 and 16")
@@ -1819,7 +1976,12 @@ def collect_newswire(
         "items": items,
         "events": events,
     }
-    validate_newswire_document(document)
+    _validate_newswire_document(
+        document,
+        allow_prior_editorial_state=False,
+        expected_registry=registry,
+        allow_legacy_fetch_error_transition=False,
+    )
     return document
 
 
@@ -1911,10 +2073,31 @@ _EVENT_FIELDS = frozenset(
 )
 
 
-def validate_newswire_document(document: Mapping[str, Any]) -> None:
-    """Validate the strict current public model without requiring jsonschema."""
+def validate_newswire_document(
+    document: Mapping[str, Any],
+    *,
+    expected_registry: SourceRegistry | None = None,
+) -> None:
+    """Validate the strict current model and, when supplied, its collector registry.
 
-    _validate_newswire_document(document, allow_prior_editorial_state=False)
+    The optional registry binding lets the publication CLI independently validate
+    an injected collector result. Public readers without the runtime registry can
+    continue to validate against the admitted registry digests in this module.
+    """
+
+    if expected_registry is not None and not _is_exact_active_transition_registry(
+        expected_registry
+    ):
+        raise NewswireError(
+            "current publication validation requires the exact active registry"
+        )
+
+    _validate_newswire_document(
+        document,
+        allow_prior_editorial_state=False,
+        expected_registry=expected_registry,
+        allow_legacy_fetch_error_transition=False,
+    )
 
 
 def validate_prior_newswire_document(document: Mapping[str, Any]) -> None:
@@ -1926,11 +2109,20 @@ def validate_prior_newswire_document(document: Mapping[str, Any]) -> None:
     item, evidence, version, coverage, and safety invariant remains strict.
     """
 
-    _validate_newswire_document(document, allow_prior_editorial_state=True)
+    _validate_newswire_document(
+        document,
+        allow_prior_editorial_state=True,
+        expected_registry=None,
+        allow_legacy_fetch_error_transition=False,
+    )
 
 
 def _validate_newswire_document(
-    document: Mapping[str, Any], *, allow_prior_editorial_state: bool
+    document: Mapping[str, Any],
+    *,
+    allow_prior_editorial_state: bool,
+    expected_registry: SourceRegistry | None,
+    allow_legacy_fetch_error_transition: bool = False,
 ) -> None:
     """Implement current and bounded prior-document validation."""
 
@@ -1969,6 +2161,13 @@ def _validate_newswire_document(
     items_by_id: dict[str, Mapping[str, Any]] = {}
     for index, item in enumerate(items):
         _validate_public_item(item, f"items[{index}]")
+        if (
+            allow_legacy_fetch_error_transition
+            and item["source_id"] in _RETIRED_SOURCE_TOMBSTONES
+        ):
+            raise NewswireError(
+                "collector-transition input must not contain retired-source items"
+            )
         if item["item_id"] in item_ids:
             raise NewswireError("duplicate item_id")
         item_ids.add(item["item_id"])
@@ -1976,7 +2175,13 @@ def _validate_newswire_document(
         published = datetime.strptime(item["published_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
         if item["collected_at"] != document["generated_at"] or not (window_from <= published <= window_to):
             raise NewswireError("item time falls outside the declared collection window")
-    _validate_coverage(document["coverage"], items)
+    _validate_coverage(
+        document["coverage"],
+        items,
+        registry_sha256=document["source_registry_sha256"],
+        expected_registry=expected_registry,
+        allow_legacy_fetch_error_transition=allow_legacy_fetch_error_transition,
+    )
     lead_eligible_source_ids = {
         receipt["source_id"]
         for receipt in document["coverage"]["sources"]
@@ -1986,6 +2191,20 @@ def _validate_newswire_document(
     accounted: list[str] = []
     for index, event in enumerate(events):
         _validate_public_event(event, f"events[{index}]")
+        if allow_legacy_fetch_error_transition and (
+            any(
+                ref["source_id"] in _RETIRED_SOURCE_TOMBSTONES
+                for ref in event["evidence_refs"]
+            )
+            or any(
+                source_id in _RETIRED_SOURCE_TOMBSTONES
+                for group in event["evidence_groups"]
+                for source_id in group["source_ids"]
+            )
+        ):
+            raise NewswireError(
+                "collector-transition input must not reference retired sources"
+            )
         if event["event_id"] in event_ids:
             raise NewswireError("duplicate event_id")
         event_ids.add(event["event_id"])
@@ -2045,6 +2264,93 @@ def _validate_newswire_document(
         events, key=lambda event: (-_epoch(event["updated_at"]), event["event_id"])
     ):
         raise NewswireError("events are not in deterministic reverse-chronological order")
+    if expected_registry is not None:
+        _validate_expected_registry_document(document, expected_registry)
+
+
+def _validate_expected_registry_document(
+    document: Mapping[str, Any], registry: SourceRegistry
+) -> None:
+    """Bind every source-derived current-document field to its collector registry."""
+
+    if document["source_registry_sha256"] != registry.sha256:
+        raise NewswireError("newswire registry digest does not match its collector registry")
+    if document["window"]["hours"] != registry.window_hours:
+        raise NewswireError("newswire window does not match its collector registry")
+    if document["n_events"] > registry.max_events:
+        raise NewswireError("newswire event count exceeds its collector registry cap")
+
+    sources_by_id = {source.id: source for source in registry.sources}
+    receipts_by_id = {
+        receipt["source_id"]: receipt for receipt in document["coverage"]["sources"]
+    }
+    generated_at = datetime.strptime(
+        document["generated_at"], "%Y-%m-%dT%H:%M:%SZ"
+    ).replace(tzinfo=timezone.utc)
+    for source_id, source in sources_by_id.items():
+        receipt = receipts_by_id.get(source_id)
+        if receipt is None:
+            raise NewswireError("coverage omits a collector-registry source")
+        if (
+            receipt["source_name"] != source.name
+            or receipt["feed_url"] != source.feed_url
+        ):
+            raise NewswireError(
+                "coverage source identity does not match its collector registry"
+            )
+        if receipt["accepted_items"] > registry.max_items_per_source:
+            raise NewswireError(
+                "coverage source exceeds the collector registry item cap"
+            )
+        if receipt["status"] in {"success", "stale"}:
+            latest_at = datetime.strptime(
+                receipt["latest_published_at"], "%Y-%m-%dT%H:%M:%SZ"
+            ).replace(tzinfo=timezone.utc)
+            expected_status = (
+                "stale"
+                if generated_at - latest_at
+                > timedelta(hours=source.stale_after_hours)
+                else "success"
+            )
+            if receipt["status"] != expected_status:
+                raise NewswireError(
+                    "coverage source freshness does not match its collector registry"
+                )
+
+    for item in document["items"]:
+        source = sources_by_id.get(item["source_id"])
+        receipt = receipts_by_id.get(item["source_id"])
+        if source is None or receipt is None:
+            raise NewswireError("item source is absent from its collector registry")
+        if (
+            item["source_name"] != source.name
+            or item["independence_group"] != source.independence_group
+            or item["role"] != source.role
+            or item["rights_policy"] != source.rights_policy
+        ):
+            raise NewswireError(
+                "item source fields do not match its collector registry"
+            )
+        try:
+            canonical_url = canonicalize_article_url(item["url"], source)
+        except FeedParseError as exc:
+            raise NewswireError(
+                "item URL is outside its collector registry allowlist"
+            ) from exc
+        if canonical_url != item["url"]:
+            raise NewswireError("item URL is not canonical for its collector registry")
+        for field, declared in (
+            ("declared_scan_ids", source.declared_scan_ids),
+            ("declared_economic_ids", source.declared_economic_ids),
+        ):
+            if item[field] not in ([], sorted(declared)):
+                raise NewswireError(
+                    f"item {field} does not match its collector registry"
+                )
+        if item["feed_sha256"] != receipt["document_sha256"]:
+            raise NewswireError(
+                "item feed digest does not match its source receipt"
+            )
 
 
 def _require_public_text(value: Any, path: str, *, maximum: int, allow_empty: bool) -> str:
@@ -2273,7 +2579,14 @@ def _validate_public_event(event: Any, path: str) -> None:
         raise NewswireError(f"{path}.version_id does not match dossier content")
 
 
-def _validate_coverage(coverage: Any, items: Sequence[Mapping[str, Any]]) -> None:
+def _validate_coverage(
+    coverage: Any,
+    items: Sequence[Mapping[str, Any]],
+    *,
+    registry_sha256: str,
+    expected_registry: SourceRegistry | None,
+    allow_legacy_fetch_error_transition: bool,
+) -> None:
     fields = {
         "status", "registry_sources", "successful_sources", "counts", "accepted_items",
         "rejected_items", "sources",
@@ -2349,12 +2662,93 @@ def _validate_coverage(coverage: Any, items: Sequence[Mapping[str, Any]]) -> Non
     expected_health = "healthy" if counts["empty"] == counts["fetch_error"] == counts["parse_error"] == 0 else "degraded"
     if coverage["status"] != expected_health:
         raise NewswireError("coverage status does not match source receipts")
+    _validate_registry_receipt_contract(
+        sources,
+        registry_sha256=registry_sha256,
+        expected_registry=expected_registry,
+        allow_legacy_fetch_error_transition=allow_legacy_fetch_error_transition,
+    )
+
+
+def _validate_registry_receipt_contract(
+    receipts: Sequence[Mapping[str, Any]],
+    *,
+    registry_sha256: str,
+    expected_registry: SourceRegistry | None,
+    allow_legacy_fetch_error_transition: bool,
+) -> None:
+    """Bind a registry digest to the exact receipt identities and endpoints."""
+
+    retired_ids: set[str] = set()
+    if expected_registry is not None:
+        if registry_sha256 != expected_registry.sha256:
+            raise NewswireError("newswire registry digest does not match its collector registry")
+        expected_endpoints = {
+            source.id: source.feed_url for source in expected_registry.sources
+        }
+    elif registry_sha256 == ACTIVE_SOURCE_REGISTRY_SHA256:
+        expected_endpoints = {
+            source_id: source_contract[0]
+            for source_id, source_contract in _CLOSED_SOURCES.items()
+        }
+    elif registry_sha256 == LEGACY_SOURCE_REGISTRY_SHA256:
+        expected_endpoints = {
+            source_id: source_contract[0]
+            for source_id, source_contract in _CLOSED_SOURCES.items()
+        }
+        expected_endpoints.update(
+            {
+                source_id: tombstone[0]
+                for source_id, tombstone in _RETIRED_SOURCE_TOMBSTONES.items()
+            }
+        )
+        retired_ids = set(_RETIRED_SOURCE_TOMBSTONES)
+    else:
+        raise NewswireError("newswire registry digest is not an admitted public v1 registry")
+
+    receipts_by_id = {receipt["source_id"]: receipt for receipt in receipts}
+    if set(receipts_by_id) != set(expected_endpoints):
+        raise NewswireError("coverage source identities do not match the claimed registry")
+    for source_id, expected_endpoint in expected_endpoints.items():
+        if receipts_by_id[source_id]["feed_url"] != expected_endpoint:
+            raise NewswireError(
+                "coverage source endpoint does not match the claimed registry"
+            )
+    for source_id in retired_ids:
+        receipt = receipts_by_id[source_id]
+        if allow_legacy_fetch_error_transition:
+            if (
+                expected_registry is None
+                and registry_sha256 == LEGACY_SOURCE_REGISTRY_SHA256
+                and receipt["status"] == "fetch_error"
+                and receipt["items_seen"] == 0
+                and receipt["accepted_items"] == 0
+                and receipt["rejected_items"] == 0
+                and receipt["out_of_window_items"] == 0
+                and receipt["latest_published_at"] is None
+                and receipt["document_sha256"] is None
+            ):
+                # This is input admission for exactly one 60 -> 58 collector
+                # transition, not a public wire contract. The active-registry
+                # collector omits both retired receipts from its new document.
+                continue
+            raise NewswireError(
+                "retired collector-transition receipt is not an exact zero/null "
+                "fetch-error tombstone"
+            )
+        if receipt["status"] == "stale" and receipt["accepted_items"] == 0:
+            continue
+        raise NewswireError(
+            "retired legacy source receipt must remain stale with zero accepted items"
+        )
 
 
 __all__ = [
+    "ACTIVE_SOURCE_REGISTRY_SHA256",
     "DEFAULT_CONFIG_PATH",
     "DEFAULT_OUTPUT_PATH",
     "FeedParseError",
+    "LEGACY_SOURCE_REGISTRY_SHA256",
     "NEWSWIRE_SCHEMA_VERSION",
     "NoSuccessfulSources",
     "NewswireError",
@@ -2369,5 +2763,7 @@ __all__ = [
     "load_source_registry",
     "parse_feed",
     "strict_json_loads",
+    "validate_active_source_registry",
+    "validate_legacy_fetch_error_transition_prior",
     "validate_newswire_document",
 ]

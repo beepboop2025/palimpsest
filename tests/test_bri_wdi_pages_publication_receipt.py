@@ -28,6 +28,7 @@ from processors.bri_observatory import (
 )
 from scripts import build_bri_observatory as bri_builder
 from scripts.build_bri_observatory import build
+from tests.bri_test_support import write_active_registry_wire
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,6 +56,14 @@ CHECKED_RECEIPT_SHA256 = (
 )
 CHECKED_VERIFIED_AT = "2026-08-26T15:55:34Z"
 CHECKED_FRESH_UNTIL = "2026-08-27T15:55:34Z"
+
+
+@pytest.fixture(autouse=True)
+def _use_active_registry_wire(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    wire = write_active_registry_wire(tmp_path / "newswire-latest.json", root=ROOT)
+    monkeypatch.setitem(bri_builder.build.__kwdefaults__, "newswire_path", wire)
 
 
 def _resource(path: str) -> dict:

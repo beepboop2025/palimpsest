@@ -4,10 +4,22 @@ Published observatory readings — dated, evidence-backed snapshots produced by 
 observation surfaces. Each reading ships the raw evidence beside the headline number so any
 figure is auditable.
 
-## Live feeds (auto-updated by GitHub Actions)
+## Live feeds (Hetzner collection → sealed Railway publication)
 
 Machine-readable, at stable URLs; schemas, honest scope, and citation guidance live at
-[palimpsest.info/for-researchers](https://palimpsest.info/for-researchers.html).
+[palimpsest.info/for-researchers](https://www.palimpsest.info/for-researchers.html).
+
+For a quick, non-technical check, open the public
+[freshness receipt](https://www.palimpsest.info/freshness?view=reader): `fresh` means the
+published wire and edition are inside their stated time budgets; `stale` means
+the site is serving its last verified edition while a newer release is delayed.
+An unavailable or rights-restricted value is never equivalent to zero, calm,
+healthy, or unchanged.
+
+Hetzner performs scheduled collection and builds an isolated public candidate.
+The direct publisher applies source-rights rules, seals an immutable bundle,
+and Railway serves that exact edition. GitHub stores reviewed source code and
+contracts; GitHub Actions is not the live collector for this direct lane.
 
 A `*-latest.json` file is the current snapshot; the matching `*-history.jsonl` is an append-only
 time series, one compact record per run. Grouped by the layer of the apparatus each one observes.

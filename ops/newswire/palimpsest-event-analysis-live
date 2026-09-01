@@ -99,6 +99,10 @@ class LiveAnalysisError(RuntimeError):
     """The pinned live-analysis runtime cannot be proved safe."""
 
 
+class PublicationMutationActive(LiveAnalysisError):
+    """A publisher owns the mutation boundary, so this cycle should coalesce."""
+
+
 @dataclass(frozen=True)
 class RuntimeConfig:
     repository: Path
@@ -272,7 +276,9 @@ def _acquire_publication_boundary(
         try:
             fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
         except BlockingIOError as exc:
-            raise LiveAnalysisError("publication mutation is active") from exc
+            raise PublicationMutationActive(
+                "publication mutation is active"
+            ) from exc
         after = os.fstat(descriptor)
         pathname = os.stat(path, follow_symlinks=False)
         if (
@@ -1923,6 +1929,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         target = run(config)
+    except PublicationMutationActive:
+        print(
+            "event-analysis-live wrapper: abstained because publication mutation "
+            "is active; the next successful wire cycle will retry"
+        )
+        return 0
     except LiveAnalysisError as exc:
         print(f"event-analysis-live wrapper refused: {exc}", file=sys.stderr)
         return 1

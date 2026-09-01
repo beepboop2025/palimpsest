@@ -232,7 +232,8 @@ def test_catalog_publication_denials_remain_metadata_only_in_mesh(
         if row.get("publication_allowed") is False
     }
 
-    assert len(denied) == 11
+    assert len(denied) == 12
+    assert "china-censorship-analysis" in denied
     for dataset_id in denied:
         resource = _resource(mesh, f"palimpsest:catalog:{dataset_id}")
         assert resource["availability"] == "unavailable"

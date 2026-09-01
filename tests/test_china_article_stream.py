@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import json
 import xml.etree.ElementTree as ET
-from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,30 +26,23 @@ ROOT = Path(__file__).resolve().parent.parent
 def _collect_synthetic_stream(
     source_id: str, rss: bytes
 ) -> tuple[dict, dict, dict]:
-    source = replace(
-        next(
-            source
-            for source in newswire.load_source_registry().sources
-            if source.id == source_id
-        ),
-        declared_scan_ids=(),
-        declared_economic_ids=(),
-    )
-    registry = newswire.SourceRegistry(
-        schema_version=newswire.REGISTRY_SCHEMA_VERSION,
-        window_hours=168,
-        max_items_per_source=128,
-        max_events=2_048,
-        sources=(source,),
-        sha256="0" * 64,
-    )
+    registry = newswire.load_source_registry()
+    source = next(source for source in registry.sources if source.id == source_id)
+
+    def fetch(url: str, **_kwargs: object) -> bytes:
+        if url == source.feed_url:
+            return rss
+        raise RuntimeError("synthetic source unavailable")
+
     wire = newswire.collect_newswire(
         registry,
-        lambda _url, **_kwargs: rss,
+        fetch,
         now=datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc),
     )
     analyses = event_analysis.build_event_analyses(
-        wire, {"schema_version": "palimpsest-news.v1", "stories": []}
+        wire,
+        {"schema_version": "palimpsest-news.v1", "stories": []},
+        allow_missing_collectors=True,
     )
     stream = china_article_stream.build_china_article_stream(wire, analyses)
     return wire, analyses, stream
@@ -389,19 +381,52 @@ def test_build_outputs_adds_paginated_stream_and_machine_formats(publication):
     assert Path("news/china/feed.xml") in outputs
     assert Path("news/china/feed.json") in outputs
     assert Path("readings/china-article-stream-latest.json") in outputs
-    assert Path("news/china/analysis/index.html") in outputs
-    assert Path("news/china/analysis/feed.xml") in outputs
-    assert Path("news/china/analysis/feed.json") in outputs
-    assert Path("readings/china-censorship-analysis-latest.json") in outputs
     newsroom_index = outputs[Path("news/index.html")].decode()
-    assert 'href="/news/china/analysis/"' in newsroom_index
-    assert "Open the latest cross-instrument result" in newsroom_index
-    assert '<b>Censorship analysis</b>' in newsroom_index
+    analysis_page_path = Path("news/china/analysis/index.html")
+    analysis_json_path = build_newsroom.CHINA_ANALYSIS_JSON_FEED_RELATIVE
+    analysis_rss_path = build_newsroom.CHINA_ANALYSIS_RSS_FEED_RELATIVE
+    analysis_reading_path = build_newsroom.CHINA_ANALYSIS_READING_RELATIVE
+    analysis_paths = {
+        analysis_page_path,
+        analysis_json_path,
+        analysis_rss_path,
+        analysis_reading_path,
+    }
+    analysis_denied = build_newsroom._china_public_values_denied(feed["generated_at"])
+    if analysis_denied:
+        denied_analysis_paths = {
+            analysis_page_path,
+            analysis_json_path,
+            analysis_rss_path,
+        }
+        assert denied_analysis_paths <= outputs.keys()
+        assert analysis_reading_path not in outputs
+        assert json.loads(outputs[analysis_json_path]) == (
+            build_newsroom.build_china_analysis_availability_json_feed(
+                feed["generated_at"]
+            )
+        )
+        assert outputs[analysis_rss_path] == (
+            build_newsroom.build_china_analysis_availability_rss(
+                feed["generated_at"]
+            )
+        )
+        unavailable_page = outputs[analysis_page_path].decode()
+        assert "public finding unavailable" in unavailable_page
+        assert "Unavailable is not zero" in unavailable_page
+        assert 'content="noindex, follow, max-image-preview:large"' in unavailable_page
+    else:
+        assert analysis_paths <= outputs.keys()
+        assert 'href="/news/china/analysis/"' in newsroom_index
+        assert "Open the latest cross-instrument result" in newsroom_index
+        assert '<b>Censorship analysis</b>' in newsroom_index
     for page in range(2, n_pages + 1):
         assert Path("news/china/page") / str(page) / "index.html" in outputs
     sitemap = outputs[Path("news/sitemap.xml")].decode()
     assert "https://palimpsest.info/news/china/" in sitemap
-    assert "https://palimpsest.info/news/china/analysis/" in sitemap
+    assert ("https://palimpsest.info/news/china/analysis/" in sitemap) == (
+        not analysis_denied
+    )
     assert f"https://palimpsest.info/news/china/page/{n_pages}/" in sitemap
 
 

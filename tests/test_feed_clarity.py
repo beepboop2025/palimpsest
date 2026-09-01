@@ -26,18 +26,23 @@ FEEDS = {
     "measurements": {
         "rss": "news/instruments/feed.xml",
         "json": "news/instruments/feed.json",
-        "prefixes": ("[Palimpsest measurement]",),
-        "kinds": {"instrument_measurement"},
+        "prefixes": ("[Palimpsest measurement]", "[Palimpsest availability]"),
+        "kinds": {"instrument_measurement", "instrument_availability"},
     },
     "mixed": {
         "rss": "news/feed.xml",
         "json": "news/feed.json",
         "prefixes": (
             "[Palimpsest measurement]",
+            "[Palimpsest availability]",
             "[Source report]",
             "[Corroborated source report]",
         ),
-        "kinds": {"instrument_measurement", "publisher_source_record"},
+        "kinds": {
+            "instrument_measurement",
+            "instrument_availability",
+            "publisher_source_record",
+        },
     },
     "china_sources": {
         "rss": "news/china/feed.xml",
@@ -54,8 +59,11 @@ FEEDS = {
     "china_analysis": {
         "rss": "news/china/analysis/feed.xml",
         "json": "news/china/analysis/feed.json",
-        "prefixes": ("[Palimpsest analysis]",),
-        "kinds": {"china_censorship_analysis"},
+        "prefixes": ("[Palimpsest analysis]", "[Palimpsest availability]"),
+        "kinds": {
+            "china_censorship_analysis",
+            "china_censorship_analysis_availability",
+        },
     },
     "reviewed_context": {
         "rss": "news/china/whispers/feed.xml",
@@ -132,10 +140,12 @@ def test_instrument_feed_is_not_misidentified_as_the_mixed_feed() -> None:
     assert instruments["feed_url"].endswith("/news/instruments/feed.json")
     assert mixed["feed_url"].endswith("/news/feed.json")
     assert instruments["feed_url"] != mixed["feed_url"]
-    assert {item["_palimpsest"]["kind"] for item in instruments["items"]} == {
-        "instrument_measurement"
+    instrument_kinds = {
+        item["_palimpsest"]["kind"] for item in instruments["items"]
     }
-    assert mixed["items"][0]["_palimpsest"]["kind"] == "instrument_measurement"
+    assert instrument_kinds <= {"instrument_measurement", "instrument_availability"}
+    assert "instrument_measurement" in instrument_kinds
+    assert mixed["items"][0]["_palimpsest"]["kind"] in instrument_kinds
 
 
 def test_publisher_records_keep_the_original_and_verification_boundary_visible() -> None:
@@ -173,7 +183,7 @@ def test_feed_directory_contract_and_service_worker_cover_every_endpoint() -> No
     worker = (ROOT / "sw.js").read_text(encoding="utf-8")
 
     assert "8 RSS + 8 JSON Feed" in directory
-    assert "Four kinds of item" in directory
+    assert "Five kinds of item" in directory
     for item in FEEDS.values():
         for endpoint in (item["rss"], item["json"]):
             relative = f"/{endpoint}"
