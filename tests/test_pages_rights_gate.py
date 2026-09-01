@@ -884,6 +884,202 @@ def test_sanitized_osint_is_always_quarantined_by_designation(tmp_path: Path):
     }
 
 
+def test_rights_derived_signal_closure_is_explicit_and_exact():
+    assert stage_pages_rights.DERIVED_INSTRUMENTS == {
+        "board-alarm",
+        "event-flags",
+        "coverage-guard",
+        "forecast-ledger",
+        "cross-layer",
+        "china-econ",
+        "cny-fix-gap",
+        "data-darkness",
+    }
+
+
+def test_mixed_newsroom_and_analysis_derivatives_are_quarantined(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    fixtures = {
+        "news/feed.json": {
+            "version": "https://jsonfeed.org/version/1.1",
+            "items": [
+                {
+                    "id": "measurement-cny-fix-gap",
+                    "title": "CNY fix gap is -0.9298%",
+                    "content_text": "Result: the current gap is -0.9298%.",
+                    "tags": ["palimpsest-measurement", "cny-fix-gap"],
+                    "_palimpsest": {"kind": "instrument_measurement"},
+                }
+            ],
+        },
+        "news/wire/event-example/analysis.json": {
+            "schema_version": "palimpsest-event-analysis.v2",
+            "collector_context": [
+                {
+                    "signal_id": "china-econ",
+                    "status": "live",
+                    "metric": {"label": "families", "value": 3},
+                }
+            ],
+        },
+        "news/cny-fix-gap/analysis.json": {
+            "schema_version": "palimpsest-instrument-analysis.v1",
+            "signal_id": "cny-fix-gap",
+            "key_numbers": [{"label": "gap", "value": "-0.9298%"}],
+        },
+        "archive/collector-row.json": {
+            "kind": "collector-row",
+            "signal_ids": ["data-darkness"],
+            "metric": {"value": 0.25},
+        },
+    }
+    for relative, document in fixtures.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(document) + "\n", encoding="utf-8")
+
+    html_path = tmp_path / "news/index.html"
+    html_path.write_text(
+        '<article class="nw-card"><a href="/news/china-money-market-benchmarks/">'
+        'China money-market benchmarks</a><p class="nw-card__metric">'
+        "<strong>3 families</strong> current official benchmarks</p></article>",
+        encoding="utf-8",
+    )
+    rss_path = tmp_path / "news/instruments/feed.xml"
+    rss_path.parent.mkdir(parents=True, exist_ok=True)
+    rss_path.write_text(
+        "<rss><channel><item><title>[Palimpsest measurement] "
+        "Board e-value 1.18</title><link>https://palimpsest.info/news/board-alarm/"
+        "</link><description>Item type: Palimpsest measurement. Result: 1.18."
+        "</description><source>board-alarm</source></item></channel></rss>",
+        encoding="utf-8",
+    )
+
+    expected = set(fixtures) | {"news/index.html", "news/instruments/feed.xml"}
+    before = set(
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    )
+    assert expected <= before
+
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+    assert expected <= set(status["quarantined_paths"])
+    _verify(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    assert (
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
+        == []
+    )
+
+
+def test_topic_tags_and_safe_measurements_do_not_cross_contaminate(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    safe_feed = tmp_path / "news/safe-feed.json"
+    safe_feed.parent.mkdir(parents=True, exist_ok=True)
+    safe_feed.write_text(
+        json.dumps(
+            {
+                "version": "https://jsonfeed.org/version/1.1",
+                "items": [
+                    {
+                        "id": "publisher-report",
+                        "content_text": "Publisher reports growth of 5%.",
+                        "tags": ["china-econ"],
+                        "_palimpsest": {"kind": "source_report"},
+                    },
+                    {
+                        "id": "safe-measurement",
+                        "content_text": "Result: 7 deletions.",
+                        "tags": ["palimpsest-measurement", "ddti"],
+                        "_palimpsest": {"kind": "instrument_measurement"},
+                    },
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    safe_rss = tmp_path / "news/safe-feed.xml"
+    safe_rss.write_text(
+        "<rss><channel><item><title>Publisher reports 5% growth</title>"
+        "<category>source-report</category><category>china-econ</category>"
+        "</item></channel></rss>",
+        encoding="utf-8",
+    )
+    safe_html = tmp_path / "news/safe.html"
+    safe_html.write_text(
+        '<article data-topic="china-econ"><a href="/news/ddti/">DDTI</a>'
+        '<p class="nw-card__metric"><strong>7</strong> deletions</p></article>',
+        encoding="utf-8",
+    )
+    safe_analysis = tmp_path / "news/safe-analysis.json"
+    safe_analysis.write_text(
+        json.dumps(
+            {
+                "declared_links": {"signal_ids": ["china-econ"]},
+                "collector_context": [{"signal_id": "ddti", "metric": {"value": 7}}],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    violations = set(
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    )
+
+    assert {
+        "news/safe-feed.json",
+        "news/safe-feed.xml",
+        "news/safe.html",
+        "news/safe-analysis.json",
+    }.isdisjoint(violations)
+
+
+def test_datapackage_sizes_are_reconciled_after_quarantine_and_verified(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    safe_path = tmp_path / "public/safe.json"
+    safe_path.parent.mkdir(parents=True, exist_ok=True)
+    safe_path.write_text('{"safe":true}\n', encoding="utf-8")
+    package_path = tmp_path / stage_pages_rights.DATAPACKAGE_RELATIVE_PATH
+    package_path.write_text(
+        json.dumps(
+            {
+                "profile": "data-package",
+                "resources": [
+                    {
+                        "name": "restricted-observations",
+                        "path": "readings/china-econ-observations.jsonl",
+                        "bytes": 1,
+                    },
+                    {"name": "safe", "path": "public/safe.json"},
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    resources = {row["name"]: row for row in package["resources"]}
+
+    assert (
+        resources["restricted-observations"]["bytes"]
+        == (tmp_path / "readings/china-econ-observations.jsonl").stat().st_size
+    )
+    assert resources["safe"]["bytes"] == safe_path.stat().st_size
+    _verify(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+    safe_path.write_text('{"safe":true} \n', encoding="utf-8")
+    with pytest.raises(
+        stage_pages_rights.PagesRightsError,
+        match="datapackage resource byte size drifted: public/safe.json",
+    ):
+        _verify(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+
 def test_future_denied_values_and_derivatives_are_detected_then_removed(
     tmp_path: Path,
 ):
@@ -1334,9 +1530,7 @@ def test_share_card_rights_are_scanned_per_spec_without_cross_row_token_bleed(
     manifest_path.write_bytes(manifest_raw)
 
     assert share_cards.MANIFEST_PATH.as_posix() not in (
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
     )
     status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
     assert share_cards.MANIFEST_PATH.as_posix() not in status["quarantined_paths"]

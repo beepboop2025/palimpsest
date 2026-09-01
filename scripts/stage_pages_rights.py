@@ -45,6 +45,7 @@ POLICY_RELATIVE_PATH = Path("config/china_econ_source_policy.json")
 BINARY_ALLOWLIST_RELATIVE_PATH = Path("config/pages_public_binary_allowlist.json")
 SHARE_CARD_MANIFEST_RELATIVE_PATH = share_cards.MANIFEST_PATH
 STATUS_RELATIVE_PATH = Path("readings/china-publication-rights-latest.json")
+DATAPACKAGE_RELATIVE_PATH = Path("datapackage.json")
 STATUS_SCHEMA = "palimpsest-restricted-publication.v1"
 STATUS_SCHEMA_PATH = "protocol/restricted-publication-v1.schema.json"
 FRESHNESS_ATTESTATION_RELATIVE_PATH = Path(
@@ -154,7 +155,23 @@ VALUE_FIELDS = frozenset(
         "direction",
     }
 )
-DERIVED_INSTRUMENTS = frozenset({"china-econ", "cny-fix-gap"})
+# Canonical closure of public signals whose values may transitively depend on a
+# rights-denied China value family.  Keep this list explicit: downstream
+# representations (feeds, HTML and analysis rows) are aliases of these signal
+# identities, not an opportunity to silently broaden or narrow policy.
+DERIVED_INSTRUMENTS = frozenset(
+    {
+        "board-alarm",
+        "event-flags",
+        "coverage-guard",
+        "forecast-ledger",
+        "cross-layer",
+        "china-econ",
+        "cny-fix-gap",
+        "data-darkness",
+    }
+)
+SIGNAL_ID_FIELDS = frozenset({"signal_id", "signal_ids"})
 LINEAGE_FIELDS = frozenset(
     {
         "source_id",
@@ -188,6 +205,20 @@ HTML_LINEAGE = re.compile(
 HTML_VALUE_SHAPE = re.compile(
     r"(?:class=[\"'][^\"']*(?:cn-num|metric-card__value)[^\"']*[\"']|"
     r"[\"'](?:value|current_value|usdcny_parity)[\"']\s*:)",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_METRIC_CLASS = re.compile(
+    r"class=[\"'][^\"']*(?:nw-card__metric|nw-metric-block|"
+    r"nw-metric-card__value)[^\"']*[\"']",
+    re.IGNORECASE,
+)
+HTML_NEWSROOM_BLOCK = re.compile(
+    r"<(?P<tag>article|section)\b[^>]*>.*?</(?P=tag)\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+RSS_ITEM = re.compile(r"<item\b[^>]*>.*?</item\s*>", re.IGNORECASE | re.DOTALL)
+RSS_MEASUREMENT_MARKER = re.compile(
+    r"(?:\[Palimpsest measurement\]|Item\s+type\s*:\s*Palimpsest\s+measurement)",
     re.IGNORECASE,
 )
 TEXT_DIRECT_VALUE_SHAPE = re.compile(
@@ -250,8 +281,26 @@ DELIMITED_LINEAGE_BYTES = re.compile(
     ),
     re.IGNORECASE,
 )
+DERIVED_INSTRUMENT_TOKEN = re.compile(
+    r"(?<![a-z0-9_-])(?:"
+    + "|".join(re.escape(key) for key in sorted(DERIVED_INSTRUMENTS))
+    + r")(?![a-z0-9_-])",
+    re.IGNORECASE,
+)
 DERIVED_INSTRUMENT_BYTES = re.compile(
-    b"|".join(re.escape(key.encode("ascii")) for key in sorted(DERIVED_INSTRUMENTS)),
+    rb"(?<![a-z0-9_-])(?:"
+    + b"|".join(re.escape(key.encode("ascii")) for key in sorted(DERIVED_INSTRUMENTS))
+    + rb")(?![a-z0-9_-])",
+    re.IGNORECASE,
+)
+DERIVED_PUBLIC_ROUTE = re.compile(
+    r"/(?:"
+    r"news/(?:board-alarm|event-flags|coverage-guard|forecast-ledger|"
+    r"cross-layer-lead-lag|china-money-market-benchmarks|cny-fix-gap|"
+    r"official-data-darkness)/"
+    r"|readings/(?:board-alarm|event-flags|coverage-guard|forecast-ledger|"
+    r"cross-layer|china-econ|cny-fix-gap|data-darkness)-latest\.json"
+    r")",
     re.IGNORECASE,
 )
 ENCODED_SHAPE_BYTES = re.compile(
@@ -519,6 +568,88 @@ def _json_documents(path: Path, raw: bytes) -> list[Any]:
         return [_strict_json_loads(text)]
     except (ValueError, RecursionError) as exc:
         raise PagesRightsError(f"invalid public JSON artifact {path}: {exc}") from exc
+
+
+def _datapackage_resources(
+    root: Path,
+) -> tuple[Path, dict[str, Any], list[dict[str, Any]]] | None:
+    """Load local Frictionless-style resources from the staged package."""
+
+    package_path = root / DATAPACKAGE_RELATIVE_PATH
+    if not package_path.exists():
+        return None
+    if not package_path.is_file() or not _within_root(root, package_path):
+        raise PagesRightsError("staged datapackage is not a regular in-root file")
+    documents = _json_documents(package_path, _read_bounded(package_path))
+    if len(documents) != 1 or not isinstance(documents[0], dict):
+        raise PagesRightsError("staged datapackage must contain one JSON object")
+    document = documents[0]
+    resources = document.get("resources")
+    if not isinstance(resources, list):
+        raise PagesRightsError("staged datapackage resources must be a list")
+    seen: set[str] = set()
+    for resource in resources:
+        if not isinstance(resource, dict):
+            raise PagesRightsError("staged datapackage resource is not an object")
+        relative = resource.get("path")
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or Path(relative).is_absolute()
+            or ".." in Path(relative).parts
+            or relative in seen
+        ):
+            raise PagesRightsError("staged datapackage resource path is invalid")
+        seen.add(relative)
+        target = root / relative
+        if not _within_root(root, target):
+            raise PagesRightsError(
+                f"staged datapackage resource escaped root: {relative}"
+            )
+        if target.resolve(strict=False) == package_path.resolve(strict=False):
+            raise PagesRightsError("staged datapackage cannot inventory itself")
+        if target.exists() and not target.is_file():
+            raise PagesRightsError(
+                f"staged datapackage resource is not a regular file: {relative}"
+            )
+    return package_path, document, resources
+
+
+def _datapackage_bytes(document: Mapping[str, Any]) -> bytes:
+    return (
+        json.dumps(document, allow_nan=False, ensure_ascii=False, indent=2) + "\n"
+    ).encode("utf-8")
+
+
+def _reconcile_datapackage_sizes(root: Path) -> None:
+    """Bind every existing resource to its final post-quarantine byte size."""
+
+    loaded = _datapackage_resources(root)
+    if loaded is None:
+        return
+    package_path, document, resources = loaded
+    for resource in resources:
+        target = root / resource["path"]
+        if target.is_file():
+            resource["bytes"] = len(_read_bounded(target))
+    _atomic_write(package_path, _datapackage_bytes(document), durable=False)
+
+
+def _verify_datapackage_sizes(root: Path) -> None:
+    loaded = _datapackage_resources(root)
+    if loaded is None:
+        return
+    _package_path, _document, resources = loaded
+    for resource in resources:
+        target = root / resource["path"]
+        if not target.is_file():
+            continue
+        expected = resource.get("bytes")
+        actual = len(_read_bounded(target))
+        if type(expected) is not int or expected != actual:
+            raise PagesRightsError(
+                "staged datapackage resource byte size drifted: " + resource["path"]
+            )
 
 
 def _is_number(value: Any) -> bool:
@@ -859,6 +990,79 @@ def _strings(value: Any) -> Iterable[str]:
                 yield child
 
 
+def _is_derived_signal(value: Any) -> bool:
+    return isinstance(value, str) and value.strip().lower() in DERIVED_INSTRUMENTS
+
+
+def _mapping_signal_ids(value: Mapping[str, Any]) -> Iterable[str]:
+    """Yield explicit signal identities without treating topic tags as lineage.
+
+    JSON Feed tags are signal identity only for Palimpsest's own measurement
+    items.  A publisher source report may legitimately carry an economic topic
+    tag, and must not borrow the rights state of a Palimpsest instrument.
+    """
+
+    instrument_id = value.get("instrument_id")
+    if isinstance(instrument_id, str):
+        yield instrument_id
+    for field in SIGNAL_ID_FIELDS:
+        yield from _strings(value.get(field))
+    metadata = value.get("_palimpsest")
+    if (
+        isinstance(metadata, Mapping)
+        and metadata.get("kind") == "instrument_measurement"
+    ):
+        yield from _strings(value.get("tags"))
+
+
+def _is_derived_json_feed_measurement(value: Mapping[str, Any]) -> bool:
+    metadata = value.get("_palimpsest")
+    return (
+        isinstance(metadata, Mapping)
+        and metadata.get("kind") == "instrument_measurement"
+        and any(_is_derived_signal(token) for token in _strings(value.get("tags")))
+    )
+
+
+def _html_has_derived_newsroom_metric(text: str) -> bool:
+    """Recognize a rights-derived metric inside the same newsroom block."""
+
+    if HTML_NEWSROOM_METRIC_CLASS.search(text) is None:
+        return False
+    for match in HTML_NEWSROOM_BLOCK.finditer(text):
+        block = match.group(0)
+        if (
+            HTML_NEWSROOM_METRIC_CLASS.search(block) is not None
+            and DERIVED_PUBLIC_ROUTE.search(html.unescape(block)) is not None
+        ):
+            return True
+    return False
+
+
+def _rss_has_derived_measurement(text: str) -> bool:
+    """Recognize one measurement item without cross-contaminating RSS items."""
+
+    if RSS_MEASUREMENT_MARKER.search(text) is None:
+        return False
+    for match in RSS_ITEM.finditer(text):
+        item = html.unescape(match.group(0))
+        if RSS_MEASUREMENT_MARKER.search(item) is None:
+            continue
+        if (
+            DERIVED_PUBLIC_ROUTE.search(item) is not None
+            or re.search(
+                r"<source\b[^>]*>\s*(?:"
+                + "|".join(re.escape(key) for key in sorted(DERIVED_INSTRUMENTS))
+                + r")\s*</source\s*>",
+                item,
+                re.IGNORECASE,
+            )
+            is not None
+        ):
+            return True
+    return False
+
+
 def _token_has_denied_lineage(
     token: str,
     *,
@@ -882,7 +1086,6 @@ def _mapping_lineage(
 ) -> bool:
     series_id = value.get("series_id")
     field = value.get("field")
-    instrument_id = value.get("instrument_id")
     mapping_scope = policy_scope or (
         isinstance(series_id, str) and series_id.startswith("cn.")
     )
@@ -891,7 +1094,7 @@ def _mapping_lineage(
         or any(str(key).lower() in denied_source_ids for key in value)
         or (isinstance(series_id, str) and series_id.startswith("cn.cfets."))
         or field in DIRECT_VALUE_KEYS
-        or instrument_id in DERIVED_INSTRUMENTS
+        or any(_is_derived_signal(token) for token in _mapping_signal_ids(value))
     ):
         return True
     for key in LINEAGE_FIELDS & value.keys():
@@ -917,6 +1120,8 @@ def _contains_denied_json_value(
     inherited_lineage: bool = False,
 ) -> bool:
     if isinstance(value, dict):
+        if _is_derived_json_feed_measurement(value):
+            return True
         lineage = _mapping_lineage(
             value,
             inherited_lineage,
@@ -1179,10 +1384,17 @@ def _contains_denied_payload(
             text.encode("utf-8") if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else raw
         )
         has_direct_key = DIRECT_KEY_BYTES.search(semantic_raw) is not None
-        has_known_lineage = (
-            lineage_pattern.search(semantic_raw) is not None
-            or DERIVED_INSTRUMENT_BYTES.search(semantic_raw) is not None
+        has_policy_lineage = lineage_pattern.search(semantic_raw) is not None
+        has_derived_signal = DERIVED_INSTRUMENT_BYTES.search(semantic_raw) is not None
+        has_known_lineage = has_policy_lineage or has_derived_signal
+        has_derived_representation = (
+            has_derived_signal or DERIVED_PUBLIC_ROUTE.search(text) is not None
         )
+        if has_derived_representation and (
+            _html_has_derived_newsroom_metric(text)
+            or _rss_has_derived_measurement(text)
+        ):
+            return True
         has_value_field = (
             VALUE_FIELD_BYTES.search(semantic_raw) is not None
             if has_known_lineage or policy_scope
@@ -1221,7 +1433,6 @@ def _contains_denied_payload(
             for document in documents
         ):
             return True
-        has_lineage = has_known_lineage
         has_mapping_key = any(
             token in lowered_raw for token in (b"cfets_benchmarks", b"chinamoney")
         )
@@ -1233,7 +1444,7 @@ def _contains_denied_payload(
             (has_direct_key and TEXT_DIRECT_VALUE_SHAPE.search(text) is not None)
             or (has_mapping_key and TEXT_DENIED_MAPPING_VALUE.search(text) is not None)
             or (
-                has_lineage
+                has_policy_lineage
                 and has_html_value_key
                 and HTML_VALUE_SHAPE.search(text) is not None
             )
@@ -1250,6 +1461,7 @@ def _contains_denied_payload(
                 HTML_LINEAGE.search(decoded_text) is not None
                 or any(source_id in lowered_decoded for source_id in denied_source_ids)
                 or any(key in lowered_decoded for key in DIRECT_VALUE_KEYS)
+                or DERIVED_INSTRUMENT_TOKEN.search(decoded_text) is not None
             )
             if (
                 decoded_text != text
@@ -1944,6 +2156,7 @@ def stage_pages_tree(
         _canonical_json(freshness_attestation),
         durable=False,
     )
+    _reconcile_datapackage_sizes(root)
 
     remaining = find_denied_value_paths(root, policy=policy, evaluated_at=admission)
     if remaining:
@@ -2001,6 +2214,7 @@ def verify_staged_tree(
         evaluated_at=staged_at,
         rights_status_raw=status_raw,
     )
+    _verify_datapackage_sizes(root)
     master_sha256 = hashlib.sha256(status_raw).hexdigest()
     required = {path for path in ALWAYS_RESTRICT if (root / path).is_file()}
     if not required.issubset(quarantined):
