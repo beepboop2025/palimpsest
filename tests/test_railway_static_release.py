@@ -428,6 +428,18 @@ def test_server_fails_health_closed_without_manifest(tmp_path: Path) -> None:
             assert payload["status"] == "unavailable"
         else:
             raise AssertionError("missing manifest unexpectedly passed readiness")
+
+        with pytest.raises(urllib.error.HTTPError) as unavailable:
+            urllib.request.urlopen(
+                f"http://127.0.0.1:{server.server_port}/freshness?view=reader",
+                timeout=5,
+            )
+        assert unavailable.value.code == 503
+        assert unavailable.value.headers["Content-Type"] == ("text/html; charset=utf-8")
+        reader = unavailable.value.read().decode("utf-8")
+        assert "Palimpsest freshness: Freshness unavailable" in reader
+        assert "Do not treat an unavailable check as fresh" in reader
+        assert "<h2>Required clocks</h2>" not in reader
     finally:
         server.shutdown()
         server.server_close()
@@ -461,6 +473,9 @@ def test_server_reports_semantic_freshness_separately_from_readiness(
         with urllib.request.urlopen(base + "/freshness", timeout=5) as response:
             assert response.status == 200
             assert response.headers["Cache-Control"] == "no-store"
+            assert response.headers["Link"] == (
+                '</freshness?view=reader>; rel="alternate"; type="text/html"'
+            )
             freshness = json.loads(response.read())
         assert freshness == {
             "schema_version": "palimpsest.publication-freshness.v1",
@@ -511,6 +526,23 @@ def test_server_reports_semantic_freshness_separately_from_readiness(
             assert response.status == 200
             assert response.headers["Cache-Control"] == "no-store"
             assert response.read() == b""
+
+        with urllib.request.urlopen(
+            base + "/freshness?view=reader", timeout=5
+        ) as response:
+            assert response.status == 200
+            assert response.headers["Content-Type"] == "text/html; charset=utf-8"
+            assert response.headers["Cache-Control"] == "no-store"
+            assert response.headers["Link"] == (
+                '</freshness>; rel="alternate"; type="application/json"'
+            )
+            reader = response.read().decode("utf-8")
+        assert "Palimpsest freshness: Current" in reader
+        assert "10 minutes old (limit: 30 minutes" in reader
+        assert "5 minutes old (limit: 1 hour" in reader
+        assert "does not report how many measurements are available" in reader
+        assert "do not read that as a zero value" in reader
+        assert f"<code>{source_commit}</code>" in reader
     finally:
         server.shutdown()
         server.server_close()
@@ -546,6 +578,17 @@ def test_server_fails_freshness_closed_when_wire_clock_is_stale(
         assert payload["status"] == "stale"
         assert payload["clocks"]["wire"]["status"] == "stale"
         assert payload["clocks"]["publication"]["status"] == "fresh"
+
+        with pytest.raises(urllib.error.HTTPError) as reader_stale:
+            urllib.request.urlopen(url + "?view=reader", timeout=5)
+        assert reader_stale.value.code == 503
+        assert reader_stale.value.headers["Content-Type"] == (
+            "text/html; charset=utf-8"
+        )
+        reader = reader_stale.value.read().decode("utf-8")
+        assert "Palimpsest freshness: Out of date" in reader
+        assert "30 minutes 1 second old (limit: 30 minutes" in reader
+        assert "older snapshot until a new release is verified" in reader
     finally:
         server.shutdown()
         server.server_close()
