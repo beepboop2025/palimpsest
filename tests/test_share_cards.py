@@ -74,7 +74,14 @@ def test_missing_state_cannot_render_zero_or_any_retained_metric():
         )
 
     feed = newsroom.build_news_feed()
-    story = copy.deepcopy(feed["stories"][0])
+    story = copy.deepcopy(
+        next(
+            row
+            for row in feed["stories"]
+            if row["signal_id"]
+            not in build_newsroom._PUBLIC_VALUE_WITHHELD_SHARE_CARDS
+        )
+    )
     section = next(row for row in feed["sections"] if row["id"] == story["section"])
     story["status"] = "missing"
     story["metric"] = {
@@ -213,6 +220,9 @@ def test_edition_card_never_promotes_a_policy_withheld_instrument() -> None:
     spec = build_newsroom._edition_share_card_spec(feed)
 
     assert spec["title"] == safe_story["headline"]
+    assert spec["kicker"] == "PALIMPSEST WIRE / VERIFIED SNAPSHOT"
+    assert spec["status_label"].endswith("AVAILABLE")
+    assert " LIVE" not in spec["status_label"]
     assert "-0.8883" not in json.dumps(spec)
 
 
@@ -358,9 +368,13 @@ def test_generated_story_and_data_families_cannot_fall_back_to_generic_card():
     outputs = build_newsroom.build_outputs(feed)
     declared = [
         Path("news/index.html"),
-        Path("news/china/analysis/index.html"),
         *(Path("news") / story["slug"] / "index.html" for story in feed["stories"]),
     ]
+    china_analysis = Path("news/china/analysis/index.html")
+    if china_analysis in outputs:
+        declared.append(china_analysis)
+    else:
+        assert build_newsroom._china_public_values_denied(feed["generated_at"])
 
     build_newsroom._assert_contextual_share_coverage(outputs, required_paths=declared)
     generic = dict(outputs)

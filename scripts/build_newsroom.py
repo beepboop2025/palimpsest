@@ -83,10 +83,28 @@ OG_IMAGE = f"{SITE}/brand/palimpsest-og2.png"
 # remain useful, but social previews must describe the restriction rather than
 # turn a restricted number into a separately shareable artifact.
 _PUBLIC_VALUE_WITHHELD_SHARE_CARDS = {
+    "board-alarm": (
+        "The combined board alarm is withheld under public source policy"
+    ),
+    "event-flags": (
+        "Cross-signal event flags are withheld under public source policy"
+    ),
+    "coverage-guard": (
+        "The derived coverage guard is withheld under public source policy"
+    ),
+    "forecast-ledger": (
+        "The derived forecast score is withheld under public source policy"
+    ),
+    "cross-layer": (
+        "Cross-layer timing results are withheld under public source policy"
+    ),
     "china-econ": (
         "Money-market benchmark values are withheld under public source policy"
     ),
     "cny-fix-gap": ("The yuan-fix comparison is withheld under public source policy"),
+    "data-darkness": (
+        "The official-data availability score is withheld under public source policy"
+    ),
 }
 
 # These are the canonical newsroom surfaces whose claims can be derived from,
@@ -1443,12 +1461,12 @@ def _edition_share_card_spec(feed: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": share_cards.SPEC_VERSION,
         "kind": "newsroom-edition",
-        "kicker": "PALIMPSEST WIRE / CURRENT EDITION",
+        "kicker": "PALIMPSEST WIRE / VERIFIED SNAPSHOT",
         "title": lead["headline"],
         "status": "edition",
         "status_label": (
-            f"{coverage['status'].upper()} COVERAGE / "
-            f"{coverage['live']} OF {coverage['total']} LIVE"
+            f"{coverage['status'].upper()} COVERAGE AT BUILD / "
+            f"{coverage['live']} OF {coverage['total']} AVAILABLE"
         ),
         "metric": metric,
         "as_of": feed["generated_at"],
@@ -2488,14 +2506,14 @@ def render_evidence_index(
   <header class="nw-masthead">
     <div class="nw-masthead__top">
       <p class="nw-wordmark">Palimpsest <span>Evidence desk</span></p>
-      <p class="nw-edition"><strong>Current edition</strong>{_h(_human_time(wire["generated_at"]))}<br>{feed["n_stories"]} measurements · {wire["n_events"]} source records{investigations_count}{analysis_count}</p>
+      <p class="nw-edition"><strong>Edition generated</strong>{_h(_human_time(wire["generated_at"]))}<br>{feed["n_stories"]} measurements · {wire["n_events"]} source records{investigations_count}{analysis_count}</p>
     </div>
     <h1 class="nw-masthead__headline">Measurements first. Source reports clearly labeled.</h1>
     <p class="nw-masthead__dek">This is not a replacement newspaper. Palimpsest publishes its own measured results, then keeps publisher reports in a separate source index with attribution, source structure, revisions and unknowns visible.</p>
   </header>
   <div class="nw-meta-line"><span>Results · source index · investigations</span><span>Window {_h(_human_time(wire["window"]["from"]))} → {_h(_human_time(wire["window"]["to"]))}</span><a href="/news/instruments/feed.xml">Measurements-only RSS</a><a href="/feeds/">All feeds</a><a href="/readings/newswire-latest.json">Structured source index</a></div>
   <div class="nw-status-strip" role="status" aria-label="Edition coverage">
-    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{instrument_coverage["live"]}/{instrument_coverage["total"]}</strong> measurements live</span>
+    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{instrument_coverage["live"]}/{instrument_coverage["total"]}</strong> measurements available when built</span>
     <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{coverage["successful_sources"]}/{coverage["registry_sources"]}</strong> feeds answered</span>
     <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage["rejected_items"]}</strong> rejected / out-of-window</span>
     <span><strong>{wire["n_events"]}</strong> attributed source records</span>
@@ -2506,7 +2524,7 @@ def render_evidence_index(
   {_economic_panel(pulse)}
   {_machine_analysis_feature(machine_analyses)}
   {_investigations_feature(investigations)}
-  <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Palimpsest results</p><h2>More current measurements</h2><p>These are Palimpsest's own mutable latest-state briefs. Each one names its source bytes, freshness, denominator and limitation.</p></div>
+  <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Palimpsest results</p><h2>More measurements in this edition</h2><p>These briefs show the state at the edition's generation time. Each one names its source bytes, freshness, denominator and limitation.</p></div>
   {_instrument_sections(feed, exclude_signal_id=instrument_lead["signal_id"])}
   {_event_lead(source_lead, wire)}
   {event_blocks}

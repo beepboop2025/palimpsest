@@ -188,6 +188,11 @@ def test_home_is_bounded_but_keeps_economic_and_accountability_context(
     assert f"{feed['n_stories']} measurements" in text
     assert "Measurements first. Source reports clearly labeled." in text
     assert "This is not a replacement newspaper." in text
+    assert "Edition generated" in text
+    assert "measurements available when built" in text
+    assert "More measurements in this edition" in text
+    assert "Current edition" not in text
+    assert "measurements live" not in text
 
 
 def test_denied_publication_is_availability_only_across_every_newsroom_format(
