@@ -12,6 +12,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from core.newswire import load_source_registry
 from processors.bri_observatory import (
     PUBLIC_BUILD_STATES,
     SAFE_PUBLIC_RIGHTS,
@@ -21,6 +22,7 @@ from processors.bri_observatory import (
     load_registry,
 )
 from scripts.build_bri_observatory import (
+    _REGIONAL_DEDICATED_SOURCE_IDS,
     _build_regional_analysis,
     _csv_bytes,
     _display_path,
@@ -67,6 +69,14 @@ RECEIPT_SHA256 = "239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a
 RECEIPT_VERIFIED_AT = "2026-08-26T15:55:34Z"
 RECEIPT_FRESH_UNTIL = "2026-08-27T15:55:34Z"
 OBSERVATORY_AS_OF = "2026-08-26T19:34:49Z"
+
+
+def test_regional_dedicated_sources_are_active_registry_identities() -> None:
+    active_ids = {source.id for source in load_source_registry().sources}
+    dedicated_ids = set().union(*_REGIONAL_DEDICATED_SOURCE_IDS.values())
+
+    assert dedicated_ids <= active_ids
+    assert "arab-news-pakistan-gwadar-port" not in dedicated_ids
 
 
 def _relative_luminance(hex_color: str) -> float:

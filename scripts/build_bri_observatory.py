@@ -114,7 +114,6 @@ _REGIONAL_TARGETS = {
 _REGIONAL_DEDICATED_SOURCE_IDS = {
     "gwadar": frozenset(
         {
-            "arab-news-pakistan-gwadar-port",
             "daily-cpec-gwadar",
         }
     ),

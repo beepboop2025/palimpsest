@@ -377,18 +377,6 @@ _CLOSED_SOURCES: dict[str, tuple[str, tuple[str, ...], str, str]] = {
         "documentation",
         "chrd-documentation",
     ),
-    "arab-news-pakistan-cpec": (
-        "https://www.arabnews.pk/taxonomy/term/20166/feed",
-        ("www.arabnews.pk",),
-        "media",
-        "arab-news-pakistan-editorial",
-    ),
-    "arab-news-pakistan-gwadar-port": (
-        "https://www.arabnews.pk/taxonomy/term/314116/feed",
-        ("www.arabnews.pk",),
-        "media",
-        "arab-news-pakistan-editorial",
-    ),
     "daily-cpec-china-pakistan": (
         "https://thedailycpec.com/category/china-pakistan/feed/",
         ("thedailycpec.com",),
@@ -454,6 +442,21 @@ _CLOSED_SOURCES: dict[str, tuple[str, tuple[str, ...], str, str]] = {
         ("hrcp-web.org",),
         "documentation",
         "hrcp-pakistan-documentation",
+    ),
+}
+
+# These publisher routes were removed during Arab News Pakistan's 2026-09-01
+# site migration, and no current scoped official RSS/Atom replacement existed at
+# review time. Keep the exact identities and endpoints as tombstones: historical
+# provenance must not be made to look continuous by reusing either one later.
+_RETIRED_SOURCE_TOMBSTONES: dict[str, tuple[str, str]] = {
+    "arab-news-pakistan-cpec": (
+        "https://www.arabnews.pk/taxonomy/term/20166/feed",
+        "publisher-endpoint-404-no-scoped-official-feed",
+    ),
+    "arab-news-pakistan-gwadar-port": (
+        "https://www.arabnews.pk/taxonomy/term/314116/feed",
+        "publisher-endpoint-404-no-scoped-official-feed",
     ),
 }
 
@@ -583,8 +586,6 @@ _CHINA_SCOPED_SOURCE_IDS = frozenset(
         "cecc",
         "made-in-china-journal",
         "chrd",
-        "arab-news-pakistan-cpec",
-        "arab-news-pakistan-gwadar-port",
         "daily-cpec-china-pakistan",
         "daily-cpec-gwadar",
         "dvb-english",
@@ -784,6 +785,18 @@ def _identifier_array(value: Any, path: str, *, maximum: int = 32) -> tuple[str,
 def load_source_registry(path: Path | str = DEFAULT_CONFIG_PATH) -> SourceRegistry:
     """Load the complete, exact v1 source set and reject registry broadening."""
 
+    retired_ids = set(_RETIRED_SOURCE_TOMBSTONES)
+    retired_urls = {
+        tombstone[0] for tombstone in _RETIRED_SOURCE_TOMBSTONES.values()
+    }
+    active_urls = {source[0] for source in _CLOSED_SOURCES.values()}
+    if retired_ids.intersection(_CLOSED_SOURCES):
+        raise RegistryError("closed v1 registry reuses a retired source id")
+    if retired_urls.intersection(active_urls):
+        raise RegistryError("closed v1 registry reuses a retired source endpoint")
+    if len(retired_urls) != len(_RETIRED_SOURCE_TOMBSTONES):
+        raise RegistryError("retired source tombstones reuse an endpoint")
+
     raw = Path(path).read_bytes()
     data = strict_json_loads(raw, label="news source registry")
     if type(data) is not dict:
@@ -811,6 +824,8 @@ def load_source_registry(path: Path | str = DEFAULT_CONFIG_PATH) -> SourceRegist
         if source_id in seen:
             raise RegistryError(f"duplicate source id: {source_id}")
         seen.add(source_id)
+        if source_id in _RETIRED_SOURCE_TOMBSTONES:
+            raise RegistryError(f"source id is retired: {source_id}")
         if source_id not in _CLOSED_SOURCES:
             raise RegistryError(f"source is not in the closed v1 registry: {source_id}")
         endpoint, expected_hosts, expected_role, expected_group = _CLOSED_SOURCES[source_id]
