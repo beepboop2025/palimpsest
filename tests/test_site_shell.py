@@ -348,13 +348,13 @@ def test_bri_regions_are_an_always_visible_semantic_link_rail():
     assert "BRI regions" not in rendered
 
 
-def test_regional_rail_is_one_row_on_desktop_and_two_by_two_on_small_screens():
+def test_regional_rail_fits_five_routes_on_desktop_and_small_screens():
     css = (ROOT / "assets/shell.css").read_text(encoding="utf-8")
 
     assert "--ps-nav-bar-h: 52px" in css
     assert "--ps-region-rail-h: 44px" in css
     assert "--ps-nav-h: calc(var(--ps-nav-bar-h) + var(--ps-region-rail-h))" in css
-    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in css
+    assert "grid-template-columns: repeat(5, minmax(0, 1fr))" in css
     assert "height: 100%; min-height: 44px" in css
     nav_items = css.split(".ps-nav__items {", 1)[1].split("}", 1)[0]
     assert "min-height: var(--ps-nav-bar-h)" in nav_items
@@ -363,9 +363,10 @@ def test_regional_rail_is_one_row_on_desktop_and_two_by_two_on_small_screens():
     mobile = css.split("@media (max-width: 620px)", 1)[1].split(
         "/* ---- no JavaScript", 1
     )[0]
-    assert "--ps-region-rail-h: 88px" in mobile
+    assert "--ps-region-rail-h: 132px" in mobile
+    assert "grid-template-rows: repeat(3, 44px)" in mobile
+    assert ".ps-region-rail__list li:last-child { grid-column: 1 / -1; }" in mobile
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in mobile
-    assert "grid-template-rows: repeat(2, 44px)" in mobile
 
 
 def test_no_javascript_navigation_exposes_flyouts_on_mobile_and_desktop():

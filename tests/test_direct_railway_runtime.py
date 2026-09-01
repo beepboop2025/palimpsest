@@ -105,6 +105,107 @@ def _release_manifest_fixture(release_sha: str = "a" * 40) -> dict[str, object]:
     }
 
 
+def _successor_pin_fixture(namespace: dict[str, object]) -> dict[str, object]:
+    history = Path("/var/lib/palimpsest/railway-control/base-rotation-history")
+    anchor_digest = str(namespace["INCIDENT_PIN_SHA256"])
+    predecessor_pin_digest = "1" * 64
+    predecessor_target = "2" * 40
+    receipt_digest = "3" * 64
+    manifest_digest = "4" * 64
+    topology_digest = "5" * 64
+    release_sha = "6" * 40
+    target_sha = "b" * 40
+    generation = 3
+    return {
+        "anchor": {
+            "path": str(history / "pins" / f"{anchor_digest}.json"),
+            "schema_version": namespace["PIN_SCHEMA"],
+            "sha256": anchor_digest,
+            "target_sha": namespace["INCIDENT_PIN_TARGET"],
+        },
+        "generation": generation,
+        "host": {
+            "canonical_head": namespace["INCIDENT_BASE"],
+            "deployed_commit": namespace["INCIDENT_BASE"],
+        },
+        "installed": {
+            key: "7" * 64 for key in namespace["SUCCESSOR_INSTALLED_KEYS"]
+        },
+        "live": {
+            "file_count": 1,
+            "provider_manifest": {
+                "bytes": 2,
+                "path": str(
+                    history / "manifests" / "provider" / f"{manifest_digest}.json"
+                ),
+                "sha256": manifest_digest,
+            },
+            "public_manifest": {
+                "bytes": 2,
+                "path": str(
+                    history / "manifests" / "public" / f"{manifest_digest}.json"
+                ),
+                "sha256": manifest_digest,
+            },
+            "release_sha": release_sha,
+            "total_bytes": 10,
+            "tree_sha256": "8" * 64,
+        },
+        "origins": {
+            "provider": namespace["PROVIDER_ORIGIN"],
+            "public": namespace["PUBLIC_ORIGIN"],
+        },
+        "predecessor": {
+            "pin": {
+                "generation": generation - 1,
+                "path": str(
+                    history / "pins" / f"{predecessor_pin_digest}.json"
+                ),
+                "schema_version": namespace["SUCCESSOR_PIN_SCHEMA"],
+                "sha256": predecessor_pin_digest,
+                "target_sha": predecessor_target,
+            },
+            "publication_receipt": {
+                "base_sha": predecessor_target,
+                "deployment_id": "505bd041-4c52-4ce7-a137-dc3e4c55cacb",
+                "host_deployed_sha": namespace["INCIDENT_BASE"],
+                "input_sha256": "9" * 64,
+                "manifest_sha256": manifest_digest,
+                "path": str(history / "receipts" / f"{receipt_digest}.json"),
+                "publication_base_sha256": predecessor_pin_digest,
+                "release_sha": release_sha,
+                "schema_version": namespace["V2_SCHEMA"],
+                "sha256": receipt_digest,
+                "tree_sha256": "8" * 64,
+                "wire_generated_at": "2026-08-30T12:00:00Z",
+            },
+        },
+        "railway": {
+            "created_at": "2026-08-30T12:01:00Z",
+            "deployment_id": "505bd041-4c52-4ce7-a137-dc3e4c55cacb",
+            "environment_id": namespace["ENVIRONMENT_ID"],
+            "image_digest": "sha256:" + "a" * 64,
+            "project_id": namespace["PROJECT_ID"],
+            "reason": "deploy",
+            "service_id": namespace["SERVICE_ID"],
+            "topology": {
+                "bytes": 2,
+                "path": str(history / "topologies" / f"{topology_digest}.json"),
+                "sha256": topology_digest,
+            },
+        },
+        "recorded_at": "2026-08-30T12:02:00Z",
+        "rotation_record_path": str(
+            history
+            / "rotations"
+            / f"{generation}-{target_sha}-{receipt_digest}.json"
+        ),
+        "schema_version": namespace["SUCCESSOR_PIN_SCHEMA"],
+        "status": "verified",
+        "target": {"base_sha": target_sha, "public_main_sha": target_sha},
+    }
+
+
 def test_direct_runtimes_are_executable_and_share_the_snapshot_lock() -> None:
     publisher = PUBLISHER.read_text(encoding="utf-8")
     measurement = MEASUREMENT.read_text(encoding="utf-8")
@@ -461,6 +562,82 @@ def test_reconciler_rejects_open_candidate_schema_and_bad_clocks() -> None:
     forged["prepared_at"] = "2999-01-01T00:00:00Z"
     with pytest.raises(error, match="future"):
         validate(forged)
+
+
+def test_reconciler_accepts_and_exactly_binds_a_successor_base_pin() -> None:
+    namespace = runpy.run_path(str(RECONCILE))
+    validate_pin = namespace["_validate_pin"]
+    globals_ = validate_pin.__globals__
+    globals_["PROJECT_ID"] = "f7c86128-53a7-458a-a931-6628c6e61fb2"
+    globals_["ENVIRONMENT_ID"] = "1d4d9eef-7bad-4c7b-a003-0e66fe9a8fe2"
+    globals_["SERVICE_ID"] = "86a6f49c-b9dc-4be8-acd1-dd180c693230"
+    validate_candidate = namespace["_validate_candidate"]
+    validate_binding = namespace["_validate_candidate_pin_binding"]
+    predecessor_from_receipt = namespace["_predecessor_from_receipt"]
+    build_success = namespace["_build_success"]
+    canonical = namespace["_canonical"]
+    error = namespace["ReconciliationError"]
+
+    pin = _successor_pin_fixture(globals_)
+    validate_pin(pin)
+    pin_raw = canonical(pin)
+
+    candidate = _candidate_fixture()
+    candidate["publication_base"] = {
+        "kind": "verified_successor",
+        "path": str(namespace["BASE_PIN"]),
+        "sha256": hashlib.sha256(pin_raw).hexdigest(),
+    }
+    candidate["release_manifest"]["path"] = str(
+        namespace["STATE_ROOT"]
+        / "release-manifests"
+        / f"{candidate['release_sha']}.json"
+    )
+    validate_candidate(candidate)
+    validate_binding(candidate, pin, pin_raw)
+
+    forged = json.loads(json.dumps(candidate))
+    forged["publication_base"]["kind"] = "verified_transition"
+    with pytest.raises(error, match="pin changed"):
+        validate_binding(forged, pin, pin_raw)
+
+    manifest = _release_manifest_fixture(str(candidate["release_sha"]))
+    manifest_raw = canonical(manifest)
+    receipt = build_success(
+        candidate,
+        journal="f" * 64,
+        archive=namespace["STATE_ROOT"] / "candidates" / ("f" * 64 + ".json"),
+        deployment_id="605bd041-4c52-4ce7-a137-dc3e4c55cacb",
+        manifest=manifest,
+        manifest_raw=manifest_raw,
+    )
+    receipt_raw = canonical(receipt)
+    predecessor = predecessor_from_receipt(receipt_raw, receipt, pin)
+    assert predecessor["release_sha"] == candidate["release_sha"]
+    assert receipt["publication_base"]["kind"] == "verified_successor"
+
+
+def test_reconciler_rejects_forged_successor_pin_relationships() -> None:
+    namespace = runpy.run_path(str(RECONCILE))
+    validate_pin = namespace["_validate_pin"]
+    globals_ = validate_pin.__globals__
+    globals_["PROJECT_ID"] = "f7c86128-53a7-458a-a931-6628c6e61fb2"
+    globals_["ENVIRONMENT_ID"] = "1d4d9eef-7bad-4c7b-a003-0e66fe9a8fe2"
+    globals_["SERVICE_ID"] = "86a6f49c-b9dc-4be8-acd1-dd180c693230"
+    error = namespace["ReconciliationError"]
+    pin = _successor_pin_fixture(globals_)
+
+    forged = json.loads(json.dumps(pin))
+    forged["predecessor"]["publication_receipt"]["publication_base_sha256"] = (
+        "f" * 64
+    )
+    with pytest.raises(error, match="receipt identity"):
+        validate_pin(forged)
+
+    forged = json.loads(json.dumps(pin))
+    forged["live"]["provider_manifest"]["path"] = "/tmp/forged.json"
+    with pytest.raises(error, match="path is not canonical"):
+        validate_pin(forged)
 
 
 def test_release_manifest_anchor_is_duplicate_safe_closed_and_nonempty() -> None:
@@ -862,6 +1039,9 @@ def test_reconciler_mutates_at_most_once_after_the_durable_guard(
     )
     monkeypatch.setitem(globals_, "_read_hold", lambda *_args, **_kwargs: None)
     monkeypatch.setitem(globals_, "_validate_pin", lambda _pin: None)
+    monkeypatch.setitem(
+        globals_, "_validate_candidate_pin_binding", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setitem(globals_, "_validate_bundle", lambda *_args, **_kwargs: None)
     monkeypatch.setitem(
         globals_,

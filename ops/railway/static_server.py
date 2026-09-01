@@ -23,6 +23,28 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 CANONICAL_MCP_REMOTE = "https://api.seiche.info/palimpsest/mcp"
 AI_CATALOG_PATH = "/.well-known/ai-catalog.json"
+GROWTH_EVENT_PATH = "/events"
+GROWTH_EVENT_ORIGIN = "https://www.palimpsest.info"
+GROWTH_EVENT_SCHEMA = "palimpsest.growth-event.v1"
+GROWTH_EVENT_MAX_BYTES = 512
+GROWTH_EVENT_LOCATION_MAP = {
+    "brief_clicked": frozenset({"home_primary"}),
+    "citation_copied": frozenset({"page_share"}),
+    "deep_read": frozenset({"home", "situation"}),
+    "download_started": frozenset({"page_share"}),
+    "feed_clicked": frozenset({"situation_bottom", "situation_top"}),
+    "follow_clicked": frozenset(
+        {"home_secondary", "situation_bottom", "situation_top"}
+    ),
+    "inquiry_clicked": frozenset({"situation_bottom", "situation_top"}),
+}
+GROWTH_EVENT_NAMES = frozenset(GROWTH_EVENT_LOCATION_MAP)
+GROWTH_EVENT_SOURCES = frozenset(
+    {"ai", "direct", "other", "same_site", "search", "social"}
+)
+GROWTH_EVENT_PAGE_RE = re.compile(
+    r"^/(?:news/china/situation/(?:page/[1-9][0-9]*/)?|)$"
+)
 FRESHNESS_SCHEMA = "palimpsest.publication-freshness.v1"
 FRESHNESS_ATTESTATION_SCHEMA = "palimpsest.publication-freshness-attestation.v1"
 NEWSWIRE_SCHEMA = "palimpsest-newswire.v1"
@@ -80,6 +102,33 @@ def _clock_text(value: datetime) -> str:
     return value.astimezone(UTC).replace(microsecond=0).isoformat().replace(
         "+00:00", "Z"
     )
+
+
+def _validate_growth_event(value: Any) -> dict[str, str]:
+    event = _require_exact_object(
+        value,
+        {"event", "location", "page", "schema_version", "source"},
+        field="growth event",
+    )
+    if event.get("schema_version") != GROWTH_EVENT_SCHEMA:
+        raise ValueError("unsupported growth event schema")
+    if event.get("event") not in GROWTH_EVENT_NAMES:
+        raise ValueError("unsupported growth event name")
+    event_name = event.get("event")
+    location = event.get("location")
+    if location not in GROWTH_EVENT_LOCATION_MAP.get(str(event_name), frozenset()):
+        raise ValueError("unsupported growth event location")
+    if event.get("source") not in GROWTH_EVENT_SOURCES:
+        raise ValueError("unsupported growth event source")
+    page = event.get("page")
+    if not isinstance(page, str) or GROWTH_EVENT_PAGE_RE.fullmatch(page) is None:
+        raise ValueError("unsupported growth event page")
+    home_location = str(location).startswith("home")
+    if home_location != (page == "/"):
+        raise ValueError("growth event location does not match its page")
+    if location == "page_share" and not page.startswith("/news/china/situation/"):
+        raise ValueError("page-share event does not match its page")
+    return {key: str(event[key]) for key in sorted(event)}
 
 
 def _freshness_clock(
@@ -302,6 +351,10 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
 
     def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
         """Keep successful access telemetry out of Railway's error stream."""
+        if urlsplit(getattr(self, "path", "")).path == GROWTH_EVENT_PATH:
+            # Growth records are deliberately aggregate-only. Do not duplicate
+            # them into the standard access log, which includes a client address.
+            return
         if isinstance(code, HTTPStatus):
             code = code.value
         message = f'"{self.requestline}" {code} {size}'
@@ -326,6 +379,7 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
             "/readyz",
             "/freshness",
             "/freshnessz",
+            GROWTH_EVENT_PATH,
             "/railway-release.json",
             "/readings/evidence-lake-metrics-latest.json",
             "/readings/evidence-lake-metrics-producer-receipt.json",
@@ -374,6 +428,67 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         if include_body:
             self.wfile.write(body)
+
+    def _growth_response(self, status: HTTPStatus) -> None:
+        body = b""
+        if status != HTTPStatus.NO_CONTENT:
+            body = (
+                json.dumps(
+                    {"status": "rejected"},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            ).encode()
+        self.send_response(status)
+        if body:
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if body:
+            self.wfile.write(body)
+
+    def _growth_method_not_allowed(self) -> None:
+        self.send_response(HTTPStatus.METHOD_NOT_ALLOWED)
+        self.send_header("Allow", "POST")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _growth_event(self) -> None:
+        parsed = urlsplit(self.path)
+        if parsed.query or self.headers.get("Origin") != GROWTH_EVENT_ORIGIN:
+            self._growth_response(HTTPStatus.FORBIDDEN)
+            return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0]
+        if content_type.strip().lower() != "application/json":
+            self._growth_response(HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+            return
+        try:
+            content_length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            content_length = 0
+        if not 0 < content_length <= GROWTH_EVENT_MAX_BYTES:
+            self._growth_response(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+            return
+        try:
+            raw = self.rfile.read(content_length)
+            if len(raw) != content_length:
+                raise ValueError("incomplete growth event")
+            event = _validate_growth_event(json.loads(raw.decode("utf-8")))
+        except (UnicodeDecodeError, ValueError, TypeError, json.JSONDecodeError):
+            self._growth_response(HTTPStatus.BAD_REQUEST)
+            return
+        record = {
+            **event,
+            "received_at": _clock_text(_utc_now()),
+        }
+        sys.stdout.write(
+            "PALIMPSEST_GROWTH_EVENT "
+            + json.dumps(record, sort_keys=True, separators=(",", ":"))
+            + "\n"
+        )
+        sys.stdout.flush()
+        self._growth_response(HTTPStatus.NO_CONTENT)
 
     def _mcp_not_here(self, include_body: bool) -> None:
         payload = {
@@ -459,6 +574,9 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         path = urlsplit(self.path).path
+        if path == GROWTH_EVENT_PATH:
+            self._growth_method_not_allowed()
+            return
         if path in {"/healthz", "/livez", "/readyz"}:
             self._health(include_body=True)
             return
@@ -472,6 +590,9 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
 
     def do_HEAD(self) -> None:  # noqa: N802
         path = urlsplit(self.path).path
+        if path == GROWTH_EVENT_PATH:
+            self._growth_method_not_allowed()
+            return
         if path in {"/healthz", "/livez", "/readyz"}:
             self._health(include_body=False)
             return
@@ -482,6 +603,12 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
             self._mcp_not_here(include_body=False)
             return
         super().do_HEAD()
+
+    def do_POST(self) -> None:  # noqa: N802
+        if urlsplit(self.path).path == GROWTH_EVENT_PATH:
+            self._growth_event()
+            return
+        self.send_error(HTTPStatus.NOT_FOUND)
 
 
 class PalimpsestHTTPServer(ThreadingHTTPServer):

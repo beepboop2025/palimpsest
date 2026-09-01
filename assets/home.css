@@ -125,6 +125,13 @@ body.home > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: 1; }
   margin-top: 30px;
 }
 
+.hm-cadence {
+  max-width: 650px;
+  margin: 12px 0 0;
+  color: var(--hm-muted);
+  font: 650 10px/1.55 var(--hm-mono);
+}
+
 .hm-button {
   display: inline-flex;
   min-height: 46px;
@@ -598,8 +605,8 @@ body.home > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: 1; }
     grid-template-columns: 1fr;
     grid-template-areas:
       "headline"
-      "proof"
-      "details";
+      "details"
+      "proof";
     gap: 34px;
   }
   .hm-hero__lede { margin-top: 0; }

@@ -40,6 +40,8 @@ ROLLBACK_TIMEOUT = int(os.environ.get("PALIMPSEST_RAILWAY_ROLLBACK_TIMEOUT_SECON
 ROLLBACK_POLL = float(os.environ.get("PALIMPSEST_RAILWAY_ROLLBACK_POLL_SECONDS", "10"))
 
 PIN_SCHEMA = "palimpsest.direct-publication-base-transition.v1"
+SUCCESSOR_PIN_SCHEMA = "palimpsest.direct-publication-base.v2"
+ROTATION_SCHEMA = "palimpsest.direct-publication-base-rotation.v1"
 PIN_INCIDENT = "palimpsest-direct-lineage-2026-08-30"
 CANDIDATE_SCHEMA = "palimpsest.direct-publication-candidate.v1"
 ROLLBACK_EVIDENCE_SCHEMA = "palimpsest.direct-publication-rollback-evidence.v1"
@@ -58,6 +60,26 @@ INCIDENT_INPUT = "7fef2522dfdb1a0f6697f292b22a266e381073e5a9efeede38b2dc68a54941
 INCIDENT_MANIFEST = "1ddbbc54e7b53d055a0421d0711eaa1ab0c66349e8a81203c0be6473205eaafe"
 INCIDENT_TREE = "6d7e91c656d8ee551050ead1a2cca1fe50b2db0fd29934316b875d4b55475e10"
 INCIDENT_DEPLOYMENT = "505bd041-4c52-4ce7-a137-dc3e4c55cacb"
+INCIDENT_PIN_SHA256 = "255e17340a38bfcc5ead6ed4a33a8f50f23da8655ca396cd99fbe1980ebd1e97"
+INCIDENT_PIN_TARGET = "4957595735fd86fa57217309749961e1a1e0f05d"
+
+MAX_PIN_GENERATIONS = 256
+SUCCESSOR_INSTALLED_KEYS = {
+    "continuity_guard_service_sha256",
+    "continuity_guard_sha256",
+    "continuity_guard_timer_sha256",
+    "event_analysis_publish_dropin_sha256",
+    "event_analysis_service_sha256",
+    "event_analysis_wrapper_sha256",
+    "publisher_service_sha256",
+    "publisher_sha256",
+    "reconciler_sha256",
+    "rotation_helper_sha256",
+    "transition_helper_sha256",
+    "watchdog_service_sha256",
+    "watchdog_sha256",
+    "watchdog_timer_sha256",
+}
 
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -302,7 +324,16 @@ def _unlink(path: Path) -> None:
         os.close(directory)
 
 
-def _validate_pin(pin: dict[str, Any]) -> None:
+def _pin_kind(pin: dict[str, Any]) -> str:
+    schema = pin.get("schema_version")
+    if schema == PIN_SCHEMA:
+        return "verified_transition"
+    if schema == SUCCESSOR_PIN_SCHEMA:
+        return "verified_successor"
+    raise ReconciliationError("publication base pin schema is unsupported")
+
+
+def _validate_transition_pin(pin: dict[str, Any]) -> None:
     _keys(pin, {"incident_id", "installed", "origins", "previous", "recorded_at", "schema_version", "status", "target"}, "publication base pin")
     if pin["schema_version"] != PIN_SCHEMA or pin["incident_id"] != PIN_INCIDENT or pin["status"] != "verified":
         raise ReconciliationError("publication base pin identity is invalid")
@@ -332,6 +363,265 @@ def _validate_pin(pin: dict[str, Any]) -> None:
         raise ReconciliationError("publication base is not exact public main")
 
 
+def _validate_reference(value: Any, label: str) -> None:
+    if not isinstance(value, dict):
+        raise ReconciliationError(f"{label} is invalid")
+    _keys(value, {"bytes", "path", "sha256"}, label)
+    _positive(value["bytes"], f"{label} bytes")
+    _sha256(value["sha256"], f"{label} digest")
+    if not isinstance(value["path"], str) or not value["path"]:
+        raise ReconciliationError(f"{label} path is invalid")
+
+
+def _validate_successor_pin(pin: dict[str, Any]) -> None:
+    """Validate the closed v2 pin before using it as recovery authority.
+
+    The root-owned active pin was already proved recursively by the publisher
+    before it crossed the mutation boundary. Recovery still revalidates its
+    complete shape, protected incident anchor, target, and all identities that
+    bind the active generation; the candidate then binds these exact bytes by
+    SHA-256.
+    """
+
+    _keys(
+        pin,
+        {
+            "anchor",
+            "generation",
+            "host",
+            "installed",
+            "live",
+            "origins",
+            "predecessor",
+            "railway",
+            "recorded_at",
+            "rotation_record_path",
+            "schema_version",
+            "status",
+            "target",
+        },
+        "successor publication base pin",
+    )
+    generation = pin.get("generation")
+    if (
+        pin.get("schema_version") != SUCCESSOR_PIN_SCHEMA
+        or pin.get("status") != "verified"
+        or isinstance(generation, bool)
+        or not isinstance(generation, int)
+        or generation < 1
+        or generation > MAX_PIN_GENERATIONS
+    ):
+        raise ReconciliationError("successor publication base pin identity is invalid")
+    _timestamp(pin["recorded_at"], "successor publication base recorded_at")
+
+    proof_names = (
+        "anchor",
+        "host",
+        "installed",
+        "live",
+        "origins",
+        "predecessor",
+        "railway",
+        "target",
+    )
+    if not all(isinstance(pin.get(name), dict) for name in proof_names):
+        raise ReconciliationError("successor publication base proof objects are invalid")
+
+    history = CONTROL_ROOT / "base-rotation-history"
+    anchor = pin["anchor"]
+    _keys(anchor, {"path", "schema_version", "sha256", "target_sha"}, "successor anchor")
+    expected_anchor = history / "pins" / f"{INCIDENT_PIN_SHA256}.json"
+    if anchor != {
+        "path": str(expected_anchor),
+        "schema_version": PIN_SCHEMA,
+        "sha256": INCIDENT_PIN_SHA256,
+        "target_sha": INCIDENT_PIN_TARGET,
+    }:
+        raise ReconciliationError("successor anchor identity is invalid")
+
+    host = pin["host"]
+    _keys(host, {"canonical_head", "deployed_commit"}, "successor host proof")
+    if host != {"canonical_head": INCIDENT_BASE, "deployed_commit": INCIDENT_BASE}:
+        raise ReconciliationError("successor pin changed the protected host identity")
+
+    installed = pin["installed"]
+    _keys(installed, SUCCESSOR_INSTALLED_KEYS, "successor installed proof")
+    for key, value in installed.items():
+        _sha256(value, f"successor installed {key}")
+
+    if pin["origins"] != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}:
+        raise ReconciliationError("successor publication base origins changed")
+
+    target = pin["target"]
+    _keys(target, {"base_sha", "public_main_sha"}, "successor target")
+    target_sha = _sha40(target["base_sha"], "successor target")
+    if target["public_main_sha"] != target_sha:
+        raise ReconciliationError("successor publication base is not exact public main")
+
+    predecessor = pin["predecessor"]
+    _keys(predecessor, {"pin", "publication_receipt"}, "successor predecessor")
+    predecessor_pin = predecessor.get("pin")
+    receipt = predecessor.get("publication_receipt")
+    if not isinstance(predecessor_pin, dict) or not isinstance(receipt, dict):
+        raise ReconciliationError("successor predecessor proof is invalid")
+    _keys(
+        predecessor_pin,
+        {"generation", "path", "schema_version", "sha256", "target_sha"},
+        "successor predecessor pin",
+    )
+    prior_generation = predecessor_pin.get("generation")
+    prior_digest = _sha256(predecessor_pin.get("sha256"), "predecessor pin digest")
+    prior_target = _sha40(predecessor_pin.get("target_sha"), "predecessor pin target")
+    if (
+        isinstance(prior_generation, bool)
+        or not isinstance(prior_generation, int)
+        or prior_generation != generation - 1
+        or predecessor_pin.get("schema_version") not in {PIN_SCHEMA, SUCCESSOR_PIN_SCHEMA}
+        or predecessor_pin.get("path")
+        != str(history / "pins" / f"{prior_digest}.json")
+    ):
+        raise ReconciliationError("successor predecessor pin identity is invalid")
+
+    _keys(
+        receipt,
+        {
+            "base_sha",
+            "deployment_id",
+            "host_deployed_sha",
+            "input_sha256",
+            "manifest_sha256",
+            "path",
+            "publication_base_sha256",
+            "release_sha",
+            "schema_version",
+            "sha256",
+            "tree_sha256",
+            "wire_generated_at",
+        },
+        "successor predecessor receipt",
+    )
+    receipt_digest = _sha256(receipt.get("sha256"), "predecessor receipt digest")
+    if (
+        receipt.get("schema_version") != V2_SCHEMA
+        or receipt.get("path") != str(history / "receipts" / f"{receipt_digest}.json")
+        or receipt.get("base_sha") != prior_target
+        or receipt.get("publication_base_sha256") != prior_digest
+        or receipt.get("host_deployed_sha") != INCIDENT_BASE
+    ):
+        raise ReconciliationError("successor predecessor receipt identity is invalid")
+    for key in ("base_sha", "host_deployed_sha", "release_sha"):
+        _sha40(receipt[key], f"predecessor receipt {key}")
+    for key in (
+        "input_sha256",
+        "manifest_sha256",
+        "publication_base_sha256",
+        "sha256",
+        "tree_sha256",
+    ):
+        _sha256(receipt[key], f"predecessor receipt {key}")
+    _uuid(receipt["deployment_id"], "predecessor receipt deployment")
+    _timestamp(receipt["wire_generated_at"], "predecessor receipt wire_generated_at")
+
+    live = pin["live"]
+    _keys(
+        live,
+        {
+            "file_count",
+            "provider_manifest",
+            "public_manifest",
+            "release_sha",
+            "total_bytes",
+            "tree_sha256",
+        },
+        "successor live proof",
+    )
+    _positive(live["file_count"], "successor live file_count")
+    _positive(live["total_bytes"], "successor live total_bytes")
+    _sha40(live["release_sha"], "successor live release")
+    _sha256(live["tree_sha256"], "successor live tree")
+    for origin in ("provider", "public"):
+        reference = live[f"{origin}_manifest"]
+        _validate_reference(reference, f"successor {origin} manifest")
+        if reference["path"] != str(
+            history / "manifests" / origin / f"{reference['sha256']}.json"
+        ):
+            raise ReconciliationError(f"successor {origin} manifest path is not canonical")
+    if (
+        live["release_sha"] != receipt["release_sha"]
+        or live["tree_sha256"] != receipt["tree_sha256"]
+        or live["provider_manifest"]["sha256"] != receipt["manifest_sha256"]
+        or live["public_manifest"]["sha256"] != receipt["manifest_sha256"]
+    ):
+        raise ReconciliationError("successor live proof differs from predecessor receipt")
+
+    railway = pin["railway"]
+    _keys(
+        railway,
+        {
+            "created_at",
+            "deployment_id",
+            "environment_id",
+            "image_digest",
+            "project_id",
+            "reason",
+            "service_id",
+            "topology",
+        },
+        "successor Railway proof",
+    )
+    for key, expected in (
+        ("project_id", PROJECT_ID),
+        ("environment_id", ENVIRONMENT_ID),
+        ("service_id", SERVICE_ID),
+    ):
+        if _uuid(railway.get(key), f"successor Railway {key}") != expected:
+            raise ReconciliationError(f"successor Railway {key} changed")
+    if _uuid(railway.get("deployment_id"), "successor Railway deployment") != receipt["deployment_id"]:
+        raise ReconciliationError("successor Railway deployment differs from receipt")
+    if (
+        not isinstance(railway.get("image_digest"), str)
+        or IMAGE.fullmatch(railway["image_digest"]) is None
+        or railway.get("reason") not in {"deploy", "deploymentRollback"}
+    ):
+        raise ReconciliationError("successor Railway deployment identity is invalid")
+    _timestamp(railway["created_at"], "successor Railway created_at")
+    _validate_reference(railway["topology"], "successor Railway topology")
+    if railway["topology"]["path"] != str(
+        history / "topologies" / f"{railway['topology']['sha256']}.json"
+    ):
+        raise ReconciliationError("successor Railway topology path is not canonical")
+
+    expected_rotation = history / "rotations" / (
+        f"{generation}-{target_sha}-{receipt_digest}.json"
+    )
+    if pin.get("rotation_record_path") != str(expected_rotation):
+        raise ReconciliationError("successor rotation-record path is not canonical")
+
+
+def _validate_pin(pin: dict[str, Any]) -> None:
+    if pin.get("schema_version") == PIN_SCHEMA:
+        _validate_transition_pin(pin)
+        return
+    if pin.get("schema_version") == SUCCESSOR_PIN_SCHEMA:
+        _validate_successor_pin(pin)
+        return
+    raise ReconciliationError("publication base pin schema is unsupported")
+
+
+def _validate_candidate_pin_binding(
+    candidate: dict[str, Any], pin: dict[str, Any], pin_raw: bytes
+) -> None:
+    expected = {
+        "kind": _pin_kind(pin),
+        "path": str(BASE_PIN),
+        "sha256": _digest(pin_raw),
+    }
+    if candidate.get("publication_base") != expected:
+        raise ReconciliationError("candidate publication base pin changed")
+    if pin["target"]["base_sha"] != candidate["base_sha"]:
+        raise ReconciliationError("candidate publication base target changed")
+
+
 def _validate_candidate(candidate: dict[str, Any]) -> None:
     _keys(candidate, {"base_sha", "host_deployed_sha", "input_sha256", "message", "predecessor", "prepared_at", "publication_base", "release_bundle", "release_manifest", "release_sha", "rollback_evidence", "schema_version", "status", "submission_id", "wire_generated_at"}, "candidate journal")
     if candidate["schema_version"] != CANDIDATE_SCHEMA or candidate["status"] != "mutation_unresolved":
@@ -358,8 +648,8 @@ def _validate_candidate(candidate: dict[str, Any]) -> None:
     if not all(isinstance(value, dict) for value in (base, bundle, release_manifest, predecessor, evidence)):
         raise ReconciliationError("candidate proof objects are invalid")
     _keys(base, {"kind", "path", "sha256"}, "candidate publication base")
-    if base["kind"] != "verified_transition":
-        raise ReconciliationError("candidate is not transition-pinned")
+    if base["kind"] not in {"verified_transition", "verified_successor"}:
+        raise ReconciliationError("candidate publication base kind is invalid")
     _sha256(base["sha256"], "candidate base pin")
     _keys(bundle, {"bytes", "metadata_path", "metadata_sha256", "path", "sha256"}, "candidate bundle")
     _positive(bundle["bytes"], "candidate bundle bytes")
@@ -680,7 +970,7 @@ def _predecessor_from_receipt(raw: bytes, receipt: dict[str, Any], pin: dict[str
         _sha256(publication_base["sha256"], "v2 receipt publication base digest")
         if receipt["status"] != "verified" or receipt["github_actions_used"] is not False or railway["status"] != "SUCCESS" or receipt.get("origins") != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}:
             raise ReconciliationError("v2 receipt status is invalid")
-        if publication_base["kind"] != "verified_transition" or publication_base["path"] != str(BASE_PIN) or publication_base["target_sha"] != receipt["base_sha"]:
+        if publication_base["kind"] not in {"verified_transition", "verified_successor"} or publication_base["path"] != str(BASE_PIN) or publication_base["target_sha"] != receipt["base_sha"]:
             raise ReconciliationError("v2 receipt publication base proof is invalid")
         if release_bundle["schema_version"] != BUNDLE_SCHEMA or release_bundle["base_sha"] != receipt["base_sha"] or release_bundle["release_sha"] != receipt["release_sha"]:
             raise ReconciliationError("v2 receipt bundle identity is inconsistent")
@@ -1214,8 +1504,7 @@ def _reconcile_locked(*, uid: int, gid: int, token_name: str, token_value: str) 
     pin_raw = _read(BASE_PIN, uid=0, gid=gid, mode=0o640)
     pin = _object(pin_raw, "publication base pin")
     _validate_pin(pin)
-    if str(BASE_PIN) != candidate["publication_base"]["path"] or _digest(pin_raw) != candidate["publication_base"]["sha256"] or pin["target"]["base_sha"] != candidate["base_sha"]:
-        raise ReconciliationError("publication base pin changed")
+    _validate_candidate_pin_binding(candidate, pin, pin_raw)
     if _read(DEPLOYED_COMMIT, uid=0, gid=0, mode=0o644, maximum=256).decode("ascii").strip() != candidate["host_deployed_sha"]:
         raise ReconciliationError("host deployed identity changed")
     _validate_bundle(candidate, uid=uid, gid=gid)

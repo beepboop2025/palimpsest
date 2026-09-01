@@ -108,6 +108,17 @@ def test_page_makes_each_relation_and_zero_state_visible(tmp_path):
     assert "synthesis rebuilt" in page
     assert "Reported " in page
     assert "Analysis refreshed " in page
+    assert 'data-growth-page="situation"' in page
+    assert "Get the China evidence desk in Telegram." in page
+    assert "A click is browser activity" in page
+    assert "subscriber is counted only after Telegram confirms" in page
+    assert "?start=china_situation_top" in page
+    assert "?start=china_situation_bottom" in page
+    assert "Follow the daily desk on Telegram" in page
+    assert 'data-growth-event="follow_clicked"' in page
+    assert 'data-growth-event="feed_clicked"' in page
+    assert 'data-growth-event="inquiry_clicked"' in page
+    assert "The GitHub inquiry is public." in page
     assert len(page) < 700_000
 
 
@@ -158,7 +169,7 @@ def test_archive_pages_are_bounded_linked_and_canonical() -> None:
     assert f'href="/news/china/situation/page/{expected_pages}/"' in first
     assert (
         f'<link rel="canonical" '
-        f'href="https://palimpsest.info/news/china/situation/page/{expected_pages}/"'
+        f'href="https://www.palimpsest.info/news/china/situation/page/{expected_pages}/"'
         in last
     )
     assert 'rel="prev"' in last

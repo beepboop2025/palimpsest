@@ -50,7 +50,10 @@ OSINT_INPUTS = (
 PAGE_PATH = ROOT / "news" / "china" / "situation" / "index.html"
 JSON_FEED_PATH = ROOT / "news" / "china" / "situation" / "feed.json"
 RSS_FEED_PATH = ROOT / "news" / "china" / "situation" / "feed.xml"
+# The data and feed contracts keep their established apex-host identifiers.
+# Public HTML uses the host that production actually serves.
 SITE = "https://palimpsest.info"
+PUBLIC_WEB_SITE = "https://www.palimpsest.info"
 FEED_LIMIT = 200
 PAGE_SIZE = 48
 
@@ -497,6 +500,16 @@ def _pagination(*, page: int, total_pages: int, total_rows: int) -> str:
     )
 
 
+def _growth_panel(location: str) -> str:
+    if location not in {"situation_top", "situation_bottom"}:
+        raise ChinaSituationBuildError("unsupported situation growth location")
+    suffix = "top" if location == "situation_top" else "bottom"
+    return f"""<section class="situation-follow" aria-labelledby="situation-follow-{suffix}">
+  <div><p class="situation-kicker">Keep this evidence desk</p><h2 id="situation-follow-{suffix}">Get the China evidence desk in Telegram.</h2><p>Daily brief at 16:30 UTC, plus occasional routed and sourced news. A click is browser activity; a subscriber is counted only after Telegram confirms the bot start.</p></div>
+  <div class="situation-follow__actions"><a class="situation-follow__primary" href="https://t.me/palimpsest_watch_bot?start=china_{location}" target="_blank" rel="noopener noreferrer" data-growth-event="follow_clicked" data-growth-location="{location}">Follow on Telegram</a><a href="/news/china/situation/feed.xml" data-growth-event="feed_clicked" data-growth-location="{location}">Subscribe by RSS</a><a href="https://github.com/beepboop2025/palimpsest/issues/new?template=funding-inquiry.yml" target="_blank" rel="noopener noreferrer" data-growth-event="inquiry_clicked" data-growth-location="{location}">Start a public institutional inquiry</a><small>The GitHub inquiry is public. Do not include confidential material.</small></div>
+</section>"""
+
+
 def render_page(
     document: Mapping[str, Any],
     *,
@@ -528,10 +541,11 @@ def render_page(
         (row["published_at"] for row in all_rows),
         default=document["inputs"]["newswire_generated_at"],
     )
-    body = f"""<body class="ps newsroom-page situation-page">
+    body = f"""<body class="ps newsroom-page situation-page" data-growth-page="situation">
 {site_nav.render(_page_url(page))}
 <main id="main">
-  <header class="situation-hero"><div><p class="situation-kicker">Palimpsest / China situation desk{' / archive ' + str(page) if page > 1 else ''}</p><h1>Reports.<br><em>Social context.</em><br>Measurements.</h1></div><div><p class="situation-hero__dek">One evidence-bound view of what publishers report, how reviewed social sources carry it, and what Palimpsest can independently measure. The layers meet here; their limits do not disappear. This desk captures public posts, deletions, archives and GFW injector telemetry. It does not capture private WeChat, classified systems, or in-country accounts.</p><nav><a href="/news/china/erasure/">Censorship dossiers</a><a href="/news/china/">Publisher stream</a><a href="/news/">Observatory desk</a><a href="/readings/china-situation-latest.json">Structured situation index</a><a href="/news/china/situation/feed.xml">RSS</a><a href="/news/china/situation/feed.json">JSON Feed</a></nav></div></header>
+  <header class="situation-hero"><div><p class="situation-kicker">Palimpsest / China situation desk{' / archive ' + str(page) if page > 1 else ''}</p><h1>Reports.<br><em>Social context.</em><br>Measurements.</h1><a class="situation-hero__follow" href="https://t.me/palimpsest_watch_bot?start=china_situation_top" target="_blank" rel="noopener noreferrer" data-growth-event="follow_clicked" data-growth-location="situation_top">Follow the daily desk on Telegram</a></div><div><p class="situation-hero__dek">One evidence-bound view of what publishers report, how reviewed social sources carry it, and what Palimpsest can independently measure. The layers meet here; their limits do not disappear. This desk captures public posts, deletions, archives and GFW injector telemetry. It does not capture private WeChat, classified systems, or in-country accounts.</p><nav><a href="/news/china/erasure/">Censorship dossiers</a><a href="/news/china/">Publisher stream</a><a href="/news/">Observatory desk</a><a href="/readings/china-situation-latest.json">Structured situation index</a><a href="/news/china/situation/feed.xml">RSS</a><a href="/news/china/situation/feed.json">JSON Feed</a></nav></div></header>
+  {_growth_panel("situation_top")}
   <section class="situation-stats" aria-label="Current situation coverage"><span><strong>{coverage['in_scope_events']}</strong> situations</span><span><strong>{coverage['publisher_reports']}</strong> publisher reports</span><span><strong>{coverage['measurement_context_rows']}</strong> measurement links</span><span><strong>{coverage['social_observations_linked']}</strong> exact-link social observations</span><span><strong>{coverage.get('osint_context_rows', 0)}</strong> public OSINT links</span><span><strong>{coverage['reviewed_telegram_signals']}</strong> reviewed Telegram signals</span><span><strong>{_h(_human(newest_report_at))}</strong> newest report</span><span><strong>{_h(_human(document['inputs']['newswire_generated_at']))}</strong> news collected</span><span><strong>{_h(_human(document['generated_at']))}</strong> synthesis rebuilt</span></section>
   <div class="situation-shell">
     {_status_panel(document)}
@@ -543,6 +557,7 @@ def render_page(
     <section class="situation-controls" aria-label="Filter situations"><label><span>Search this archive page</span><input id="situation-search" type="search" placeholder="headline, publisher, topic…" autocomplete="off"></label><div><button class="is-active" type="button" data-situation-desk="all">All desks</button>{desks}</div><label><span>Layer coverage</span><select id="situation-posture"><option value="all">All layer combinations</option><option value="three-layer-context">All three layers</option><option value="report-plus-measurement-context">Reports + measurements</option><option value="report-plus-social-context">Reports + social</option><option value="report-only">Reports only</option></select></label><p id="situation-count" role="status" aria-live="polite">Showing {range_start}–{range_end} of {len(all_rows)} situations</p></section>
     <section class="situation-list" aria-label="Current China situations">{cards}<p id="situation-empty" class="situation-empty-results" hidden>No current situation matches those filters.</p></section>
     {pager}
+    {_growth_panel("situation_bottom")}
   </div>
 </main>
 <footer class="nw-footer"><div class="nw-shell">This is a deterministic synthesis of attributed reports and checked-in measurements. It performs no generative summarization and makes no whole-internet coverage claim. <a href="/docs/SOCIAL-OBSERVATION-PIPELINE.md">Method</a> · <a href="/news/standards/">Standards</a> · <a href="/readings/china-situation-latest.json">JSON contract</a>.</div></footer>
@@ -555,7 +570,7 @@ def render_page(
             "Publisher reporting, reviewed social observations, and Palimpsest "
             "Observatory measurements combined without blurring evidence boundaries."
         ),
-        canonical=f"{SITE}{_page_url(page)}",
+        canonical=f"{PUBLIC_WEB_SITE}{_page_url(page)}",
         page_type="website",
         modified_at=document["generated_at"],
         feed_base="/news/china/situation",
@@ -563,7 +578,7 @@ def render_page(
         json_ld={
             "@context": "https://schema.org",
             "@type": "CollectionPage",
-            "url": f"{SITE}{_page_url(page)}",
+            "url": f"{PUBLIC_WEB_SITE}{_page_url(page)}",
             "name": "Palimpsest China situation desk",
             "dateModified": document["generated_at"],
             "numberOfItems": len(page_rows),
