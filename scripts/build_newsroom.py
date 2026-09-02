@@ -6761,6 +6761,30 @@ def _verify_wire_history_integrity_output(
         )
 
 
+def _refresh_parallel_wire_history_verification(
+    outputs: Mapping[Path, bytes],
+    *,
+    root: Path,
+    current_events: Mapping[str, Mapping[str, Any]] | None,
+    current_wire_generated_at: str | None,
+) -> None:
+    """Rebind a verifier to the writer's stable post-barrier namespace."""
+
+    expected = outputs.get(_WIRE_HISTORY_INTEGRITY_PATH)
+    if expected is None:
+        return
+    receipt = _wire_history_integrity_receipt(
+        outputs,
+        root=root,
+        current_events=current_events,
+        current_wire_generated_at=current_wire_generated_at,
+    )
+    if _pretty_json(receipt) != expected:
+        raise newsroom.NewsroomError(
+            "parallel newsroom writer produced a different wire-history namespace"
+        )
+
+
 def build_outputs(
     feed: Mapping[str, Any],
     *,
@@ -8296,6 +8320,18 @@ def main(argv: list[str] | None = None) -> int:
                 args.check_after,
                 expected=b"ready\n",
                 timeout_seconds=args.check_after_timeout,
+            )
+            _refresh_parallel_wire_history_verification(
+                outputs,
+                root=ROOT,
+                current_events=(
+                    None
+                    if wire is None
+                    else {event["event_id"]: event for event in wire["events"]}
+                ),
+                current_wire_generated_at=(
+                    None if wire is None else wire["generated_at"]
+                ),
             )
         drift = check(outputs)
         for item in drift:

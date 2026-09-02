@@ -201,6 +201,33 @@ def test_check_rejects_retained_history_tampered_after_receipt_generation(
         build_newsroom.check(outputs, root=tmp_path)
 
 
+def test_parallel_check_rebinds_only_to_exact_published_history(
+    tmp_path: Path,
+) -> None:
+    outputs = _attach_wire_history_receipt(
+        _wire_history_fixture_outputs(), root=tmp_path
+    )
+    for relative, raw in outputs.items():
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="changed after its integrity receipt was verified",
+    ):
+        build_newsroom.check(outputs, root=tmp_path)
+
+    build_newsroom._refresh_parallel_wire_history_verification(
+        outputs,
+        root=tmp_path,
+        current_events=None,
+        current_wire_generated_at=None,
+    )
+
+    assert build_newsroom.check(outputs, root=tmp_path) == []
+
+
 def test_verified_wire_receipt_cannot_be_replayed_with_different_outputs(
     tmp_path: Path,
 ) -> None:
