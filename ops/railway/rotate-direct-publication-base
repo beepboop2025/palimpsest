@@ -37,6 +37,9 @@ ROTATION_INTENT_SCHEMA = "palimpsest.direct-publication-base-rotation-intent.v1"
 BOOTSTRAP_SCHEMA = "palimpsest.direct-publication-base-transition.v1"
 PUBLICATION_SCHEMA = "palimpsest.hetzner-railway-publication.v2"
 ACKNOWLEDGEMENT = "rotate-palimpsest-direct-publication-base"
+RECOVERY_ACKNOWLEDGEMENT = (
+    "recover-one-unpublished-palimpsest-direct-generation"
+)
 EXPECTED_REMOTE = "https://github.com/beepboop2025/palimpsest.git"
 PROVIDER_ORIGIN = "https://palimpsest-publication-production.up.railway.app"
 PUBLIC_ORIGIN = "https://www.palimpsest.info"
@@ -1720,6 +1723,26 @@ def _receipt_matches_bridge(
         raise RotationError("latest bridge receipt differs from its root-owned archive")
 
 
+def _validate_unpublished_generation_bridge(
+    receipt: dict[str, Any], raw: bytes, *, pin: dict[str, Any]
+) -> None:
+    """Admit one failed pin only when its immediate predecessor is still live."""
+
+    _receipt_matches_bridge(receipt, raw, pin=pin)
+    predecessor_pin = pin["predecessor"]["pin"]
+    publication_base = receipt["publication_base"]
+    if (
+        predecessor_pin["generation"] != pin["generation"] - 1
+        or receipt["base_sha"] != predecessor_pin["target_sha"]
+        or publication_base["target_sha"] != predecessor_pin["target_sha"]
+        or publication_base["sha256"] != predecessor_pin["sha256"]
+    ):
+        raise RotationError(
+            "unpublished-generation recovery is not bound to the immediate "
+            "predecessor pin"
+        )
+
+
 def _validate_completed_receipt(
     receipt: dict[str, Any],
     raw: bytes,
@@ -1745,6 +1768,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-base-sha", required=True)
     parser.add_argument("--ack", required=True)
+    parser.add_argument("--recover-one-unpublished-generation", action="store_true")
     parser.add_argument("--repository", type=Path, default=Path("/home/palimpsest/palimpsest"))
     parser.add_argument("--state-root", type=Path, default=Path("/var/lib/palimpsest/railway-publication"))
     parser.add_argument("--control-root", type=Path, default=Path("/var/lib/palimpsest/railway-control"))
@@ -1767,6 +1791,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--installed-event-analysis-publish-dropin", type=Path, default=Path("/etc/systemd/system/palimpsest-event-analysis-live.service.d/90-railway-publish.conf"))
     parser.add_argument("--installed-transition-helper", type=Path, default=Path("/usr/local/sbin/palimpsest-advance-direct-publication-base"))
     parser.add_argument("--installed-rotation-helper", type=Path, default=Path("/usr/local/sbin/palimpsest-rotate-direct-publication-base"))
+    parser.add_argument("--installed-recovery-helper", type=Path, default=Path("/usr/local/sbin/palimpsest-recover-direct-publication-base"))
     parser.add_argument("--installed-reconciler", type=Path, default=Path("/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate"))
     parser.add_argument("--installed-watchdog", type=Path, default=Path("/usr/local/sbin/palimpsest-direct-watchdog"))
     parser.add_argument("--installed-publisher-service", type=Path, default=Path("/etc/systemd/system/palimpsest-railway-publish.service"))
@@ -1780,7 +1805,12 @@ def _parser() -> argparse.ArgumentParser:
 def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
     if os.geteuid() != 0:
         raise RotationError("base rotation must run as root")
-    if args.ack != ACKNOWLEDGEMENT:
+    expected_acknowledgement = (
+        RECOVERY_ACKNOWLEDGEMENT
+        if args.recover_one_unpublished_generation
+        else ACKNOWLEDGEMENT
+    )
+    if args.ack != expected_acknowledgement:
         raise RotationError("exact successor-base acknowledgement is required")
     _require_sha(args.target_base_sha, length=40, label="target base SHA")
     for key in ("project_id", "environment_id", "service_id"):
@@ -2035,6 +2065,23 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
         )
         if prepared is not None and prepared[0]["installed"] != target_digests:
             raise RotationError("prepared rotation target artifacts changed")
+        if args.recover_one_unpublished_generation:
+            if generation < 1 or current_base == args.target_base_sha:
+                raise RotationError(
+                    "unpublished-generation recovery requires one current "
+                    "successor and a strict target advance"
+                )
+            recovery_digest = _validate_target_blob(
+                repository,
+                args.target_base_sha,
+                "ops/railway/rotate-direct-publication-base",
+                args.installed_recovery_helper,
+                owner=publisher_user,
+            )
+            if recovery_digest != target_digests["rotation_helper_sha256"]:
+                raise RotationError(
+                    "recovery bootstrap is not the exact target rotation helper"
+                )
         _validate_install_transition(
             current_pin,
             actual=_installed_blob_digests(args),
@@ -2042,14 +2089,23 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
             predecessor_tree=predecessor_tree_digests,
             target=target_digests,
         )
-        _receipt_matches_pin(
-            receipt,
-            pin_path=args.base_pin,
-            pin_sha256=current_pin_sha256,
-            pin_kind="verified_transition" if generation == 0 else "verified_successor",
-            base_sha=current_base,
-            host_deployed_sha=deployed,
-        )
+        if args.recover_one_unpublished_generation:
+            _validate_unpublished_generation_bridge(
+                receipt,
+                receipt_raw,
+                pin=current_pin,
+            )
+        else:
+            _receipt_matches_pin(
+                receipt,
+                pin_path=args.base_pin,
+                pin_sha256=current_pin_sha256,
+                pin_kind=(
+                    "verified_transition" if generation == 0 else "verified_successor"
+                ),
+                base_sha=current_base,
+                host_deployed_sha=deployed,
+            )
 
         nonce = time.time_ns()
         provider_raw = _fetch_manifest(PROVIDER_ORIGIN, nonce)
