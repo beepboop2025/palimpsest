@@ -40,6 +40,14 @@ materialization, and runs the analyzer from those exact bytes. It never
 fetches, changes a ref, checks out a tree, or writes Git metadata. The
 materialization is removed after every success or failure.
 
+The protected predecessor collector remains a compatibility trigger only.
+Before analysis, the authenticated wrapper refreshes the wire with
+`scripts.newswire_pull` and `config/news_sources.json` from the active pinned
+target, under the same persistent wire lock. This prevents a retired source in
+the protected checkout from being reintroduced after a direct base rotation.
+Only `PALIMPSEST_PROXY` is inherited from the optional environment file; GitHub
+and Railway credentials never enter the collection subprocess.
+
 The Common Crawl context timer can fire and still leave
 `archive-news-context.json` untouched: `ExecStartPre` `cmp -s REVISION
 /etc/palimpsest/deployed-commit` is fail-closed. The unit now stamps

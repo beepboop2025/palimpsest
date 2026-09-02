@@ -830,6 +830,7 @@ def build_china_situation(
                 "interpretation": row["interpretation"],
             }
             for row in analysis["collector_context"]
+            if row["source_timestamp"] is not None
         ]
         measurement_rows_total += len(measurement_context)
         if measurement_context:

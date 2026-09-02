@@ -72,6 +72,12 @@ REQUIRED_FILES = frozenset(
         "scripts/event_analysis_live.py",
     }
 )
+COLLECTOR_FILES = frozenset(
+    {
+        "config/news_sources.json",
+        "scripts/newswire_pull.py",
+    }
+)
 MAX_PIN_BYTES = 256 * 1024
 MAX_HISTORY_BYTES = 8 * 1024 * 1024
 MAX_PIN_GENERATIONS = 256
@@ -112,6 +118,11 @@ class RuntimeConfig:
     readings: Path
     output: Path
     python: Path
+    refresh_wire: bool = False
+    ledger: Path = Path("/var/lib/palimpsest/newswire/newswire-versions.jsonl")
+    status: Path = Path("/var/lib/palimpsest/newswire/newswire-status.json")
+    wire_lock: Path = Path("/var/lib/palimpsest/newswire/newswire.lock")
+    workers: int = 6
     state_root: Path = Path("/var/lib/palimpsest/railway-publication")
     control_root: Path = Path("/var/lib/palimpsest/railway-control")
     installed_continuity_guard: Path = Path("/usr/local/sbin/palimpsest-continuity-guard")
@@ -1388,8 +1399,9 @@ def _validate_repository(
             raise LiveAnalysisError("target runtime tree contains an unsafe entry")
         expected[path] = int(mode, 8)
         total += size
+    required_files = REQUIRED_FILES | (COLLECTOR_FILES if config.refresh_wire else set())
     if (
-        not REQUIRED_FILES.issubset(expected)
+        not required_files.issubset(expected)
         or len(expected) > MAX_FILES
         or total > MAX_MATERIALIZED_BYTES
     ):
@@ -1553,6 +1565,59 @@ def _validate_runtime_paths(
             raise LiveAnalysisError("live-analysis output metadata is unsafe")
         output_identity = _file_identity(output)
     return _read_wire_clock(config), output_identity
+
+
+def _invoke_collection(config: RuntimeConfig, materialized: Path) -> None:
+    for path, label in (
+        (config.wire, "wire"),
+        (config.ledger, "wire ledger"),
+        (config.status, "wire status"),
+        (config.wire_lock, "wire lock"),
+        (config.python, "Python interpreter"),
+    ):
+        if not path.is_absolute():
+            raise LiveAnalysisError(f"{label} path is not absolute")
+    if not 1 <= config.workers <= 32:
+        raise LiveAnalysisError("wire worker count is outside its closed bound")
+
+    environment = {
+        "HOME": "/nonexistent",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "PATH": "/usr/bin:/bin",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": str(materialized),
+    }
+    proxy = os.environ.get("PALIMPSEST_PROXY")
+    if proxy:
+        environment["PALIMPSEST_PROXY"] = proxy
+    command = [
+        str(config.python),
+        "-B",
+        "-m",
+        "scripts.newswire_pull",
+        "--config",
+        str(materialized / "config/news_sources.json"),
+        "--output",
+        str(config.wire),
+        "--ledger",
+        str(config.ledger),
+        "--status",
+        str(config.status),
+        "--lock",
+        str(config.wire_lock),
+        "--workers",
+        str(config.workers),
+    ]
+    try:
+        subprocess.run(
+            command,
+            check=True,
+            cwd=materialized,
+            env=environment,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise LiveAnalysisError("pinned evidence-wire refresh failed") from exc
 
 
 @dataclass
@@ -1856,7 +1921,6 @@ def run(config: RuntimeConfig) -> str:
         expected_host_sha=expected_host_sha,
         ancestry_targets=ancestry_targets,
     )
-    wire_clock, output_identity = _validate_runtime_paths(config)
     archive = _archive_bytes(config.repository, target_sha)
     temporary_parent = (
         str(config.temporary_parent) if config.temporary_parent is not None else None
@@ -1867,6 +1931,9 @@ def run(config: RuntimeConfig) -> str:
         materialized = Path(name)
         materialized.chmod(0o700)
         _extract_archive(archive, materialized, expected)
+        if config.refresh_wire:
+            _invoke_collection(config, materialized)
+        wire_clock, output_identity = _validate_runtime_paths(config)
         stage = _create_output_stage(config)
         try:
             _invoke_analysis(config, materialized, stage.path)
@@ -1934,6 +2001,27 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("/var/lib/palimpsest/newswire/event-analysis-latest.json"),
     )
+    parser.add_argument(
+        "--refresh-wire",
+        action="store_true",
+        help="refresh the live wire from the authenticated target before analysis",
+    )
+    parser.add_argument(
+        "--ledger",
+        type=Path,
+        default=Path("/var/lib/palimpsest/newswire/newswire-versions.jsonl"),
+    )
+    parser.add_argument(
+        "--status",
+        type=Path,
+        default=Path("/var/lib/palimpsest/newswire/newswire-status.json"),
+    )
+    parser.add_argument(
+        "--wire-lock",
+        type=Path,
+        default=Path("/var/lib/palimpsest/newswire/newswire.lock"),
+    )
+    parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--python", type=Path, default=Path("/usr/bin/python3"))
     return parser
 
@@ -1948,6 +2036,11 @@ def main(argv: list[str] | None = None) -> int:
         readings=args.readings,
         output=args.output,
         python=args.python,
+        refresh_wire=args.refresh_wire,
+        ledger=args.ledger,
+        status=args.status,
+        wire_lock=args.wire_lock,
+        workers=args.workers,
         state_root=args.state_root,
         control_root=args.control_root,
     )

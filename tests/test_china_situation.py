@@ -214,6 +214,14 @@ def test_rights_availability_notices_are_not_joined_as_collector_evidence(inputs
     assert all(row["source_timestamp"] is None for row in gated_context)
     assert all(row["input_sha256"] is None for row in gated_context)
 
+    situation = china_situation.build_china_situation(wire, analyses)
+    joined_signal_ids = {
+        measurement["signal_id"]
+        for row in situation["situations"]
+        for measurement in row["measurement_context"]
+    }
+    assert gated_ids.isdisjoint(joined_signal_ids)
+
 
 def test_reviewed_telegram_empty_state_is_bound_without_event_guessing(inputs):
     wire, _feed, analyses = inputs
