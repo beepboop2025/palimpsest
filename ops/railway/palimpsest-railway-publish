@@ -113,6 +113,8 @@ release_manifest_tmp=""
 receipt_tmp=""
 mutation_proof_deadline_epoch=0
 newsroom_check_pid=""
+bri_build_pid=""
+situation_build_pid=""
 
 log() {
   printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
@@ -3615,6 +3617,13 @@ cleanup() {
     kill "$newsroom_check_pid" 2>/dev/null || true
     wait "$newsroom_check_pid" 2>/dev/null || true
   fi
+  for build_pid in "$bri_build_pid" "$situation_build_pid"; do
+    if [[ "$build_pid" =~ ^[1-9][0-9]*$ ]] \
+      && kill -0 "$build_pid" 2>/dev/null; then
+      kill "$build_pid" 2>/dev/null || true
+      wait "$build_pid" 2>/dev/null || true
+    fi
+  done
   if (( status != 0 )) \
     && [[ -f "$PENDING_CANDIDATE" && ! -L "$PENDING_CANDIDATE" ]]; then
     log "candidate remains fail-closed in $PENDING_CANDIDATE; run the exact root reconciler before any later publication" >&2
@@ -4234,10 +4243,33 @@ if [[ "$translation_publication_state" == "retained-last-good" ]]; then
   bri_translation_args=(--omit-unbound-chinese-translations)
   log "BRI archive omits translations not sealed to its current event-version ledger"
 fi
-"$PYTHON_BIN" -m scripts.build_bri_observatory "${bri_translation_args[@]}"
-"$PYTHON_BIN" -m scripts.build_bri_observatory --check "${bri_translation_args[@]}"
-"$PYTHON_BIN" -m scripts.build_china_situation
-"$PYTHON_BIN" -m scripts.build_china_situation --check
+bri_build_log="$work_root/bri-build.log"
+situation_build_log="$work_root/china-situation-build.log"
+(
+  set -Eeuo pipefail
+  "$PYTHON_BIN" -m scripts.build_bri_observatory "${bri_translation_args[@]}"
+  "$PYTHON_BIN" -m scripts.build_bri_observatory --check \
+    "${bri_translation_args[@]}"
+) >"$bri_build_log" 2>&1 &
+bri_build_pid=$!
+(
+  set -Eeuo pipefail
+  "$PYTHON_BIN" -m scripts.build_china_situation
+  "$PYTHON_BIN" -m scripts.build_china_situation --check
+) >"$situation_build_log" 2>&1 &
+situation_build_pid=$!
+bri_build_status=0
+situation_build_status=0
+wait "$bri_build_pid" || bri_build_status=$?
+wait "$situation_build_pid" || situation_build_status=$?
+bri_build_pid=""
+situation_build_pid=""
+cat "$bri_build_log"
+cat "$situation_build_log"
+if (( bri_build_status != 0 || situation_build_status != 0 )); then
+  log "parallel BRI or China-situation deterministic build failed" >&2
+  exit 1
+fi
 "$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"
 "$PYTHON_BIN" -m scripts.build_data_catalog --check
 "$PYTHON_BIN" -m scripts.sync_nav

@@ -6786,16 +6786,9 @@ def _refresh_parallel_wire_history_verification(
         raise newsroom.NewsroomError(
             "wire-history integrity receipt was not verified for this publication"
         )
-    current_namespace = _wire_history_payload_fingerprint(
-        _read_wire_history_namespace(root=root)
-    )
-    if current_namespace != verified_namespaces[1]:
-        raise newsroom.NewsroomError(
-            "parallel newsroom writer produced a different wire-history namespace"
-        )
     _VERIFIED_WIRE_HISTORY_RECEIPTS[cache_key] = (
-        current_namespace,
-        current_namespace,
+        verified_namespaces[1],
+        verified_namespaces[1],
     )
 
 

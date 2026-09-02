@@ -225,6 +225,16 @@ def test_parallel_check_rebinds_only_to_exact_published_history(
 
     assert build_newsroom.check(outputs, root=tmp_path) == []
 
+    retained = next(
+        path for path in outputs if build_newsroom._is_wire_history_revision_path(path)
+    )
+    (tmp_path / retained).write_bytes(b"{}\n")
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="changed after its integrity receipt was verified",
+    ):
+        build_newsroom.check(outputs, root=tmp_path)
+
 
 def test_verified_wire_receipt_cannot_be_replayed_with_different_outputs(
     tmp_path: Path,

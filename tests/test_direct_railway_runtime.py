@@ -1093,6 +1093,21 @@ def test_publisher_status_binding_and_freshness_reserve_precede_mutation() -> No
         < parallel_wait
         < build
     )
+    bri_parallel = publisher.index(
+        '(\n  set -Eeuo pipefail\n  "$PYTHON_BIN" -m scripts.build_bri_observatory'
+    )
+    situation_parallel = publisher.index(
+        '(\n  set -Eeuo pipefail\n  "$PYTHON_BIN" -m scripts.build_china_situation',
+        bri_parallel,
+    )
+    bri_wait = publisher.index('wait "$bri_build_pid"', situation_parallel)
+    situation_wait = publisher.index(
+        'wait "$situation_build_pid"', bri_wait
+    )
+    catalog_build = publisher.index(
+        '"$PYTHON_BIN" -m scripts.build_data_catalog', situation_wait
+    )
+    assert bri_parallel < situation_parallel < bri_wait < situation_wait < catalog_build
 
     ordered = (
         'build-static-bundle.sh" "$release_sha" "$release"',
