@@ -19,6 +19,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 WRAPPER = ROOT / "ops/newswire/palimpsest-event-analysis-live"
+SERVICE = ROOT / "ops/systemd/palimpsest-event-analysis-live.service"
 LEGACY_INSTALLED_KEYS = {
     "publisher_service_sha256",
     "publisher_sha256",
@@ -294,6 +295,75 @@ def test_wrapper_is_executable_and_incident_pinned() -> None:
         runtime.PIN_SHA256
         == "255e17340a38bfcc5ead6ed4a33a8f50f23da8655ca396cd99fbe1980ebd1e97"
     )
+
+
+def test_service_refreshes_wire_from_the_authenticated_target() -> None:
+    service = SERVICE.read_text(encoding="utf-8")
+
+    assert "EnvironmentFile=-/etc/palimpsest/newswire.env" in service
+    assert "--refresh-wire" in service
+    assert "--ledger /var/lib/palimpsest/newswire/newswire-versions.jsonl" in service
+    assert "--status /var/lib/palimpsest/newswire/newswire-status.json" in service
+    assert "--wire-lock /var/lib/palimpsest/newswire/newswire.lock" in service
+    assert "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6" in service
+    assert "IPAddressDeny=any" not in service
+
+
+def test_collection_uses_only_the_materialized_registry_and_bounded_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    materialized = tmp_path / "materialized"
+    materialized.mkdir()
+    config = runtime.RuntimeConfig(
+        repository=tmp_path / "repository",
+        base_pin=tmp_path / "pin",
+        deployed_commit=tmp_path / "deployed-commit",
+        wire=tmp_path / "newswire-latest.json",
+        readings=tmp_path / "readings",
+        output=tmp_path / "event-analysis-latest.json",
+        python=Path(sys.executable),
+        refresh_wire=True,
+        ledger=tmp_path / "newswire-versions.jsonl",
+        status=tmp_path / "newswire-status.json",
+        wire_lock=tmp_path / "newswire.lock",
+        workers=4,
+    )
+    captured: dict[str, object] = {}
+
+    def record_run(command: list[str], **kwargs: object) -> None:
+        captured["command"] = command
+        captured.update(kwargs)
+
+    monkeypatch.setattr(runtime.subprocess, "run", record_run)
+    monkeypatch.setenv("PALIMPSEST_PROXY", "http://127.0.0.1:8080")
+    monkeypatch.setenv("RAILWAY_TOKEN", "must-not-pass")
+
+    runtime._invoke_collection(config, materialized)
+
+    assert captured["command"] == [
+        str(config.python),
+        "-B",
+        "-m",
+        "scripts.newswire_pull",
+        "--config",
+        str(materialized / "config/news_sources.json"),
+        "--output",
+        str(config.wire),
+        "--ledger",
+        str(config.ledger),
+        "--status",
+        str(config.status),
+        "--lock",
+        str(config.wire_lock),
+        "--workers",
+        "4",
+    ]
+    assert captured["cwd"] == materialized
+    assert captured["check"] is True
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    assert environment["PALIMPSEST_PROXY"] == "http://127.0.0.1:8080"
+    assert "RAILWAY_TOKEN" not in environment
 
 
 def test_pin_hash_and_closed_schema_fail_closed() -> None:
