@@ -221,8 +221,6 @@ def test_parallel_check_rebinds_only_to_exact_published_history(
     build_newsroom._refresh_parallel_wire_history_verification(
         outputs,
         root=tmp_path,
-        current_events=None,
-        current_wire_generated_at=None,
     )
 
     assert build_newsroom.check(outputs, root=tmp_path) == []

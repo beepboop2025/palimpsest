@@ -235,7 +235,9 @@ WIRE_HISTORY_GROWTH_INTERVAL = timedelta(hours=1)
 WIRE_HISTORY_SCHEDULE_MINUTE = 17
 MAX_WIRE_HISTORY_CATCHUP_INTERVALS = 48
 MAX_PRIOR_SITUATION_BYTES = 12 * 1024 * 1024
-_VERIFIED_WIRE_HISTORY_RECEIPTS: dict[tuple[str, str, str], str] = {}
+_VERIFIED_WIRE_HISTORY_RECEIPTS: dict[
+    tuple[str, str, str], tuple[str, str]
+] = {}
 _MACHINE_EVIDENCE_CAPSULE_SCHEMA = "palimpsest-machine-evidence-capsule.v1"
 _MACHINE_EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
 _MACHINE_PHONE = re.compile(r"(?<!\d)(?:\+?\d[\s().-]*){9,}(?!\d)")
@@ -6731,7 +6733,10 @@ def _wire_history_integrity_receipt(
             hashlib.sha256(receipt_bytes).hexdigest(),
             _wire_history_candidate_fingerprint(outputs),
         )
-    ] = _wire_history_payload_fingerprint(existing_payloads)
+    ] = (
+        _wire_history_payload_fingerprint(existing_payloads),
+        _wire_history_payload_fingerprint(payloads),
+    )
     return receipt
 
 
@@ -6747,15 +6752,15 @@ def _verify_wire_history_integrity_output(
         receipt_digest,
         _wire_history_candidate_fingerprint(outputs),
     )
-    expected_namespace = _VERIFIED_WIRE_HISTORY_RECEIPTS.get(cache_key)
-    if expected_namespace is None:
+    verified_namespaces = _VERIFIED_WIRE_HISTORY_RECEIPTS.get(cache_key)
+    if verified_namespaces is None:
         raise newsroom.NewsroomError(
             "wire-history integrity receipt was not verified for this publication"
         )
     current_namespace = _wire_history_payload_fingerprint(
         _read_wire_history_namespace(root=root)
     )
-    if current_namespace != expected_namespace:
+    if current_namespace != verified_namespaces[0]:
         raise newsroom.NewsroomError(
             "wire history changed after its integrity receipt was verified"
         )
@@ -6765,24 +6770,33 @@ def _refresh_parallel_wire_history_verification(
     outputs: Mapping[Path, bytes],
     *,
     root: Path,
-    current_events: Mapping[str, Mapping[str, Any]] | None,
-    current_wire_generated_at: str | None,
 ) -> None:
-    """Rebind a verifier to the writer's stable post-barrier namespace."""
+    """Rebind to the exact post-write namespace validated during rendering."""
 
-    expected = outputs.get(_WIRE_HISTORY_INTEGRITY_PATH)
-    if expected is None:
+    payload = outputs.get(_WIRE_HISTORY_INTEGRITY_PATH)
+    if payload is None:
         return
-    receipt = _wire_history_integrity_receipt(
-        outputs,
-        root=root,
-        current_events=current_events,
-        current_wire_generated_at=current_wire_generated_at,
+    cache_key = (
+        str(root.resolve()),
+        hashlib.sha256(payload).hexdigest(),
+        _wire_history_candidate_fingerprint(outputs),
     )
-    if _pretty_json(receipt) != expected:
+    verified_namespaces = _VERIFIED_WIRE_HISTORY_RECEIPTS.get(cache_key)
+    if verified_namespaces is None:
+        raise newsroom.NewsroomError(
+            "wire-history integrity receipt was not verified for this publication"
+        )
+    current_namespace = _wire_history_payload_fingerprint(
+        _read_wire_history_namespace(root=root)
+    )
+    if current_namespace != verified_namespaces[1]:
         raise newsroom.NewsroomError(
             "parallel newsroom writer produced a different wire-history namespace"
         )
+    _VERIFIED_WIRE_HISTORY_RECEIPTS[cache_key] = (
+        current_namespace,
+        current_namespace,
+    )
 
 
 def build_outputs(
@@ -8324,14 +8338,6 @@ def main(argv: list[str] | None = None) -> int:
             _refresh_parallel_wire_history_verification(
                 outputs,
                 root=ROOT,
-                current_events=(
-                    None
-                    if wire is None
-                    else {event["event_id"]: event for event in wire["events"]}
-                ),
-                current_wire_generated_at=(
-                    None if wire is None else wire["generated_at"]
-                ),
             )
         drift = check(outputs)
         for item in drift:
