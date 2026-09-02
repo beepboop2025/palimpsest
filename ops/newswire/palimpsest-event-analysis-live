@@ -706,9 +706,7 @@ def _validate_archived_publication_receipt(
     proof: Any,
     *,
     history_root: Path,
-    predecessor_pin_sha256: str,
-    predecessor_pin_schema: str,
-    predecessor_target_sha: str,
+    validated_pin_digests: set[str],
     expected_host_sha: str,
 ) -> tuple[dict[str, Any], bytes]:
     if type(proof) is not dict:
@@ -790,9 +788,33 @@ def _validate_archived_publication_receipt(
     )
     _exact(railway, {"deployment_id", "status"}, "archived receipt Railway proof")
     _exact(origins, {"provider", "public"}, "archived receipt origins")
+    receipt_pin_digest = _sha(
+        proof.get("publication_base_sha256"),
+        "predecessor receipt publication-base digest",
+    )
+    if receipt_pin_digest not in validated_pin_digests:
+        raise LiveAnalysisError(
+            "publication-base predecessor receipt pin is outside the lineage"
+        )
+    if receipt_pin_digest == PIN_SHA256:
+        receipt_pin_schema = PIN_SCHEMA
+        receipt_pin_target = PIN_TARGET_SHA
+    else:
+        receipt_pin_raw = _read_history_artifact(
+            config,
+            history_root=history_root,
+            category="pins",
+            digest=receipt_pin_digest,
+            claimed_path=str(history_root / "pins" / f"{receipt_pin_digest}.json"),
+            label="publication-base receipt pin",
+            maximum=MAX_PIN_BYTES,
+        )
+        receipt_pin = _strict_object(receipt_pin_raw, "publication-base receipt pin")
+        receipt_pin_schema = receipt_pin.get("schema_version")
+        receipt_pin_target = receipt_pin.get("target", {}).get("base_sha")
     expected_kind = (
         "verified_transition"
-        if predecessor_pin_schema == PIN_SCHEMA
+        if receipt_pin_schema == PIN_SCHEMA
         else "verified_successor"
     )
     for key in (
@@ -810,17 +832,18 @@ def _validate_archived_publication_receipt(
         or receipt.get("schema_version") != PUBLICATION_V2_SCHEMA
         or receipt.get("status") != "verified"
         or receipt.get("github_actions_used") is not False
-        or proof.get("base_sha") != predecessor_target_sha
-        or proof.get("publication_base_sha256") != predecessor_pin_sha256
+        or receipt_pin_schema not in {PIN_SCHEMA, SUCCESSOR_PIN_SCHEMA}
+        or proof.get("base_sha") != receipt_pin_target
+        or proof.get("publication_base_sha256") != receipt_pin_digest
         or proof.get("host_deployed_sha") != expected_host_sha
         or proof.get("wire_generated_at") != receipt.get("wire_generated_at")
         or type(proof.get("wire_generated_at")) is not str
         or TIMESTAMP.fullmatch(proof["wire_generated_at"]) is None
-        or publication_base.get("sha256") != predecessor_pin_sha256
-        or publication_base.get("target_sha") != predecessor_target_sha
+        or publication_base.get("sha256") != receipt_pin_digest
+        or publication_base.get("target_sha") != receipt_pin_target
         or publication_base.get("kind") != expected_kind
         or publication_base.get("path") != str(config.base_pin)
-        or receipt.get("base_sha") != predecessor_target_sha
+        or receipt.get("base_sha") != receipt_pin_target
         or receipt.get("host_deployed_sha") != expected_host_sha
         or proof.get("release_sha") != receipt.get("release_sha")
         or proof.get("input_sha256") != receipt.get("input_sha256")
@@ -1063,6 +1086,9 @@ def _validate_successor_pin(
             expected_sha256=PIN_SHA256,
             expected_target_sha=PIN_TARGET_SHA,
         )
+        if prior_digest in seen:
+            raise LiveAnalysisError("publication-base pin chain contains a loop")
+        seen.add(prior_digest)
         targets = [PIN_TARGET_SHA]
     else:
         if pin_proof.get("schema_version") != SUCCESSOR_PIN_SCHEMA:
@@ -1085,9 +1111,7 @@ def _validate_successor_pin(
         config,
         predecessor.get("publication_receipt"),
         history_root=history_root,
-        predecessor_pin_sha256=prior_digest,
-        predecessor_pin_schema=str(pin_proof["schema_version"]),
-        predecessor_target_sha=prior_target,
+        validated_pin_digests=seen,
         expected_host_sha=host["deployed_commit"],
     )
     _exact(

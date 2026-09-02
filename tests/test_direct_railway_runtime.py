@@ -806,7 +806,7 @@ def test_direct_publisher_uses_a_verified_public_base_pin_without_rewriting_host
         assert path in publisher
     assert "host_deployed_sha" in publisher
     assert (
-        "accepting exact one-generation predecessor receipt bound by successor pin"
+        "accepting exact published-ancestor receipt bound by successor lineage"
         in publisher
     )
     assert "canonical host identity differs from the publication base pin" in publisher

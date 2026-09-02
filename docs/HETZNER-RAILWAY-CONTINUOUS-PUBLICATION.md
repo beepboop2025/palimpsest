@@ -142,13 +142,13 @@ successful receipt then matches the new pin normally. An ordinary second
 rotation is refused until such a same-generation v2 receipt exists, so the
 bridge cannot silently skip a generation or admit an arbitrary stale receipt.
 
-If the first publisher run fails before any Railway mutation because the
-newly pinned source cannot build, use the explicit one-generation forward
-recovery below. It accepts only the current pin's archived bridge receipt when
-that receipt is bound to the immediately preceding pin, both origins still
-serve its exact manifest, the Railway topology is unchanged, all candidate
-journals and DATA HOLD are absent, and the replacement is a strict public-main
-descendant. It cannot skip two unpublished pins.
+If a publisher run fails before any Railway mutation because newly pinned
+source cannot build, use the explicit unpublished-chain forward recovery below.
+It accepts only one archived receipt whose publication-base digest resolves to
+a fully authenticated ancestor and which every later unpublished pin repeats
+byte-for-byte. Both origins must still serve its exact manifest, the Railway
+topology must be unchanged, all candidate journals and DATA HOLD must be absent,
+and the replacement must be a strict public-main descendant.
 
 ### Repeatable successor-base rotation without quiescence
 
@@ -265,7 +265,7 @@ sudo systemctl is-active palimpsest-railway-publish.timer \
   palimpsest-direct-watchdog.timer palimpsest-continuity-guard.timer
 ```
 
-For one unpublished successor, fetch the exact replacement `T`, stage the
+For an unpublished successor chain, fetch the exact replacement `T`, stage the
 target rotation helper at the otherwise-unused recovery path, and invoke its
 separate acknowledgement. The helper authenticates those bootstrap bytes
 against Git `T` before it writes an intent or replaces an installed artifact:
@@ -298,8 +298,8 @@ sudo systemd-run --quiet --wait --pipe --collect \
   --property=EnvironmentFile=/etc/palimpsest/railway-publication.env \
   /usr/local/sbin/palimpsest-recover-direct-publication-base \
   --target-base-sha "$T" \
-  --recover-one-unpublished-generation \
-  --ack recover-one-unpublished-palimpsest-direct-generation
+  --recover-unpublished-chain \
+  --ack recover-palimpsest-unpublished-direct-chain
 ```
 
 Run and prove event analysis, publication, and the direct watchdog exactly as

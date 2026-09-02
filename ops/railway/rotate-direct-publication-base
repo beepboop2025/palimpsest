@@ -37,9 +37,7 @@ ROTATION_INTENT_SCHEMA = "palimpsest.direct-publication-base-rotation-intent.v1"
 BOOTSTRAP_SCHEMA = "palimpsest.direct-publication-base-transition.v1"
 PUBLICATION_SCHEMA = "palimpsest.hetzner-railway-publication.v2"
 ACKNOWLEDGEMENT = "rotate-palimpsest-direct-publication-base"
-RECOVERY_ACKNOWLEDGEMENT = (
-    "recover-one-unpublished-palimpsest-direct-generation"
-)
+RECOVERY_ACKNOWLEDGEMENT = "recover-palimpsest-unpublished-direct-chain"
 EXPECTED_REMOTE = "https://github.com/beepboop2025/palimpsest.git"
 PROVIDER_ORIGIN = "https://palimpsest-publication-production.up.railway.app"
 PUBLIC_ORIGIN = "https://www.palimpsest.info"
@@ -1652,16 +1650,18 @@ def _validate_v2_pin_archives(
     *,
     history_root: Path,
     group_gid: int,
-) -> None:
+) -> dict[str, dict[str, Any]]:
     current_pin = pin
     current_raw = raw
     seen: set[str] = set()
+    authenticated: dict[str, dict[str, Any]] = {}
     traversed = 0
     while True:
         digest = _sha256(current_raw)
         if digest in seen:
             raise RotationError("successor publication-base lineage contains a cycle")
         seen.add(digest)
+        authenticated[digest] = current_pin
         traversed += 1
         if traversed > MAX_PIN_GENERATIONS:
             raise RotationError("successor publication-base lineage is too deep")
@@ -1672,7 +1672,7 @@ def _validate_v2_pin_archives(
             group_gid=group_gid,
         )
         if predecessor is None:
-            return
+            return authenticated
         current_pin, current_raw = predecessor
 
 
@@ -1723,24 +1723,52 @@ def _receipt_matches_bridge(
         raise RotationError("latest bridge receipt differs from its root-owned archive")
 
 
-def _validate_unpublished_generation_bridge(
-    receipt: dict[str, Any], raw: bytes, *, pin: dict[str, Any]
+def _validate_unpublished_chain_bridge(
+    receipt: dict[str, Any],
+    raw: bytes,
+    *,
+    pin: dict[str, Any],
+    authenticated_pins: dict[str, dict[str, Any]],
 ) -> None:
-    """Admit one failed pin only when its immediate predecessor is still live."""
+    """Bind every unpublished pin to the same last published ancestor."""
 
     _receipt_matches_bridge(receipt, raw, pin=pin)
-    predecessor_pin = pin["predecessor"]["pin"]
     publication_base = receipt["publication_base"]
+    published_digest = publication_base["sha256"]
+    published_pin = authenticated_pins.get(published_digest)
+    if published_pin is None:
+        raise RotationError(
+            "unpublished-chain receipt pin is outside the authenticated lineage"
+        )
+    if published_pin.get("schema_version") == BOOTSTRAP_SCHEMA:
+        published_generation = 0
+        published_target = published_pin.get("target", {}).get("base_sha")
+    else:
+        published_generation = published_pin.get("generation")
+        published_target = published_pin.get("target", {}).get("base_sha")
+    current_generation = pin["generation"]
     if (
-        predecessor_pin["generation"] != pin["generation"] - 1
-        or receipt["base_sha"] != predecessor_pin["target_sha"]
-        or publication_base["target_sha"] != predecessor_pin["target_sha"]
-        or publication_base["sha256"] != predecessor_pin["sha256"]
+        type(published_generation) is not int
+        or published_generation >= current_generation
+        or receipt["base_sha"] != published_target
+        or publication_base["target_sha"] != published_target
     ):
         raise RotationError(
-            "unpublished-generation recovery is not bound to the immediate "
-            "predecessor pin"
+            "unpublished-chain recovery is not bound to an older published pin"
         )
+    bridge = pin["predecessor"]["publication_receipt"]
+    for candidate in authenticated_pins.values():
+        if candidate.get("schema_version") != PIN_SCHEMA:
+            continue
+        candidate_generation = candidate.get("generation")
+        if (
+            type(candidate_generation) is int
+            and published_generation < candidate_generation <= current_generation
+            and candidate.get("predecessor", {}).get("publication_receipt") != bridge
+        ):
+            raise RotationError(
+                "unpublished-chain pins do not retain one exact bridge receipt"
+            )
 
 
 def _validate_completed_receipt(
@@ -1768,7 +1796,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-base-sha", required=True)
     parser.add_argument("--ack", required=True)
-    parser.add_argument("--recover-one-unpublished-generation", action="store_true")
+    parser.add_argument("--recover-unpublished-chain", action="store_true")
     parser.add_argument("--repository", type=Path, default=Path("/home/palimpsest/palimpsest"))
     parser.add_argument("--state-root", type=Path, default=Path("/var/lib/palimpsest/railway-publication"))
     parser.add_argument("--control-root", type=Path, default=Path("/var/lib/palimpsest/railway-control"))
@@ -1807,7 +1835,7 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
         raise RotationError("base rotation must run as root")
     expected_acknowledgement = (
         RECOVERY_ACKNOWLEDGEMENT
-        if args.recover_one_unpublished_generation
+        if args.recover_unpublished_chain
         else ACKNOWLEDGEMENT
     )
     if args.ack != expected_acknowledgement:
@@ -1942,9 +1970,15 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
         current_pin_sha256 = _sha256(current_pin_raw)
         if generation == 0 and current_pin_sha256 != BOOTSTRAP_PIN_SHA256:
             raise RotationError("bootstrap publication pin is not the immutable reviewed pin")
+        authenticated_pins: dict[str, dict[str, Any]] = {}
         if generation > 0:
             _ensure_history_directories(history_root, group_gid=publisher_group.gr_gid)
-            _validate_v2_pin_archives(current_pin, current_pin_raw, history_root=history_root, group_gid=publisher_group.gr_gid)
+            authenticated_pins = _validate_v2_pin_archives(
+                current_pin,
+                current_pin_raw,
+                history_root=history_root,
+                group_gid=publisher_group.gr_gid,
+            )
 
         _validate_file(args.deployed_commit, uid=0, gid=0, mode=0o644, label="deployed-commit")
         deployed_raw = _read_regular(args.deployed_commit, max_bytes=256)
@@ -2065,10 +2099,10 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
         )
         if prepared is not None and prepared[0]["installed"] != target_digests:
             raise RotationError("prepared rotation target artifacts changed")
-        if args.recover_one_unpublished_generation:
+        if args.recover_unpublished_chain:
             if generation < 1 or current_base == args.target_base_sha:
                 raise RotationError(
-                    "unpublished-generation recovery requires one current "
+                    "unpublished-chain recovery requires one current "
                     "successor and a strict target advance"
                 )
             recovery_digest = _validate_target_blob(
@@ -2089,11 +2123,12 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
             predecessor_tree=predecessor_tree_digests,
             target=target_digests,
         )
-        if args.recover_one_unpublished_generation:
-            _validate_unpublished_generation_bridge(
+        if args.recover_unpublished_chain:
+            _validate_unpublished_chain_bridge(
                 receipt,
                 receipt_raw,
                 pin=current_pin,
+                authenticated_pins=authenticated_pins,
             )
         else:
             _receipt_matches_pin(
