@@ -3980,6 +3980,30 @@ if [[ -d "$HOST_READINGS/anchors" && ! -L "$HOST_READINGS/anchors" ]]; then
   done < <(find "$HOST_READINGS/anchors" -maxdepth 1 -type f -print0 | sort -z)
 fi
 
+# A protected legacy collector may finish between the pinned event-analysis
+# refresh and this publication snapshot. Refresh only the private copy with the
+# authenticated target runtime: host writes can no longer replace these bytes,
+# while the copied prior wire and ledger preserve mutation continuity.
+snapshot_refresh_lock="$snapshot_newswire/private-refresh.lock"
+(
+  cd "$checkout"
+  env PYTHONDONTWRITEBYTECODE=1 \
+    "$PYTHON_BIN" -m scripts.newswire_pull \
+    --config "$checkout/config/news_sources.json" \
+    --output "$snapshot_wire" \
+    --ledger "$snapshot_ledger" \
+    --status "$snapshot_status" \
+    --lock "$snapshot_refresh_lock" \
+    --workers 6
+)
+[[ -f "$snapshot_refresh_lock" && ! -L "$snapshot_refresh_lock" \
+  && "$(stat -c '%u:%g:%a:%h' "$snapshot_refresh_lock")" \
+    == "$(id -u):$(id -g):600:1" ]] || {
+  log "private target-registry refresh lock is unsafe" >&2
+  exit 1
+}
+unlink "$snapshot_refresh_lock"
+
 snapshot_observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 status_binding="$(validate_newswire_snapshot_receipt \
   "$snapshot_status" "$snapshot_wire" "$snapshot_observed_at")"
