@@ -59,10 +59,13 @@ Mandatory admission and closure checks are:
 3. `pending-candidate.json`, `pending-preparation.json`, and the root DATA HOLD
    are absent both at admission and at the final pin boundary, and
    `publish.lock` is acquired nonblocking.
-4. The latest receipt is a same-generation
+4. The latest receipt is normally a same-generation
    `palimpsest.hetzner-railway-publication.v2` receipt; both live origins serve
    its exact manifest bytes and its Railway deployment is the singular active
-   static deployment.
+   static deployment. The explicit one-unpublished-generation recovery may
+   instead reuse only the current pin's immediate-predecessor bridge receipt;
+   it still requires those exact live bytes and topology and cannot skip a
+   second unpublished pin.
    The durable intent binds that receipt, both manifest hashes, and the raw
    topology hash; a retry cannot substitute newer predecessor evidence.
 5. Every target publisher/helper/validator/unit blob equals Git `T`. The

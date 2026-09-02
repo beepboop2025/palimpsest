@@ -238,6 +238,45 @@ def test_exact_prior_v2_receipt_is_the_only_successor_bridge(tmp_path: Path) -> 
         validate_bridge(forged, forged_raw, pin=pin)
 
 
+def test_unpublished_generation_recovery_is_exactly_one_pin_deep(
+    tmp_path: Path,
+) -> None:
+    namespace = _namespace()
+    validate_recovery = namespace["_validate_unpublished_generation_bridge"]
+    error = namespace["RotationError"]
+    receipt = _receipt()
+    raw = (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    archive = tmp_path / "receipt.json"
+    archive.write_bytes(raw)
+    pin = _pin(str(archive), hashlib.sha256(raw).hexdigest())
+
+    validate_recovery(receipt, raw, pin=pin)
+
+    skipped_twice = json.loads(json.dumps(pin))
+    skipped_twice["generation"] = 2
+    skipped_twice["predecessor"]["pin"]["generation"] = 1
+    skipped_twice["predecessor"]["pin"]["target_sha"] = "9" * 40
+    with pytest.raises(error, match="immediate predecessor pin"):
+        validate_recovery(receipt, raw, pin=skipped_twice)
+
+
+def test_recovery_mode_has_separate_exact_acknowledgement() -> None:
+    namespace = _namespace()
+    parser = namespace["_parser"]()
+    args = parser.parse_args(
+        [
+            "--target-base-sha",
+            "b" * 40,
+            "--ack",
+            namespace["RECOVERY_ACKNOWLEDGEMENT"],
+            "--recover-one-unpublished-generation",
+        ]
+    )
+
+    assert args.recover_one_unpublished_generation is True
+    assert args.ack != namespace["ACKNOWLEDGEMENT"]
+
+
 def test_duplicate_json_and_non_forward_generation_fail_closed() -> None:
     namespace = _namespace()
     strict = namespace["_strict_json"]
