@@ -112,6 +112,7 @@ preparation_tmp=""
 release_manifest_tmp=""
 receipt_tmp=""
 mutation_proof_deadline_epoch=0
+newsroom_check_pid=""
 
 log() {
   printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
@@ -3609,6 +3610,11 @@ persist_release_bundle() {
 cleanup() {
   local status=$?
   trap - EXIT HUP INT TERM
+  if [[ "$newsroom_check_pid" =~ ^[1-9][0-9]*$ ]] \
+    && kill -0 "$newsroom_check_pid" 2>/dev/null; then
+    kill "$newsroom_check_pid" 2>/dev/null || true
+    wait "$newsroom_check_pid" 2>/dev/null || true
+  fi
   if (( status != 0 )) \
     && [[ -f "$PENDING_CANDIDATE" && ! -L "$PENDING_CANDIDATE" ]]; then
     log "candidate remains fail-closed in $PENDING_CANDIDATE; run the exact root reconciler before any later publication" >&2
@@ -4156,8 +4162,39 @@ publish_clock="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 aggregate_clock="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 "$PYTHON_BIN" -m core.evidence_mesh --now "$aggregate_clock"
 "$PYTHON_BIN" -m core.machine_investigations --as-of "$aggregate_clock"
-"$PYTHON_BIN" -m scripts.build_newsroom
-"$PYTHON_BIN" -m scripts.build_newsroom --check
+newsroom_check_marker="$work_root/newsroom-check-ready"
+newsroom_check_marker_tmp="$work_root/.newsroom-check-ready"
+newsroom_rendered_marker="$work_root/newsroom-check-rendered"
+newsroom_check_log="$work_root/newsroom-check.log"
+[[ ! -e "$newsroom_check_marker" && ! -L "$newsroom_check_marker" \
+  && ! -e "$newsroom_check_marker_tmp" && ! -L "$newsroom_check_marker_tmp" \
+  && ! -e "$newsroom_rendered_marker" && ! -L "$newsroom_rendered_marker" ]] || {
+  log "newsroom verification barrier already exists" >&2
+  exit 1
+}
+"$PYTHON_BIN" -m scripts.build_newsroom --check \
+  --signal-rendered "$newsroom_rendered_marker" \
+  --check-after "$newsroom_check_marker" --check-after-timeout 900 \
+  >"$newsroom_check_log" 2>&1 &
+newsroom_check_pid=$!
+if ! PALIMPSEST_EPHEMERAL_BUILD=1 \
+  "$PYTHON_BIN" -m scripts.build_newsroom \
+    --publish-after "$newsroom_rendered_marker" \
+    --check-after-timeout 900; then
+  log "newsroom publication render failed" >&2
+  exit 1
+fi
+printf 'ready\n' >"$newsroom_check_marker_tmp"
+chmod 0600 "$newsroom_check_marker_tmp"
+mv "$newsroom_check_marker_tmp" "$newsroom_check_marker"
+if ! wait "$newsroom_check_pid"; then
+  cat "$newsroom_check_log" >&2
+  newsroom_check_pid=""
+  log "parallel newsroom reproducibility check failed" >&2
+  exit 1
+fi
+newsroom_check_pid=""
+cat "$newsroom_check_log"
 
 # Railway is a deterministic publisher, never a translation-model caller. A
 # fully cached current wire is rebuilt locally. If the current wire has an

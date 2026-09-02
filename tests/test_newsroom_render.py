@@ -268,6 +268,45 @@ def test_publication_is_idempotent_and_check_detects_drift(tmp_path):
     assert build_newsroom.check(outputs, root=tmp_path) == ["stale news/index.html"]
 
 
+def test_ephemeral_publication_defers_per_file_fsync(monkeypatch, tmp_path):
+    target = tmp_path / "news" / "index.html"
+    monkeypatch.setenv("PALIMPSEST_EPHEMERAL_BUILD", "1")
+    monkeypatch.setattr(
+        build_newsroom.os,
+        "fsync",
+        lambda _descriptor: (_ for _ in ()).throw(AssertionError("unexpected fsync")),
+    )
+
+    build_newsroom._atomic_write(target, b"verified disposable output\n")
+
+    assert target.read_bytes() == b"verified disposable output\n"
+
+
+def test_parallel_check_barrier_requires_exact_regular_marker(tmp_path):
+    ready = tmp_path / "ready"
+    ready.write_bytes(b"ready\n")
+    build_newsroom._await_check_barrier(
+        ready, expected=b"ready\n", timeout_seconds=1
+    )
+
+    rendered = tmp_path / "rendered"
+    build_newsroom._publish_check_barrier(rendered, payload=b"rendered\n")
+    build_newsroom._await_check_barrier(
+        rendered, expected=b"rendered\n", timeout_seconds=1
+    )
+
+    malformed = tmp_path / "malformed"
+    malformed.write_bytes(b"not-ready\n")
+    try:
+        build_newsroom._await_check_barrier(
+            malformed, expected=b"ready\n", timeout_seconds=1
+        )
+    except newsroom.NewsroomError as exc:
+        assert "malformed" in str(exc)
+    else:
+        raise AssertionError("malformed newsroom barrier was accepted")
+
+
 def test_generated_per_story_json_is_the_same_story_as_the_feed():
     feed = _feed()
     outputs = build_newsroom.build_outputs(feed)

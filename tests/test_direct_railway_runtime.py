@@ -1066,6 +1066,34 @@ def test_publisher_status_binding_and_freshness_reserve_precede_mutation() -> No
     ]
     assert "provider_receipt_sha" not in publisher
 
+    parallel_check = publisher.index(
+        '"$PYTHON_BIN" -m scripts.build_newsroom --check \\\n'
+        '  --signal-rendered "$newsroom_rendered_marker"'
+    )
+    mutating_render = publisher.index(
+        'PALIMPSEST_EPHEMERAL_BUILD=1 \\\n'
+        '  "$PYTHON_BIN" -m scripts.build_newsroom',
+        parallel_check,
+    )
+    writer_wait = publisher.index(
+        '--publish-after "$newsroom_rendered_marker"', mutating_render
+    )
+    barrier_release = publisher.index(
+        'mv "$newsroom_check_marker_tmp" "$newsroom_check_marker"',
+        mutating_render,
+    )
+    parallel_wait = publisher.index(
+        'wait "$newsroom_check_pid"', barrier_release
+    )
+    assert (
+        parallel_check
+        < mutating_render
+        < writer_wait
+        < barrier_release
+        < parallel_wait
+        < build
+    )
+
     ordered = (
         'build-static-bundle.sh" "$release_sha" "$release"',
         'wire_canonical_sha256="$(validate_release_freshness_attestation',

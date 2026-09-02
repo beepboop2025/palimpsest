@@ -24,6 +24,7 @@ import os
 import re
 import stat
 import tempfile
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -7291,8 +7292,13 @@ def _atomic_write(path: Path, payload: bytes) -> None:
     try:
         with os.fdopen(fd, "wb") as handle:
             handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
+            # The direct publisher builds inside a private disposable checkout
+            # and durably seals the verified release bundle before any Railway
+            # mutation. Per-file fsyncs add minutes across the newsroom archive
+            # without adding a recoverable boundary inside that checkout.
+            if os.environ.get("PALIMPSEST_EPHEMERAL_BUILD") != "1":
+                handle.flush()
+                os.fsync(handle.fileno())
             os.fchmod(handle.fileno(), 0o644)
         os.replace(temporary, path)
     finally:
@@ -8177,6 +8183,56 @@ def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
     return drift
 
 
+def _await_check_barrier(
+    path: Path, *, expected: bytes, timeout_seconds: int
+) -> None:
+    """Wait for one exact regular-file barrier in a parallel render handshake.
+
+    Rendering is the expensive part of ``--check``.  The direct publisher can
+    render its independent verification copy concurrently, then release this
+    barrier only after the mutating renderer has closed every output file.
+    """
+
+    if not path.is_absolute() or not expected or timeout_seconds < 1:
+        raise newsroom.NewsroomError("newsroom check barrier is invalid")
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            if time.monotonic() >= deadline:
+                raise newsroom.NewsroomError("newsroom check barrier timed out")
+            time.sleep(0.1)
+            continue
+        if not stat.S_ISREG(metadata.st_mode) or path.read_bytes() != expected:
+            raise newsroom.NewsroomError("newsroom check barrier is malformed")
+        return
+
+
+def _publish_check_barrier(path: Path, *, payload: bytes) -> None:
+    """Atomically signal that an independent verifier finished rendering."""
+
+    if not path.is_absolute() or not payload or path.exists() or path.is_symlink():
+        raise newsroom.NewsroomError("newsroom check signal path is invalid")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fchmod(handle.fileno(), 0o600)
+        if path.exists() or path.is_symlink():
+            raise newsroom.NewsroomError("newsroom check signal path appeared")
+        os.replace(temporary, path)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
@@ -8184,7 +8240,40 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="report generated-file drift without writing",
     )
+    parser.add_argument(
+        "--check-after",
+        type=Path,
+        metavar="ABSOLUTE_BARRIER",
+        help="render now, then wait for a publisher barrier before checking files",
+    )
+    parser.add_argument(
+        "--check-after-timeout",
+        type=int,
+        default=900,
+        metavar="SECONDS",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--signal-rendered",
+        type=Path,
+        metavar="ABSOLUTE_BARRIER",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--publish-after",
+        type=Path,
+        metavar="ABSOLUTE_BARRIER",
+        help=argparse.SUPPRESS,
+    )
     args = parser.parse_args(argv)
+    if args.check_after is not None and not args.check:
+        parser.error("--check-after requires --check")
+    if args.signal_rendered is not None and (
+        not args.check or args.check_after is None
+    ):
+        parser.error("--signal-rendered requires --check and --check-after")
+    if args.publish_after is not None and args.check:
+        parser.error("--publish-after cannot be combined with --check")
     feed = newsroom.build_news_feed()
     wire, pulse, investigations = _load_extension_documents()
     machine_analyses = _load_machine_investigations()
@@ -8200,6 +8289,14 @@ def main(argv: list[str] | None = None) -> int:
         dragon_whispers=dragon_whispers,
     )
     if args.check:
+        if args.signal_rendered is not None:
+            _publish_check_barrier(args.signal_rendered, payload=b"rendered\n")
+        if args.check_after is not None:
+            _await_check_barrier(
+                args.check_after,
+                expected=b"ready\n",
+                timeout_seconds=args.check_after_timeout,
+            )
         drift = check(outputs)
         for item in drift:
             print(item)
@@ -8208,6 +8305,12 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(f"newsroom current: {len(outputs)} files")
         return 0
+    if args.publish_after is not None:
+        _await_check_barrier(
+            args.publish_after,
+            expected=b"rendered\n",
+            timeout_seconds=args.check_after_timeout,
+        )
     changed, unchanged = publish(outputs)
     print(
         f"newsroom -> {READING.relative_to(ROOT)} · {feed['n_stories']} instruments · "

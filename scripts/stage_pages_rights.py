@@ -29,6 +29,7 @@ import re
 import tempfile
 import zipfile
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor
 from datetime import UTC, datetime
 from email.utils import format_datetime, parsedate_to_datetime
 from pathlib import Path
@@ -505,6 +506,38 @@ _UNSET = object()
 
 class PagesRightsError(ValueError):
     """The staged Pages tree cannot be proven free of denied values."""
+
+
+_RIGHTS_SCAN_CONTEXT: tuple[
+    Path,
+    frozenset[str],
+    frozenset[str],
+    re.Pattern[bytes],
+    Mapping[str, tuple[str, int]],
+    Mapping[str, bytes],
+    frozenset[str],
+] | None = None
+
+
+def _initialize_rights_scan_worker(
+    root_text: str,
+    denied_source_ids: frozenset[str],
+    allowed_source_ids: frozenset[str],
+    lineage_pattern: re.Pattern[bytes],
+    binary_allowlist: Mapping[str, tuple[str, int]],
+    generated_share_cards: Mapping[str, bytes],
+    invalid_analysis_feeds: frozenset[str],
+) -> None:
+    global _RIGHTS_SCAN_CONTEXT
+    _RIGHTS_SCAN_CONTEXT = (
+        Path(root_text).resolve(strict=True),
+        denied_source_ids,
+        allowed_source_ids,
+        lineage_pattern,
+        binary_allowlist,
+        generated_share_cards,
+        invalid_analysis_feeds,
+    )
 
 
 def _canonical_json(value: Mapping[str, Any], *, jsonl: bool = False) -> bytes:
@@ -3073,6 +3106,98 @@ def _invalid_china_analysis_availability_feeds(root: Path) -> set[str]:
     return set()
 
 
+def _inspect_rights_candidate(
+    context: tuple[
+        Path,
+        frozenset[str],
+        frozenset[str],
+        re.Pattern[bytes],
+        Mapping[str, tuple[str, int]],
+        Mapping[str, bytes],
+        frozenset[str],
+    ],
+    relative: str,
+) -> str | None:
+    (
+        root,
+        denied_source_ids,
+        allowed_source_ids,
+        lineage_pattern,
+        binary_allowlist,
+        generated_share_cards,
+        invalid_analysis_feeds,
+    ) = context
+    relative_path = Path(relative)
+    if relative_path.is_absolute() or ".." in relative_path.parts:
+        raise PagesRightsError("public scan candidate escaped staged root")
+    path = root / relative_path
+    if relative in {
+        POLICY_RELATIVE_PATH.as_posix(),
+        BINARY_ALLOWLIST_RELATIVE_PATH.as_posix(),
+    }:
+        return None
+    if relative == SHARE_CARD_MANIFEST_RELATIVE_PATH.as_posix():
+        # The loader already parsed the canonical shape, re-rendered every PNG,
+        # and rights-scanned each spec independently.
+        return None
+    if relative == NEWSWIRE_RELATIVE_PATH.as_posix():
+        # The canonical freshness input is schema-validated before staging and
+        # is always quarantined by path. Detection still catches copied wires.
+        return None
+    if relative in {
+        CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH.as_posix(),
+        CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH.as_posix(),
+    }:
+        return relative if relative in invalid_analysis_feeds else None
+    raw = _read_bounded(path)
+    decoded_text = _decode_public_text(raw)
+    generated_share_card = _is_generated_share_card(
+        root,
+        path,
+        raw,
+        generated=generated_share_cards,
+    )
+    if (
+        path.relative_to(root).parent == share_cards.OUTPUT_ROOT
+        and path.suffix.lower() == ".png"
+        and not generated_share_card
+    ):
+        raise PagesRightsError(
+            "generated share card lacks a reproducing manifest row: " + relative
+        )
+    reviewed_binary = _is_reviewed_binary(
+        root, path, raw, allowed=binary_allowlist
+    )
+    if (
+        decoded_text is None
+        and not raw.startswith((b"\x1f\x8b", b"PK\x03\x04"))
+        and not reviewed_binary
+        and not generated_share_card
+    ):
+        raise PagesRightsError(
+            "opaque public artifact lacks exact path-and-digest review: " + relative
+        )
+    if reviewed_binary or generated_share_card:
+        return None
+    if _contains_denied_value(
+        root,
+        path,
+        raw,
+        denied_source_ids=denied_source_ids,
+        allowed_source_ids=allowed_source_ids,
+        decoded_text=decoded_text,
+        lineage_pattern=lineage_pattern,
+    ):
+        return relative
+    return None
+
+
+def _inspect_rights_candidate_worker(relative: str) -> str | None:
+    if _RIGHTS_SCAN_CONTEXT is None:
+        raise PagesRightsError("parallel rights scanner was not initialized")
+    return _inspect_rights_candidate(_RIGHTS_SCAN_CONTEXT, relative)
+
+
 def find_denied_value_paths(
     root: Path,
     *,
@@ -3112,74 +3237,48 @@ def find_denied_value_paths(
         allowed_source_ids=allowed_source_ids,
         lineage_pattern=lineage_pattern,
     )
-    invalid_analysis_feeds = _invalid_china_analysis_availability_feeds(root)
-    violations = []
-    for path in _public_candidates(root):
-        relative = path.relative_to(root).as_posix()
-        if relative in {
-            POLICY_RELATIVE_PATH.as_posix(),
-            BINARY_ALLOWLIST_RELATIVE_PATH.as_posix(),
-        }:
-            continue
-        if relative == SHARE_CARD_MANIFEST_RELATIVE_PATH.as_posix():
-            # The loader above already parsed the exact canonical shape,
-            # re-rendered every PNG, and rights-scanned each spec independently.
-            # Scanning the aggregate would let lineage from one safe no-metric
-            # card combine with a value from an unrelated card.
-            continue
-        if relative == NEWSWIRE_RELATIVE_PATH.as_posix():
-            # The canonical freshness input is schema-validated before staging
-            # and is always quarantined by path. Structural detection below is
-            # for renamed, copied, or encoded raw-wire payloads elsewhere.
-            continue
-        if relative in {
-            CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH.as_posix(),
-            CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH.as_posix(),
-        }:
-            if relative in invalid_analysis_feeds:
-                violations.append(relative)
-            # Exact valid feeds are closed no-value objects. Invalid feeds are
-            # quarantined/fail closed as a pair rather than partially scanned.
-            continue
-        raw = _read_bounded(path)
-        decoded_text = _decode_public_text(raw)
-        generated_share_card = _is_generated_share_card(
-            root,
-            path,
-            raw,
-            generated=generated_share_cards,
+    invalid_analysis_feeds = frozenset(
+        _invalid_china_analysis_availability_feeds(root)
+    )
+    context = (
+        root,
+        denied_source_ids,
+        allowed_source_ids,
+        lineage_pattern,
+        binary_allowlist,
+        generated_share_cards,
+        invalid_analysis_feeds,
+    )
+    candidates = [
+        path.relative_to(root).as_posix() for path in _public_candidates(root)
+    ]
+    cpu_count = max(1, os.cpu_count() or 1)
+    if len(candidates) < 1024 or cpu_count == 1:
+        results = (_inspect_rights_candidate(context, item) for item in candidates)
+        return [relative for relative in results if relative]
+
+    # Large release trees are CPU-bound.  Processes use the host's cores while
+    # executor.map preserves sorted result and exception order exactly.
+    workers = min(16, cpu_count, max(1, len(candidates) // 256))
+    with ProcessPoolExecutor(
+        max_workers=workers,
+        initializer=_initialize_rights_scan_worker,
+        initargs=(
+            str(root),
+            denied_source_ids,
+            allowed_source_ids,
+            lineage_pattern,
+            binary_allowlist,
+            generated_share_cards,
+            invalid_analysis_feeds,
+        ),
+    ) as executor:
+        results = executor.map(
+            _inspect_rights_candidate_worker,
+            candidates,
+            chunksize=32,
         )
-        if (
-            path.relative_to(root).parent == share_cards.OUTPUT_ROOT
-            and path.suffix.lower() == ".png"
-            and not generated_share_card
-        ):
-            raise PagesRightsError(
-                "generated share card lacks a reproducing manifest row: " + relative
-            )
-        reviewed_binary = _is_reviewed_binary(root, path, raw, allowed=binary_allowlist)
-        if (
-            decoded_text is None
-            and not raw.startswith((b"\x1f\x8b", b"PK\x03\x04"))
-            and not reviewed_binary
-            and not generated_share_card
-        ):
-            raise PagesRightsError(
-                "opaque public artifact lacks exact path-and-digest review: " + relative
-            )
-        if reviewed_binary or generated_share_card:
-            continue
-        if _contains_denied_value(
-            root,
-            path,
-            raw,
-            denied_source_ids=denied_source_ids,
-            allowed_source_ids=allowed_source_ids,
-            decoded_text=decoded_text,
-            lineage_pattern=lineage_pattern,
-        ):
-            violations.append(path.relative_to(root).as_posix())
-    return violations
+        return [relative for relative in results if relative]
 
 
 def _ledger_source_counts(root: Path) -> Counter[str]:
