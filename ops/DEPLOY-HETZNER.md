@@ -62,10 +62,10 @@ Mandatory admission and closure checks are:
 4. The latest receipt is normally a same-generation
    `palimpsest.hetzner-railway-publication.v2` receipt; both live origins serve
    its exact manifest bytes and its Railway deployment is the singular active
-   static deployment. The explicit one-unpublished-generation recovery may
-   instead reuse only the current pin's immediate-predecessor bridge receipt;
-   it still requires those exact live bytes and topology and cannot skip a
-   second unpublished pin.
+   static deployment. The explicit unpublished-chain recovery may instead
+   reuse only one archived published-ancestor receipt repeated byte-for-byte by
+   every later unpublished pin; it still requires those exact live bytes and
+   topology.
    The durable intent binds that receipt, both manifest hashes, and the raw
    topology hash; a retry cannot substitute newer predecessor evidence.
 5. Every target publisher/helper/validator/unit blob equals Git `T`. The

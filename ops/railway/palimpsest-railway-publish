@@ -3825,9 +3825,9 @@ if [[ "$receipt_schema" == "palimpsest.hetzner-railway-publication.v2" ]]; then
     && "$receipt_deployment_id" == "$bridge_receipt_deployment_id" \
     && "$SUCCESS_RECEIPT" != "$bridge_receipt_path" ]] \
     && cmp -s "$SUCCESS_RECEIPT" "$bridge_receipt_path"; then
-    log "accepting exact one-generation predecessor receipt bound by successor pin"
+    log "accepting exact published-ancestor receipt bound by successor lineage"
   else
-    log "v2 predecessor no longer matches the publication base or its one-generation bridge" >&2
+    log "v2 predecessor no longer matches the publication base or its published-ancestor bridge" >&2
     exit 1
   fi
 fi

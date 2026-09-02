@@ -1101,11 +1101,20 @@ def _validate_successor_pin_document(
         maximum=MAX_RECEIPT_BYTES,
     )
     receipt = _strict_json(receipt_raw, label="predecessor publication receipt")
+    receipt_pin_digest = _digest(
+        receipt_proof["publication_base_sha256"],
+        label="predecessor receipt publication-base digest",
+    )
+    receipt_pin = pins.get(receipt_pin_digest)
+    if receipt_pin is None:
+        raise WatchdogError(
+            "successor predecessor receipt pin is outside the authenticated lineage"
+        )
     _validate_v2_receipt(
         config,
         receipt,
-        pin=prior_pin,
-        pin_sha256=prior_digest,
+        pin=receipt_pin,
+        pin_sha256=receipt_pin_digest,
         current=False,
         verify_bundle_git=False,
     )
@@ -1125,8 +1134,8 @@ def _validate_successor_pin_document(
     }
     if (
         receipt_proof != expected_receipt
-        or receipt["base_sha"] != prior_target
-        or receipt["publication_base"]["sha256"] != prior_digest
+        or receipt["base_sha"] != receipt_pin["target"]["base_sha"]
+        or receipt["publication_base"]["sha256"] != receipt_pin_digest
         or receipt["host_deployed_sha"] != host["deployed_commit"]
     ):
         raise WatchdogError("successor predecessor receipt projection changed")

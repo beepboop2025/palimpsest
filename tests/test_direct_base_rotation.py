@@ -238,11 +238,11 @@ def test_exact_prior_v2_receipt_is_the_only_successor_bridge(tmp_path: Path) -> 
         validate_bridge(forged, forged_raw, pin=pin)
 
 
-def test_unpublished_generation_recovery_is_exactly_one_pin_deep(
+def test_unpublished_chain_recovery_keeps_one_published_ancestor(
     tmp_path: Path,
 ) -> None:
     namespace = _namespace()
-    validate_recovery = namespace["_validate_unpublished_generation_bridge"]
+    validate_recovery = namespace["_validate_unpublished_chain_bridge"]
     error = namespace["RotationError"]
     receipt = _receipt()
     raw = (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode()
@@ -250,14 +250,33 @@ def test_unpublished_generation_recovery_is_exactly_one_pin_deep(
     archive.write_bytes(raw)
     pin = _pin(str(archive), hashlib.sha256(raw).hexdigest())
 
-    validate_recovery(receipt, raw, pin=pin)
+    published_pin = {
+        "schema_version": namespace["BOOTSTRAP_SCHEMA"],
+        "target": {"base_sha": "1" * 40},
+    }
+    authenticated = {"d" * 64: published_pin, "e" * 64: pin}
+    validate_recovery(receipt, raw, pin=pin, authenticated_pins=authenticated)
 
-    skipped_twice = json.loads(json.dumps(pin))
-    skipped_twice["generation"] = 2
-    skipped_twice["predecessor"]["pin"]["generation"] = 1
-    skipped_twice["predecessor"]["pin"]["target_sha"] = "9" * 40
-    with pytest.raises(error, match="immediate predecessor pin"):
-        validate_recovery(receipt, raw, pin=skipped_twice)
+    second_unpublished = json.loads(json.dumps(pin))
+    second_unpublished["generation"] = 2
+    authenticated["f" * 64] = second_unpublished
+    validate_recovery(
+        receipt,
+        raw,
+        pin=second_unpublished,
+        authenticated_pins=authenticated,
+    )
+
+    broken_chain = json.loads(json.dumps(pin))
+    broken_chain["predecessor"]["publication_receipt"]["sha256"] = "0" * 64
+    authenticated["e" * 64] = broken_chain
+    with pytest.raises(error, match="one exact bridge receipt"):
+        validate_recovery(
+            receipt,
+            raw,
+            pin=second_unpublished,
+            authenticated_pins=authenticated,
+        )
 
 
 def test_recovery_mode_has_separate_exact_acknowledgement() -> None:
@@ -269,11 +288,11 @@ def test_recovery_mode_has_separate_exact_acknowledgement() -> None:
             "b" * 40,
             "--ack",
             namespace["RECOVERY_ACKNOWLEDGEMENT"],
-            "--recover-one-unpublished-generation",
+            "--recover-unpublished-chain",
         ]
     )
 
-    assert args.recover_one_unpublished_generation is True
+    assert args.recover_unpublished_chain is True
     assert args.ack != namespace["ACKNOWLEDGEMENT"]
 
 
