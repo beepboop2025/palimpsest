@@ -44,7 +44,7 @@ RIGHTS_CRITICAL_PATHS = {
     "config/china_econ_source_policy.json",
     "config/pages_public_binary_allowlist.json",
     "protocol/pages-rights-release-receipt-v1.schema.json",
-    "protocol/pages-rights-release-receipt-v2.schema.json",
+    "protocol/pages-rights-release-receipt-v3.schema.json",
     "protocol/publication-freshness-attestation-v1.schema.json",
     "protocol/restricted-publication-endpoint-v1.schema.json",
     "protocol/restricted-publication-v1.schema.json",

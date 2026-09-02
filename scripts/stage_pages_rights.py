@@ -65,7 +65,8 @@ NEWSWIRE_SCHEMA = "palimpsest-newswire.v1"
 CHINA_SITUATION_SCHEMA = "palimpsest-china-situation.v1"
 ENDPOINT_STATUS_SCHEMA = "palimpsest-restricted-publication-endpoint.v1"
 ENDPOINT_STATUS_SCHEMA_PATH = "protocol/restricted-publication-endpoint-v1.schema.json"
-RELEASE_RECEIPT_SCHEMA = "palimpsest.pages-rights-release-receipt.v2"
+RELEASE_RECEIPT_SCHEMA = "palimpsest.pages-rights-release-receipt.v3"
+PUBLIC_TREE_PROOF_SCHEMA = "palimpsest.pages-rights-public-tree-proof.v1"
 MAX_PUBLIC_FILE_BYTES = 64 * 1024 * 1024
 MAX_DECODED_BYTES = 16 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 256
@@ -3117,7 +3118,7 @@ def _inspect_rights_candidate(
         frozenset[str],
     ],
     relative: str,
-) -> str | None:
+) -> tuple[str | None, str, int]:
     (
         root,
         denied_source_ids,
@@ -3131,25 +3132,28 @@ def _inspect_rights_candidate(
     if relative_path.is_absolute() or ".." in relative_path.parts:
         raise PagesRightsError("public scan candidate escaped staged root")
     path = root / relative_path
+    raw = _read_bounded(path)
+    digest = hashlib.sha256(raw).hexdigest()
+    size = len(raw)
     if relative in {
         POLICY_RELATIVE_PATH.as_posix(),
         BINARY_ALLOWLIST_RELATIVE_PATH.as_posix(),
     }:
-        return None
+        return None, digest, size
     if relative == SHARE_CARD_MANIFEST_RELATIVE_PATH.as_posix():
         # The loader already parsed the canonical shape, re-rendered every PNG,
         # and rights-scanned each spec independently.
-        return None
+        return None, digest, size
     if relative == NEWSWIRE_RELATIVE_PATH.as_posix():
         # The canonical freshness input is schema-validated before staging and
         # is always quarantined by path. Detection still catches copied wires.
-        return None
+        return None, digest, size
     if relative in {
         CHINA_ANALYSIS_JSON_FEED_RELATIVE_PATH.as_posix(),
         CHINA_ANALYSIS_RSS_FEED_RELATIVE_PATH.as_posix(),
     }:
-        return relative if relative in invalid_analysis_feeds else None
-    raw = _read_bounded(path)
+        denied = relative if relative in invalid_analysis_feeds else None
+        return denied, digest, size
     decoded_text = _decode_public_text(raw)
     generated_share_card = _is_generated_share_card(
         root,
@@ -3178,7 +3182,7 @@ def _inspect_rights_candidate(
             "opaque public artifact lacks exact path-and-digest review: " + relative
         )
     if reviewed_binary or generated_share_card:
-        return None
+        return None, digest, size
     if _contains_denied_value(
         root,
         path,
@@ -3188,23 +3192,25 @@ def _inspect_rights_candidate(
         decoded_text=decoded_text,
         lineage_pattern=lineage_pattern,
     ):
-        return relative
-    return None
+        return relative, digest, size
+    return None, digest, size
 
 
-def _inspect_rights_candidate_worker(relative: str) -> str | None:
+def _inspect_rights_candidate_worker(
+    relative: str,
+) -> tuple[str | None, str, int]:
     if _RIGHTS_SCAN_CONTEXT is None:
         raise PagesRightsError("parallel rights scanner was not initialized")
     return _inspect_rights_candidate(_RIGHTS_SCAN_CONTEXT, relative)
 
 
-def find_denied_value_paths(
+def _scan_denied_value_paths(
     root: Path,
     *,
     policy: SourcePolicy | None = None,
     evaluated_at: datetime | None = None,
-) -> list[str]:
-    """Return every recursively detected denied-value public path."""
+) -> tuple[list[str], dict[str, tuple[str, int]]]:
+    """Return denied paths plus the exact bytes inspected for every candidate."""
 
     root = root.resolve(strict=True)
     if policy is None:
@@ -3255,30 +3261,127 @@ def find_denied_value_paths(
     cpu_count = max(1, os.cpu_count() or 1)
     if len(candidates) < 1024 or cpu_count == 1:
         results = (_inspect_rights_candidate(context, item) for item in candidates)
-        return [relative for relative in results if relative]
+        materialized = list(results)
+    else:
+        # Large release trees are CPU-bound.  Processes use the host's cores while
+        # executor.map preserves sorted result and exception order exactly.
+        workers = min(16, cpu_count, max(1, len(candidates) // 256))
+        with ProcessPoolExecutor(
+            max_workers=workers,
+            initializer=_initialize_rights_scan_worker,
+            initargs=(
+                str(root),
+                denied_source_ids,
+                allowed_source_ids,
+                lineage_pattern,
+                binary_allowlist,
+                generated_share_cards,
+                invalid_analysis_feeds,
+            ),
+        ) as executor:
+            materialized = list(
+                executor.map(
+                    _inspect_rights_candidate_worker,
+                    candidates,
+                    chunksize=32,
+                )
+            )
 
-    # Large release trees are CPU-bound.  Processes use the host's cores while
-    # executor.map preserves sorted result and exception order exactly.
-    workers = min(16, cpu_count, max(1, len(candidates) // 256))
-    with ProcessPoolExecutor(
-        max_workers=workers,
-        initializer=_initialize_rights_scan_worker,
-        initargs=(
-            str(root),
-            denied_source_ids,
-            allowed_source_ids,
-            lineage_pattern,
-            binary_allowlist,
-            generated_share_cards,
-            invalid_analysis_feeds,
-        ),
-    ) as executor:
-        results = executor.map(
-            _inspect_rights_candidate_worker,
-            candidates,
-            chunksize=32,
+    denied: list[str] = []
+    snapshot: dict[str, tuple[str, int]] = {}
+    for relative, result in zip(candidates, materialized, strict=True):
+        denied_path, digest, size = result
+        snapshot[relative] = (digest, size)
+        if denied_path is not None:
+            denied.append(denied_path)
+    return denied, snapshot
+
+
+def find_denied_value_paths(
+    root: Path,
+    *,
+    policy: SourcePolicy | None = None,
+    evaluated_at: datetime | None = None,
+) -> list[str]:
+    """Return every recursively detected denied-value public path."""
+
+    denied, _snapshot = _scan_denied_value_paths(
+        root,
+        policy=policy,
+        evaluated_at=evaluated_at,
+    )
+    return denied
+
+
+def _snapshot_public_tree(root: Path) -> dict[str, tuple[str, int]]:
+    snapshot: dict[str, tuple[str, int]] = {}
+    for path in _public_candidates(root):
+        relative = path.relative_to(root).as_posix()
+        raw = _read_bounded(path)
+        snapshot[relative] = (hashlib.sha256(raw).hexdigest(), len(raw))
+    return snapshot
+
+
+def _public_tree_proof(
+    snapshot: Mapping[str, tuple[str, int]],
+) -> dict[str, Any]:
+    """Commit to every public path except documents separately bound by receipt."""
+
+    excluded = {
+        STATUS_RELATIVE_PATH.as_posix(),
+        FRESHNESS_ATTESTATION_RELATIVE_PATH.as_posix(),
+    }
+    digest = hashlib.sha256()
+    files = 0
+    total_bytes = 0
+    for relative in sorted(set(snapshot) - excluded):
+        file_digest, size = snapshot[relative]
+        encoded = relative.encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, "big"))
+        digest.update(encoded)
+        digest.update(size.to_bytes(8, "big"))
+        digest.update(bytes.fromhex(file_digest))
+        files += 1
+        total_bytes += size
+    return {
+        "schema_version": PUBLIC_TREE_PROOF_SCHEMA,
+        "files": files,
+        "bytes": total_bytes,
+        "sha256": digest.hexdigest(),
+    }
+
+
+def _assert_expected_staging_mutations(
+    *,
+    before: Mapping[str, tuple[str, int]],
+    after: Mapping[str, tuple[str, int]],
+    quarantined: Iterable[str],
+) -> None:
+    """Prove the semantic scan and final byte snapshot describe one tree."""
+
+    generated = {
+        STATUS_RELATIVE_PATH.as_posix(),
+        FRESHNESS_ATTESTATION_RELATIVE_PATH.as_posix(),
+    }
+    missing = sorted(set(before) - set(after))
+    unexpected = sorted(set(after) - set(before) - generated)
+    if missing or unexpected:
+        raise PagesRightsError(
+            "staged public path set drifted after rights scan: "
+            f"missing={missing[:8]} unexpected={unexpected[:8]}"
         )
-        return [relative for relative in results if relative]
+    mutable = set(quarantined) | generated
+    if DATAPACKAGE_RELATIVE_PATH.as_posix() in before:
+        mutable.add(DATAPACKAGE_RELATIVE_PATH.as_posix())
+    drifted = sorted(
+        relative
+        for relative in (set(before) & set(after)) - mutable
+        if before[relative] != after[relative]
+    )
+    if drifted:
+        raise PagesRightsError(
+            "clean public bytes drifted after rights scan: " + ", ".join(drifted[:8])
+        )
 
 
 def _ledger_source_counts(root: Path) -> Counter[str]:
@@ -3771,7 +3874,12 @@ def stage_pages_tree(
         admission_at=admission_at,
     )
 
-    detected = set(find_denied_value_paths(root, policy=policy, evaluated_at=clock))
+    detected_paths, scanned_snapshot = _scan_denied_value_paths(
+        root,
+        policy=policy,
+        evaluated_at=clock,
+    )
+    detected = set(detected_paths)
     designated = {path for path in ALWAYS_RESTRICT if (root / path).is_file()}
     quarantined = sorted(detected | designated)
     master = build_restricted_status(
@@ -3810,13 +3918,52 @@ def stage_pages_tree(
         durable=False,
     )
     _reconcile_datapackage_sizes(root)
-
-    remaining = find_denied_value_paths(root, policy=policy, evaluated_at=admission)
-    if remaining:
-        raise PagesRightsError(
-            "denied China values remain after quarantine: " + ", ".join(remaining)
-        )
+    staged_snapshot = _snapshot_public_tree(root)
+    _assert_expected_staging_mutations(
+        before=scanned_snapshot,
+        after=staged_snapshot,
+        quarantined=quarantined,
+    )
+    _verify_quarantined_endpoints(root=root, status=master, quarantined=quarantined)
+    _verify_datapackage_sizes(root)
     return master
+
+
+def _verify_quarantined_endpoints(
+    *,
+    root: Path,
+    status: Mapping[str, Any],
+    quarantined: Iterable[str],
+) -> None:
+    status_raw = _canonical_json(status)
+    master_sha256 = hashlib.sha256(status_raw).hexdigest()
+    for relative in quarantined:
+        path = root / relative
+        if not path.is_file() or not _within_root(root, path):
+            raise PagesRightsError(f"quarantined endpoint is missing: {relative}")
+        raw = _read_bounded(path)
+        expected = _status_for_artifact(status, relative)
+        if path.suffix.lower() == ".html":
+            if raw != _restricted_html(expected):
+                raise PagesRightsError(
+                    f"HTML endpoint is not an exact stub: {relative}"
+                )
+        elif path.suffix.lower() in {".json", ".jsonl"}:
+            endpoint_documents = _json_documents(path, raw)
+            if len(endpoint_documents) != 1:
+                raise PagesRightsError(f"machine endpoint is not singular: {relative}")
+            expected_endpoint = build_restricted_endpoint_status(
+                master_status=status,
+                artifact_path=relative,
+                master_sha256=master_sha256,
+                master_bytes=len(status_raw),
+            )
+            if raw != _canonical_json(
+                expected_endpoint, jsonl=path.suffix.lower() == ".jsonl"
+            ):
+                raise PagesRightsError(f"machine endpoint is not exact: {relative}")
+        elif raw != _restricted_text(expected):
+            raise PagesRightsError(f"text endpoint is not an exact stub: {relative}")
 
 
 def verify_staged_tree(
@@ -3825,6 +3972,7 @@ def verify_staged_tree(
     publication_sha: str,
     evaluated_at: datetime,
     admission_at: datetime,
+    recursive_scan: bool = True,
 ) -> dict[str, Any]:
     """Verify the staged status contract and recursive no-leak invariant."""
 
@@ -3872,36 +4020,21 @@ def verify_staged_tree(
     required = {path for path in ALWAYS_RESTRICT if (root / path).is_file()}
     if not required.issubset(quarantined):
         raise PagesRightsError("publication-rights status omits a designated endpoint")
-    remaining = find_denied_value_paths(root, policy=policy, evaluated_at=verified_at)
-    if remaining:
-        raise PagesRightsError("denied China values remain: " + ", ".join(remaining))
-    for relative in quarantined:
-        path = root / relative
-        if not path.is_file() or not _within_root(root, path):
-            raise PagesRightsError(f"quarantined endpoint is missing: {relative}")
-        raw = _read_bounded(path)
-        expected = _status_for_artifact(status, relative)
-        if path.suffix.lower() == ".html":
-            if raw != _restricted_html(expected):
-                raise PagesRightsError(
-                    f"HTML endpoint is not an exact stub: {relative}"
-                )
-        elif path.suffix.lower() in {".json", ".jsonl"}:
-            endpoint_documents = _json_documents(path, raw)
-            if len(endpoint_documents) != 1:
-                raise PagesRightsError(f"machine endpoint is not singular: {relative}")
-            expected_endpoint = build_restricted_endpoint_status(
-                master_status=status,
-                artifact_path=relative,
-                master_sha256=master_sha256,
-                master_bytes=len(status_raw),
+    if recursive_scan:
+        remaining = find_denied_value_paths(
+            root,
+            policy=policy,
+            evaluated_at=verified_at,
+        )
+        if remaining:
+            raise PagesRightsError(
+                "denied China values remain: " + ", ".join(remaining)
             )
-            if raw != _canonical_json(
-                expected_endpoint, jsonl=path.suffix.lower() == ".jsonl"
-            ):
-                raise PagesRightsError(f"machine endpoint is not exact: {relative}")
-        elif raw != _restricted_text(expected):
-            raise PagesRightsError(f"text endpoint is not an exact stub: {relative}")
+    _verify_quarantined_endpoints(
+        root=root,
+        status=status,
+        quarantined=quarantined,
+    )
     return status
 
 
@@ -3948,6 +4081,7 @@ def build_release_receipt(
     # again would create a needless time-of-check/time-of-use window between
     # validation and sealing the out-of-tree receipt.
     attestation_raw = _canonical_json(freshness_attestation)
+    public_tree = _public_tree_proof(_snapshot_public_tree(root))
     return {
         "schema_version": RELEASE_RECEIPT_SCHEMA,
         "publication_sha": revision,
@@ -3968,6 +4102,7 @@ def build_release_receipt(
             "sha256": hashlib.sha256(attestation_raw).hexdigest(),
             "bytes": len(attestation_raw),
         },
+        "public_tree": public_tree,
         "effective_decisions_sha256": hashlib.sha256(decisions_raw).hexdigest(),
     }
 
@@ -4052,6 +4187,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 publication_sha=args.publication_sha,
                 evaluated_at=evaluated_at,
                 admission_at=admission_at,
+                recursive_scan=False,
             )
             verify_release_receipt(
                 receipt_path,

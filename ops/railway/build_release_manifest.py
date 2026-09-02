@@ -104,7 +104,7 @@ CRITICAL_PATHS = (
     "protocol/evidence-lake-metrics-v1.schema.json",
     "protocol/collector-health-watchdog-receipt-v1.schema.json",
     "protocol/pages-rights-release-receipt-v1.schema.json",
-    "protocol/pages-rights-release-receipt-v2.schema.json",
+    "protocol/pages-rights-release-receipt-v3.schema.json",
     "protocol/publication-freshness-v1.schema.json",
     "protocol/regional-captured-index-v1.schema.json",
     "protocol/regional-data-dump-v1.schema.json",
