@@ -1066,6 +1066,31 @@ def test_publisher_status_binding_and_freshness_reserve_precede_mutation() -> No
     ]
     assert "provider_receipt_sha" not in publisher
 
+    host_snapshot = publisher.index(
+        'stage_snapshot_file "$WIRE_STATUS_FILE" "$snapshot_status"'
+    )
+    private_refresh = publisher.index(
+        '"$PYTHON_BIN" -m scripts.newswire_pull', host_snapshot
+    )
+    target_registry = publisher.index(
+        '--config "$checkout/config/news_sources.json"', private_refresh
+    )
+    private_output = publisher.index('--output "$snapshot_wire"', target_registry)
+    snapshot_validation = publisher.index(
+        'status_binding="$(validate_newswire_snapshot_receipt', private_output
+    )
+    assert (
+        host_snapshot
+        < private_refresh
+        < target_registry
+        < private_output
+        < snapshot_validation
+        < fast_branch
+    )
+    assert '--output "$WIRE_FILE"' not in publisher[
+        private_refresh:snapshot_validation
+    ]
+
     parallel_check = publisher.index(
         '"$PYTHON_BIN" -m scripts.build_newsroom --check \\\n'
         '  --signal-rendered "$newsroom_rendered_marker"'
