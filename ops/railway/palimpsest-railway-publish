@@ -554,8 +554,8 @@ canonical_attestation = (
         attestation,
         allow_nan=False,
         ensure_ascii=False,
+        indent=2,
         sort_keys=True,
-        separators=(",", ":"),
     )
     + "\n"
 ).encode("utf-8")
