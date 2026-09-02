@@ -47,7 +47,7 @@ SCHEMA = json.loads(
     )
 )
 RECEIPT_SCHEMA = json.loads(
-    (ROOT / "protocol" / "pages-rights-release-receipt-v2.schema.json").read_text(
+    (ROOT / "protocol" / "pages-rights-release-receipt-v3.schema.json").read_text(
         encoding="utf-8"
     )
 )
@@ -685,7 +685,7 @@ def test_pre_quarantine_freshness_attestation_is_compact_and_lineage_bound(
     assert _verify(tmp_path, evaluated_at=RIGHTS_CLOCK) == status
 
 
-def test_release_receipt_v2_rejects_attested_identity_tamper_during_check(
+def test_release_receipt_v3_rejects_attested_identity_tamper_during_check(
     tmp_path: Path,
     capsys,
 ):
@@ -703,7 +703,10 @@ def test_release_receipt_v2_rejects_attested_identity_tamper_during_check(
     _receipt_validator().validate(receipt)
     attestation_path = tmp_path / stage_pages_rights.FRESHNESS_ATTESTATION_RELATIVE_PATH
     attestation_raw = attestation_path.read_bytes()
-    assert receipt["schema_version"] == "palimpsest.pages-rights-release-receipt.v2"
+    assert receipt["schema_version"] == "palimpsest.pages-rights-release-receipt.v3"
+    assert receipt["public_tree"]["schema_version"] == (
+        "palimpsest.pages-rights-public-tree-proof.v1"
+    )
     assert receipt["freshness_attestation"] == {
         "path": "readings/publication-freshness-attestation-latest.json",
         "sha256": hashlib.sha256(attestation_raw).hexdigest(),
@@ -748,7 +751,7 @@ def test_release_receipt_v2_rejects_attested_identity_tamper_during_check(
         ("freshness_attestation", "readings/other-attestation.json"),
     ],
 )
-def test_release_receipt_v2_pins_every_artifact_path(
+def test_release_receipt_v3_pins_every_artifact_path(
     tmp_path: Path,
     identity: str,
     forged_path: str,

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/pages-rights-release-receipt-v3.schema.json",
+  "title": "Palimpsest Pages rights release receipt v3",
+  "description": "Out-of-tree admission receipt binding the rights status, source policy, freshness attestation, and exact post-quarantine public tree.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "publication_sha",
+    "edition_clock",
+    "admission_clock",
+    "status",
+    "policy",
+    "freshness_attestation",
+    "public_tree",
+    "effective_decisions_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "palimpsest.pages-rights-release-receipt.v3"
+    },
+    "publication_sha": {
+      "$ref": "#/$defs/commitSha"
+    },
+    "edition_clock": {
+      "$ref": "#/$defs/utcSecond"
+    },
+    "admission_clock": {
+      "$ref": "#/$defs/utcSecond"
+    },
+    "status": {
+      "allOf": [
+        {"$ref": "#/$defs/fileIdentity"},
+        {"properties": {"path": {"const": "readings/china-publication-rights-latest.json"}}}
+      ]
+    },
+    "policy": {
+      "allOf": [
+        {"$ref": "#/$defs/fileIdentity"},
+        {"properties": {"path": {"const": "config/china_econ_source_policy.json"}}}
+      ]
+    },
+    "freshness_attestation": {
+      "allOf": [
+        {"$ref": "#/$defs/fileIdentity"},
+        {"properties": {"path": {"const": "readings/publication-freshness-attestation-latest.json"}}}
+      ]
+    },
+    "public_tree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "files", "bytes", "sha256"],
+      "properties": {
+        "schema_version": {"const": "palimpsest.pages-rights-public-tree-proof.v1"},
+        "files": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "effective_decisions_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "commitSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "utcSecond": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "fileIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 9007199254740991}
+      }
+    }
+  }
+}
