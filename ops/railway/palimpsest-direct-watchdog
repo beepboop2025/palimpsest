@@ -2998,7 +2998,6 @@ def validate_lineage(
         )
         if receipt_pin_sha256 != pin_sha256:
             predecessor = pin.get("predecessor")
-            prior_pin = predecessor.get("pin") if isinstance(predecessor, dict) else None
             prior_receipt = (
                 predecessor.get("publication_receipt")
                 if isinstance(predecessor, dict)
@@ -3006,9 +3005,9 @@ def validate_lineage(
             )
             if (
                 pin.get("schema_version") != SUCCESSOR_PIN_SCHEMA
-                or not isinstance(prior_pin, dict)
                 or not isinstance(prior_receipt, dict)
-                or receipt_pin_sha256 != prior_pin.get("sha256")
+                or receipt_pin_sha256
+                != prior_receipt.get("publication_base_sha256")
                 or _sha256(receipt_raw) != prior_receipt.get("sha256")
             ):
                 raise WatchdogError(
