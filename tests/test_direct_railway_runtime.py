@@ -1109,6 +1109,16 @@ def test_publisher_status_binding_and_freshness_reserve_precede_mutation() -> No
     assert "for _ in $(seq 1 36)" not in publisher
 
 
+def test_publisher_uses_the_rights_gate_canonical_attestation_encoding() -> None:
+    validator = _publisher_shell_function(
+        "validate_release_freshness_attestation", "validate_structured_newsroom"
+    )
+    attestation_encoder = validator.split("canonical_attestation =", maxsplit=1)[1]
+
+    assert "indent=2" in attestation_encoder
+    assert 'separators=(",", ":")' not in attestation_encoder
+
+
 def test_publisher_status_validator_rejects_unbound_latest(
     tmp_path: Path,
 ) -> None:
