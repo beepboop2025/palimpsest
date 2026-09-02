@@ -71,6 +71,19 @@ def _strict_document(path: Path) -> dict[str, Any]:
     return value
 
 
+def _analysis_feed_for_publication(
+    feed: Mapping[str, Any],
+) -> tuple[Mapping[str, Any], bool]:
+    """Keep rights-only availability notices out of analytical joins."""
+
+    public_values_denied = newsroom_builder._china_public_values_denied(
+        feed["generated_at"]
+    )
+    if not public_values_denied:
+        return feed, False
+    return newsroom_builder._rights_safe_analysis_feed(feed), True
+
+
 def load_inputs(
     *,
     wire_path: Path = WIRE_PATH,
@@ -85,6 +98,7 @@ def load_inputs(
 ]:
     wire = _strict_document(wire_path)
     feed = _strict_document(newsroom_path)
+    analysis_feed, allow_missing_collectors = _analysis_feed_for_publication(feed)
     readings_dir = resolve_readings_dir(preferred=ROOT / "readings")
     peer = (
         peer_context_model.load_peer_document(PEER_CONTEXT_PATH)
@@ -93,12 +107,13 @@ def load_inputs(
     )
     analyses = event_analysis.build_event_analyses(
         wire,
-        feed,
+        analysis_feed,
         live_families=event_analysis.load_optional_live_families(readings_dir),
         archive_context=event_analysis.load_optional_archive_context(readings_dir),
         corroboration=event_analysis.load_optional_corroboration(readings_dir),
         peer=peer,
         peer_warehouses=event_analysis.load_optional_peer_warehouses(readings_dir),
+        allow_missing_collectors=allow_missing_collectors,
     )
     social = _strict_document(social_path) if social_path.is_file() else None
     reviewed_telegram = (

@@ -17,6 +17,8 @@ from core import (
     newswire,
     social_observations,
 )
+from scripts import build_china_situation as china_situation_builder
+from scripts import build_newsroom as newsroom_builder
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -180,6 +182,37 @@ def test_every_in_scope_event_gets_one_situation_without_strengthening(
         assert "do not increase that count" in row["synthesis"]["summary"]
         assert "official-page coverage is" in row["synthesis"]["summary"]
         assert "archive-news-context" in row["synthesis"]["summary"]
+
+
+def test_rights_availability_notices_are_not_joined_as_collector_evidence(inputs):
+    wire, feed, _analyses = inputs
+    public_feed = newsroom_builder._rights_safe_newsroom_feed(feed)
+
+    analysis_feed, allow_missing = (
+        china_situation_builder._analysis_feed_for_publication(public_feed)
+    )
+    gated_ids = newsroom_builder._RIGHTS_SAFE_PROJECTION_SIGNAL_IDS
+
+    assert allow_missing is True
+    assert gated_ids.isdisjoint(
+        story["signal_id"] for story in analysis_feed["stories"]
+    )
+
+    analyses = event_analysis.build_event_analyses(
+        wire,
+        analysis_feed,
+        allow_missing_collectors=allow_missing,
+    )
+    gated_context = [
+        row
+        for analysis in analyses.values()
+        for row in analysis["collector_context"]
+        if row["signal_id"] in gated_ids
+    ]
+    assert gated_context
+    assert all(row["status"] == "missing" for row in gated_context)
+    assert all(row["source_timestamp"] is None for row in gated_context)
+    assert all(row["input_sha256"] is None for row in gated_context)
 
 
 def test_reviewed_telegram_empty_state_is_bound_without_event_guessing(inputs):
