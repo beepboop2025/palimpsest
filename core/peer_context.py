@@ -11,7 +11,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
-from urllib.parse import urlsplit
+from urllib.parse import urldefrag, urlsplit
 
 from collectors.ooni_peer_join import host_of, join_hosts
 from collectors.weiboscope import ATTRIBUTION as WEIBOSCOPE_ATTRIBUTION
@@ -146,7 +146,9 @@ def peer_row(
         "status": status,
         "sentence": public_text(sentence, limit=600),
         "as_of": iso_z(as_of) if status == "live" and as_of else None,
-        "peer_url": public_text(peer_url, limit=2048) or None,
+        # Feed navigation fragments do not identify a different source document.
+        # Leave scheme, authority, and credentials intact for strict validation.
+        "peer_url": urldefrag(public_text(peer_url, limit=2048))[0] or None,
         "title": public_text(title, limit=240) or None,
         "excerpt": excerpt_text,
         "host": public_text(host, limit=253) or None,

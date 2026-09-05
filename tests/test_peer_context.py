@@ -646,7 +646,8 @@ def test_weiboscope_tiny_index_probe_abstains_on_login_or_homepage():
     assert all(row["status"] != "tiny-index" for row in result["probes"])
 
 
-def test_event_analysis_emits_canned_peer_sentences_for_an_official_url():
+@pytest.mark.parametrize("fragment", ["", "#new_tab"])
+def test_event_analysis_emits_canned_peer_sentences_for_an_official_url(fragment):
     wire = json.loads((ROOT / "readings/newswire-latest.json").read_text())
     feed = json.loads((ROOT / "readings/newsroom-latest.json").read_text())
     items = {item["item_id"]: item for item in wire["items"]}
@@ -684,7 +685,7 @@ def test_event_analysis_emits_canned_peer_sentences_for_an_official_url():
         },
         "cdt_items": [{
             "title": event["headline"],
-            "url": "https://chinadigitaltimes.net/2026/08/related/",
+            "url": "https://chinadigitaltimes.net/2026/08/related/" + fragment,
             "excerpt": "Bounded excerpt.",
             "published_at": "2026-08-17T00:00:00Z",
         }],
@@ -696,6 +697,7 @@ def test_event_analysis_emits_canned_peer_sentences_for_an_official_url():
     assert "GreatFire's 90-day verdict for this host is not blocked as of 2026-08-18." in by_peer["greatfire"]["sentence"]
     assert "OONI has 12 China measurements on this host" in by_peer["ooni"]["sentence"]
     assert "Palimpsest did not write that piece" in by_peer["cdt"]["sentence"]
+    assert by_peer["cdt"]["peer_url"] == "https://chinadigitaltimes.net/2026/08/related/"
     assert "Historical Weiboscope volume is not on this node" in by_peer["weiboscope"]["sentence"]
     assert all(row["relation"] == "peer-context-not-palimpsest-capture" for row in analysis["peer_context"])
     assert "proves the Party" not in json.dumps(analysis)
