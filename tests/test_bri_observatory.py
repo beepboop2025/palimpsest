@@ -293,6 +293,27 @@ def test_recurring_analysis_keeps_an_empty_window_visible_without_inference() ->
     assert "not evidence that nothing happened" in page
 
 
+@pytest.mark.parametrize(
+    ("text", "term", "expected"),
+    [
+        ("unrelated publisher report", "cpec", False),
+        ("abridged report", "bri", False),
+        ("bri2 report", "bri", False),
+        ("bri-backed project", "bri", True),
+        ("bri_report", "bri", True),
+        ("一带一路建设", "一带一路", True),
+        ("c++ context", "c++", True),
+        ("c.. context", "c++", False),
+    ],
+)
+def test_regional_term_prefilter_preserves_literal_and_boundary_rules(
+    text: str, term: str, expected: bool,
+) -> None:
+    from scripts.build_bri_observatory import _text_has_term
+
+    assert _text_has_term(text, term) is expected
+
+
 def test_regional_projection_rejects_unrelated_items_from_broad_publishers() -> None:
     wire = _synthetic_regional_wire()
     template = copy.deepcopy(wire["events"][0])
