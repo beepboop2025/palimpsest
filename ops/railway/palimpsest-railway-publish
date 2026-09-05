@@ -4171,6 +4171,48 @@ export PYTHONDONTWRITEBYTECODE=1
 export PALIMPSEST_PUBLICATION_SNAPSHOT_ROOT="$checkout"
 cd "$checkout"
 
+# Rebuild cached peer joins with the accepted target code before analysis. The
+# pinned host producer may still project OONI's query end date as a measurement
+# clock. Native source readings stay unchanged; no network probe is allowed.
+"$TIMEOUT_BIN" --signal=TERM --kill-after=5s 60s "$PYTHON_BIN" - <<'PYPEER'
+from pathlib import Path
+
+from collectors import ooni_peer_join
+from core.peer_features import ooni_document
+from scripts import peer_context_pull
+
+root = Path.cwd().resolve()
+if peer_context_pull.ROOT.resolve() != root:
+    raise SystemExit("peer rebuild runtime is outside the publication snapshot")
+for candidate in (peer_context_pull.WAREHOUSE, *ooni_peer_join.WAREHOUSE_CANDIDATES):
+    if candidate is not None and candidate.exists():
+        if not candidate.resolve().is_relative_to(root):
+            raise SystemExit("peer rebuild warehouse escapes the frozen publication snapshot")
+        if candidate.is_symlink() or any(path.is_symlink() for path in candidate.rglob("*")):
+            raise SystemExit("peer rebuild warehouse contains a symbolic link")
+previous = peer_context_pull.load_peer_document(peer_context_pull.OUT) or {}
+retained_live = {
+    row["host"]: row
+    for row in (previous.get("ooni") or {}).get("hosts", [])
+    if row.get("status") == "live"
+}
+rebuilt = peer_context_pull.main(probe_weiboscope=False)
+if not isinstance(rebuilt, dict):
+    raise SystemExit("snapshot peer rebuild abstained; publication cannot continue")
+rebuilt_hosts = {row["host"]: row for row in rebuilt["ooni"]["hosts"]}
+for host, row in retained_live.items():
+    if rebuilt_hosts.get(host, {}).get("status") != "live":
+        raise SystemExit("snapshot peer rebuild would lose retained live OONI coverage")
+    if row.get("source") == "ooni-bulk-warehouse" and rebuilt_hosts[host] != row:
+        raise SystemExit("snapshot peer rebuild would change retained OONI bulk evidence")
+expected_ooni = ooni_document(rebuilt["ooni"])
+if expected_ooni is None:
+    if peer_context_pull.OONI_OUT.exists():
+        raise SystemExit("snapshot peer rebuild left an obsolete OONI companion")
+elif peer_context_pull.load_peer_document(peer_context_pull.OONI_OUT) != expected_ooni:
+    raise SystemExit("snapshot peer rebuild did not publish its exact OONI companion")
+PYPEER
+
 # The pinned host checkout intentionally remains the incident base, so its
 # scheduled analysis may lag a newly captured wire. Generate analysis with the
 # target publication code from the exact overlaid wire/readings, outside the
