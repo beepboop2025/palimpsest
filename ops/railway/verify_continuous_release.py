@@ -66,7 +66,7 @@ ALLOWED_LIVE_ORIGINS = frozenset(
         "https://www.palimpsest.info",
     }
 )
-ALLOWED_DEPLOYMENT_REASONS = frozenset({"deploy", "deploymentRollback"})
+ALLOWED_DEPLOYMENT_REASONS = frozenset({"deploy", "deploymentRollback", "rollback"})
 EXPECTED_SERVICE_NAME = "palimpsest-publication"
 
 

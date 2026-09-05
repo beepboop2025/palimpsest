@@ -878,7 +878,7 @@ def _validate_successor_pin(pin: dict[str, Any]) -> None:
     if (
         not isinstance(railway.get("image_digest"), str)
         or IMAGE.fullmatch(railway["image_digest"]) is None
-        or railway.get("reason") not in {"deploy", "deploymentRollback"}
+        or railway.get("reason") not in {"deploy", "deploymentRollback", "rollback"}
     ):
         raise ReconciliationError("successor Railway deployment identity is invalid")
     _timestamp(railway["created_at"], "successor Railway created_at")
@@ -1009,7 +1009,7 @@ def _validate_candidate(candidate: dict[str, Any]) -> None:
     _timestamp(topology["created_at"], "rollback topology created_at")
     for key in ("project_id", "environment_id", "service_id", "deployment_id"):
         _uuid(topology[key], f"rollback topology {key}")
-    if not isinstance(topology["image_digest"], str) or IMAGE.fullmatch(topology["image_digest"]) is None or topology["reason"] not in {"deploy", "deploymentRollback"}:
+    if not isinstance(topology["image_digest"], str) or IMAGE.fullmatch(topology["image_digest"]) is None or topology["reason"] not in {"deploy", "deploymentRollback", "rollback"}:
         raise ReconciliationError("rollback topology deployment identity is invalid")
     if not isinstance(topology["path"], str) or not topology["path"]:
         raise ReconciliationError("rollback topology path is invalid")
@@ -1096,7 +1096,7 @@ def _topology(raw: bytes, *, deployment: str | None = None, image: str | None = 
     if not isinstance(instances, list) or len(instances) != 1 or not isinstance(instances[0], dict) or instances[0].get("status") != "RUNNING":
         raise ReconciliationError("Railway latest deployment is not singular and running")
     meta = latest.get("meta")
-    if not isinstance(meta, dict) or meta.get("buildOnly") is not False or meta.get("reason") not in {"deploy", "deploymentRollback"}:
+    if not isinstance(meta, dict) or meta.get("buildOnly") is not False or meta.get("reason") not in {"deploy", "deploymentRollback", "rollback"}:
         raise ReconciliationError("Railway deployment metadata is unsafe")
     image_digest = meta.get("imageDigest")
     if not isinstance(image_digest, str) or IMAGE.fullmatch(image_digest) is None or meta.get("volumeMounts") != []:
@@ -3545,7 +3545,7 @@ def _is_fresh_rollback(
             attempt["predecessor_deployment_id"],
         }
         and active["image_digest"] == expected_image_digest
-        and active["reason"] == "deploymentRollback"
+        and active["reason"] in {"deploymentRollback", "rollback"}
         and _timestamp(active["created_at"], "restored deployment created_at")
         > _timestamp(attempt["created_at"], "rollback attempt created_at")
     )

@@ -3521,6 +3521,8 @@ def test_prior_attempt_requires_fresh_rollback_and_terminal_failure_gate() -> No
     }
     assert not fresh(same_image_deploy, attempt, "sha256:" + "9" * 64)
     rollback = {**same_image_deploy, "reason": "deploymentRollback"}
+    provider_rollback = {**same_image_deploy, "reason": "rollback"}
+    assert fresh(provider_rollback, attempt, "sha256:" + "9" * 64)
     assert fresh(rollback, attempt, "sha256:" + "9" * 64)
     assert not fresh(
         {**rollback, "created_at": attempt["created_at"]},

@@ -3115,7 +3115,7 @@ instances = latest.get("instances")
 if not isinstance(instances, list) or len(instances) != 1 or not isinstance(instances[0], dict) or instances[0].get("status") != "RUNNING":
     raise SystemExit("Railway latest deployment is not singular and running")
 metadata = latest.get("meta")
-if not isinstance(metadata, dict) or metadata.get("buildOnly") is not False or metadata.get("reason") not in {"deploy", "deploymentRollback"}:
+if not isinstance(metadata, dict) or metadata.get("buildOnly") is not False or metadata.get("reason") not in {"deploy", "deploymentRollback", "rollback"}:
     raise SystemExit("Railway latest deployment metadata is invalid")
 image = metadata.get("imageDigest")
 if not isinstance(image, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", image) is None or metadata.get("volumeMounts") != []:
@@ -3143,7 +3143,7 @@ PY
   IFS=$'\t' read -r predecessor_image_digest predecessor_deployment_reason \
     predecessor_deployment_created_at <<<"$topology_row"
   [[ "$predecessor_image_digest" =~ ^sha256:[0-9a-f]{64}$ \
-    && "$predecessor_deployment_reason" =~ ^(deploy|deploymentRollback)$ \
+    && "$predecessor_deployment_reason" =~ ^(deploy|deploymentRollback|rollback)$ \
     && -n "$predecessor_deployment_created_at" ]] || {
     log "predecessor topology extraction returned an invalid identity" >&2
     return 1
@@ -3300,7 +3300,7 @@ read_publication_base() {
           (.railway | type == "object" and keys == ["created_at","deployment_id","environment_id","image_digest","project_id","reason","service_id","topology"] and
             ([.deployment_id,.environment_id,.project_id,.service_id] | all(uuid)) and
             (.image_digest | type == "string" and test("^sha256:[0-9a-f]{64}$")) and
-            (.reason == "deploy" or .reason == "deploymentRollback") and
+            (.reason == "deploy" or .reason == "deploymentRollback" or .reason == "rollback") and
             (.created_at | clock) and (.topology | reference)) and
           (.target | type == "object" and keys == ["base_sha","public_main_sha"] and
             (.base_sha | sha40) and .base_sha == .public_main_sha)
