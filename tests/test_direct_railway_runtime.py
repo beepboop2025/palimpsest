@@ -3504,6 +3504,50 @@ def test_data_hold_clear_is_candidate_bound_and_attempt_state_is_monotonic(
     assert not hold_path.exists()
 
 
+@pytest.mark.parametrize("status,accepted", [
+    ("SUCCESS", True), ("REMOVED", True), ("BUILDING", False), ("FAILED", False),
+])
+def test_saved_attempt_remains_bound_after_candidate_is_retired(tmp_path, monkeypatch, status, accepted):
+    namespace = runpy.run_path(str(RECONCILE))
+    read_attempt = namespace["_read_attempt"]
+    globals_ = read_attempt.__globals__
+    monkeypatch.setitem(globals_, "STATE_ROOT", tmp_path)
+    journal = "a" * 64
+    candidate = _candidate_fixture()
+    candidate_id = "705bd041-4c52-4ce7-a137-dc3e4c55cacb"
+    image = "sha256:" + "9" * 64
+    path = namespace["_attempt_path"](journal)
+    topology_path = namespace["_attempt_topology_path"](journal)
+    for directory in (path.parent, topology_path.parent):
+        directory.mkdir(mode=0o700)
+    topology_raw = b"authenticated pre-rollback topology"
+    topology_path.write_bytes(topology_raw)
+    topology_path.chmod(0o600)
+    def topology(raw, **kwargs):
+        assert raw == topology_raw
+        assert kwargs == {"deployment": candidate_id, "reason": "deploy"}
+        return {"image_digest": image}
+    monkeypatch.setitem(globals_, "_topology", topology)
+    attempt = {
+        "schema_version": namespace["ATTEMPT_SCHEMA"],
+        "status": "mutation_may_execute", "candidate_journal_sha256": journal,
+        "candidate_deployment_id": candidate_id,
+        "candidate_topology_path": str(topology_path),
+        "predecessor_deployment_id": candidate["predecessor"]["deployment_id"],
+        "created_at": "2026-08-30T12:05:00Z",
+        "topology_sha256": hashlib.sha256(topology_raw).hexdigest(),
+    }
+    path.write_bytes(namespace["_canonical"](attempt))
+    path.chmod(0o600)
+    deployment = {"id": candidate_id, "status": status, "meta": {"imageDigest": image}}
+    kwargs = dict(candidate=candidate, deployment=deployment, uid=os.getuid(), gid=os.getgid())
+    if accepted:
+        assert read_attempt(journal, **kwargs)[2] == attempt
+        deployment["meta"]["imageDigest"] = "sha256:" + "8" * 64
+    with pytest.raises(namespace["ReconciliationError"], match="unique candidate"):
+        read_attempt(journal, **kwargs)
+
+
 def test_prior_attempt_requires_fresh_rollback_and_terminal_failure_gate() -> None:
     namespace = runpy.run_path(str(RECONCILE))
     fresh = namespace["_is_fresh_rollback"]
