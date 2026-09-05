@@ -8266,6 +8266,13 @@ def _publish_check_barrier(path: Path, *, payload: bytes) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Each publisher/checker still independently renders its first copy.  Only
+    # repeated manifest reproduction inside this invocation reuses PNG bytes.
+    with share_cards.png_render_cache():
+        return _main(argv)
+
+
+def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "--check",
