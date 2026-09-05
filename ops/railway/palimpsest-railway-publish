@@ -48,7 +48,9 @@ readonly LEDGER_FILE="$LIVE_WIRE_ROOT/newswire-versions.jsonl"
 readonly WIRE_STATUS_FILE="${PALIMPSEST_NEWSWIRE_STATUS_FILE:-$LIVE_WIRE_ROOT/newswire-status.json}"
 readonly NEWSWIRE_LOCK_FILE="${PALIMPSEST_NEWSWIRE_LOCK_FILE:-$LIVE_WIRE_ROOT/newswire.lock}"
 readonly WIRE_FRESHNESS_BUDGET_SECONDS=1800
-readonly MAX_MUTATION_TO_RECEIPT_SECONDS=720
+# Bound provider mutation and receipt proof to ten minutes so a full build
+# can use fifteen minutes of the unchanged thirty-minute wire budget.
+readonly MAX_MUTATION_TO_RECEIPT_SECONDS=600
 readonly DESIRED_LIVE_MARGIN_SECONDS=300
 readonly RAILWAY_UPLOAD_TIMEOUT_SECONDS=90
 readonly RAILWAY_COMMAND_TIMEOUT_SECONDS=20

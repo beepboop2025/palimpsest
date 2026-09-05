@@ -1039,7 +1039,7 @@ def test_publisher_status_binding_and_freshness_reserve_precede_mutation() -> No
 
     assert "WIRE_FRESHNESS_SECONDS = 30 * 60" in server
     assert "readonly WIRE_FRESHNESS_BUDGET_SECONDS=1800" in publisher
-    assert "readonly MAX_MUTATION_TO_RECEIPT_SECONDS=720" in publisher
+    assert "readonly MAX_MUTATION_TO_RECEIPT_SECONDS=600" in publisher
     assert "readonly DESIRED_LIVE_MARGIN_SECONDS=300" in publisher
     assert "readonly RECEIPT_COMMIT_RESERVE_SECONDS=10" in publisher
     for contract in (
@@ -1239,8 +1239,9 @@ def test_publisher_status_validator_rejects_unbound_latest(
     assert "digest does not bind" in forged.stderr
 
 
+@pytest.mark.parametrize("wire_age_seconds", [901, 86400])
 def test_stale_reserve_short_circuits_all_publication_mutations(
-    tmp_path: Path,
+    tmp_path: Path, wire_age_seconds: int,
 ) -> None:
     function = _publisher_shell_function(
         "require_pre_mutation_freshness_reserve", "validate_live_freshness_proofs"
@@ -1248,16 +1249,19 @@ def test_stale_reserve_short_circuits_all_publication_mutations(
     preparation = tmp_path / "preparation"
     candidate = tmp_path / "candidate"
     railway = tmp_path / "railway"
+    wire_clock = (datetime.now(UTC) - timedelta(seconds=wire_age_seconds)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     script = "\n".join(
         (
             "set -Eeuo pipefail",
             f"PYTHON_BIN={shlex.quote(sys.executable)}",
             "WIRE_FRESHNESS_BUDGET_SECONDS=1800",
-            "MAX_MUTATION_TO_RECEIPT_SECONDS=720",
+            "MAX_MUTATION_TO_RECEIPT_SECONDS=600",
             "DESIRED_LIVE_MARGIN_SECONDS=300",
             "log() { :; }",
             function,
-            'require_pre_mutation_freshness_reserve "2000-01-01T00:00:00Z"',
+            f'require_pre_mutation_freshness_reserve "{wire_clock}"',
             f"touch {shlex.quote(str(preparation))}",
             f"touch {shlex.quote(str(candidate))}",
             f"touch {shlex.quote(str(railway))}",
@@ -1277,11 +1281,14 @@ def test_stale_reserve_short_circuits_all_publication_mutations(
     assert not railway.exists()
 
 
-def test_mutation_deadline_is_absolute_and_never_exceeds_declared_bound() -> None:
+@pytest.mark.parametrize("wire_age_seconds", [0, 840])
+def test_mutation_deadline_is_absolute_and_never_exceeds_declared_bound(
+    wire_age_seconds: int,
+) -> None:
     function = _publisher_shell_function(
         "require_pre_mutation_freshness_reserve", "validate_live_freshness_proofs"
     )
-    wire_clock = datetime.now(UTC).replace(microsecond=0).strftime(
+    wire_clock = (datetime.now(UTC) - timedelta(seconds=wire_age_seconds)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
     before = int(datetime.now(UTC).timestamp())
@@ -1290,7 +1297,7 @@ def test_mutation_deadline_is_absolute_and_never_exceeds_declared_bound() -> Non
             "set -Eeuo pipefail",
             f"PYTHON_BIN={shlex.quote(sys.executable)}",
             "WIRE_FRESHNESS_BUDGET_SECONDS=1800",
-            "MAX_MUTATION_TO_RECEIPT_SECONDS=720",
+            "MAX_MUTATION_TO_RECEIPT_SECONDS=600",
             "DESIRED_LIVE_MARGIN_SECONDS=300",
             "mutation_proof_deadline_epoch=0",
             "log() { :; }",
@@ -1309,7 +1316,9 @@ def test_mutation_deadline_is_absolute_and_never_exceeds_declared_bound() -> Non
 
     assert result.returncode == 0, result.stderr
     deadline = int(result.stdout.strip())
-    assert before + 715 <= deadline <= after + 720
+    assert before + 595 <= deadline <= after + 600
+    captured = datetime.strptime(wire_clock, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    assert deadline <= int(captured.timestamp()) + 1800 - 300
 
 
 def test_latest_success_waits_for_exact_two_origin_freshness_and_attestation_proof() -> None:
