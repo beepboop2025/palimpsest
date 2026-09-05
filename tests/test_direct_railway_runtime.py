@@ -3384,6 +3384,8 @@ def test_recovery_receipt_is_idempotently_consumed_after_crash(tmp_path: Path) -
     namespace = runpy.run_path(str(RECONCILE))
     write_recovery = namespace["_write_recovery"]
     globals_ = write_recovery.__globals__
+    bindings = []
+    globals_["_record_restoration_binding"] = lambda document, gid: bindings.append(document)
     state = tmp_path / "state"
     state.mkdir(mode=0o700)
     pending = state / "pending-candidate.json"
