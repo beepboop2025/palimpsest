@@ -175,6 +175,27 @@ curl_with_deadline() {
   curl --max-time "$timeout_seconds" "$@"
 }
 
+read_candidate_status_with_deadline() {
+  local output status
+  # Retry only reads of the already-submitted candidate. Failed commands may
+  # emit partial JSON; expose output only after a successful command, and keep
+  # the original mutation deadline and receipt reserve on every attempt.
+  while bounded_deadline_timeout "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+    "$RECEIPT_COMMIT_RESERVE_SECONDS" >/dev/null; do
+    if output="$(run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
+      "$RECEIPT_COMMIT_RESERVE_SECONDS" "$@")"; then
+      printf '%s\n' "$output"
+      return 0
+    else
+      status=$?
+    fi
+    log "Railway candidate status read failed (exit $status); retrying the same submission within its original deadline" >&2
+    bounded_deadline_sleep "$POST_MUTATION_POLL_SECONDS" \
+      "$RECEIPT_COMMIT_RESERVE_SECONDS" || break
+  done
+  return 1
+}
+
 sha256_file() {
   sha256sum "$1" | awk '{print $1}'
 }
@@ -4546,8 +4567,7 @@ deployment_reason=""
 deployment_created_at=""
 while bounded_deadline_timeout "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
   "$RECEIPT_COMMIT_RESERVE_SECONDS" >/dev/null; do
-  inventory="$(run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
-    "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+  inventory="$(read_candidate_status_with_deadline \
     env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
     "$railway_token_name=$railway_token_value" \
     "$RAILWAY_BIN" deployment list --json --limit 30 \
@@ -4604,8 +4624,7 @@ if created < prepared - timedelta(seconds=120) or created > now + timedelta(seco
     raise SystemExit("candidate deployment timestamp is outside its journal boundary")
 PY
 candidate_topology="$work_root/candidate-railway-status.json"
-run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
-  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+read_candidate_status_with_deadline \
   env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
   "$railway_token_name=$railway_token_value" \
   "$RAILWAY_BIN" status --project "$PROJECT_ID" \
@@ -5009,8 +5028,7 @@ log "live newsroom proves bounded snapshot copy, ${live_newsroom_measurement_cou
 # Close the live-fetch TOCTOU window: the exact candidate topology proved
 # before origin checks must still be active immediately before receipt commit.
 candidate_final_topology="$work_root/candidate-final-railway-status.json"
-run_with_deadline "$RAILWAY_COMMAND_TIMEOUT_SECONDS" \
-  "$RECEIPT_COMMIT_RESERVE_SECONDS" \
+read_candidate_status_with_deadline \
   env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
   "$railway_token_name=$railway_token_value" \
   "$RAILWAY_BIN" status --project "$PROJECT_ID" \
