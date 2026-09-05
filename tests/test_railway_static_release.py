@@ -1021,6 +1021,29 @@ def test_growth_endpoint_rejects_schema_drift_without_logging(
     assert "127.0.0.1" not in captured.out
 
 
+@pytest.mark.parametrize("event,location,page", [
+    ("weekly_brief_clicked", "home_weekly", "/"),
+    ("private_diligence_clicked", "home_diligence", "/"),
+    ("weekly_brief_clicked", "situation_top", "/news/china/situation/"),
+    ("private_diligence_clicked", "situation_bottom", "/news/china/situation/page/2/"),
+    ("weekly_brief_clicked", "news_weekly", "/news/"),
+    ("private_diligence_clicked", "news_diligence", "/news/"),
+])
+def test_reader_conversion_events_remain_page_bound(event, location, page):
+    payload = {
+        "schema_version": "palimpsest.growth-event.v1",
+        "event": event, "location": location, "page": page, "source": "direct",
+    }
+    assert server_module._validate_growth_event(payload) == payload
+    for wrong_page in {"/", "/news/", "/news/china/situation/"} - {page}:
+        if page.startswith("/news/china/situation/") and wrong_page.startswith("/news/china/situation/"):
+            continue
+        with pytest.raises(ValueError, match="does not match its page"):
+            server_module._validate_growth_event({**payload, "page": wrong_page})
+    with pytest.raises(ValueError):
+        server_module._validate_growth_event({**payload, "telegram_user_id": "private"})
+
+
 def test_growth_endpoint_rejects_cross_origin_and_read_methods(tmp_path: Path) -> None:
     payload = {
         "schema_version": "palimpsest.growth-event.v1",

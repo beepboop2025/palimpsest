@@ -299,7 +299,9 @@
     download_started: true,
     feed_clicked: true,
     follow_clicked: true,
-    inquiry_clicked: true
+    inquiry_clicked: true,
+    private_diligence_clicked: true,
+    weekly_brief_clicked: true
   };
 
   function growthDisabled() {
@@ -316,6 +318,7 @@
   function growthPage() {
     var path = location.pathname;
     if (path === "/") return path;
+    if (path === "/news/") return path;
     if (/^\/news\/china\/situation\/(?:page\/[1-9][0-9]*\/)?$/.test(path)) return path;
     return null;
   }

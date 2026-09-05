@@ -31,20 +31,26 @@ GROWTH_EVENT_MAX_BYTES = 512
 GROWTH_EVENT_LOCATION_MAP = {
     "brief_clicked": frozenset({"home_primary"}),
     "citation_copied": frozenset({"page_share"}),
-    "deep_read": frozenset({"home", "situation"}),
+    "deep_read": frozenset({"home", "news", "situation"}),
     "download_started": frozenset({"page_share"}),
     "feed_clicked": frozenset({"situation_bottom", "situation_top"}),
     "follow_clicked": frozenset(
         {"home_secondary", "situation_bottom", "situation_top"}
     ),
     "inquiry_clicked": frozenset({"situation_bottom", "situation_top"}),
+    "private_diligence_clicked": frozenset(
+        {"home_diligence", "news_diligence", "situation_bottom", "situation_top"}
+    ),
+    "weekly_brief_clicked": frozenset(
+        {"home_weekly", "news_weekly", "situation_bottom", "situation_top"}
+    ),
 }
 GROWTH_EVENT_NAMES = frozenset(GROWTH_EVENT_LOCATION_MAP)
 GROWTH_EVENT_SOURCES = frozenset(
     {"ai", "direct", "other", "same_site", "search", "social"}
 )
 GROWTH_EVENT_PAGE_RE = re.compile(
-    r"^/(?:news/china/situation/(?:page/[1-9][0-9]*/)?|)$"
+    r"^/(?:news/|news/china/situation/(?:page/[1-9][0-9]*/)?|)$"
 )
 FRESHNESS_SCHEMA = "palimpsest.publication-freshness.v1"
 FRESHNESS_ATTESTATION_SCHEMA = "palimpsest.publication-freshness-attestation.v1"
@@ -124,10 +130,14 @@ def _validate_growth_event(value: Any) -> dict[str, str]:
     page = event.get("page")
     if not isinstance(page, str) or GROWTH_EVENT_PAGE_RE.fullmatch(page) is None:
         raise ValueError("unsupported growth event page")
-    home_location = str(location).startswith("home")
-    if home_location != (page == "/"):
+    location_text = str(location)
+    if page == "/" and not location_text.startswith("home"):
         raise ValueError("growth event location does not match its page")
-    if location == "page_share" and not page.startswith("/news/china/situation/"):
+    if page == "/news/" and not location_text.startswith("news"):
+        raise ValueError("growth event location does not match its page")
+    if page.startswith("/news/china/situation/") and not (
+        location_text.startswith("situation") or location == "page_share"
+    ):
         raise ValueError("page-share event does not match its page")
     return {key: str(event[key]) for key in sorted(event)}
 

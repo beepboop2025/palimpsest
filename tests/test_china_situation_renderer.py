@@ -109,16 +109,21 @@ def test_page_makes_each_relation_and_zero_state_visible(tmp_path):
     assert "Reported " in page
     assert "Analysis refreshed " in page
     assert 'data-growth-page="situation"' in page
-    assert "Get the China evidence desk in Telegram." in page
-    assert "A click is browser activity" in page
-    assert "subscriber is counted only after Telegram confirms" in page
+    assert "Make the China desk part of your weekly research." in page
+    assert "Read the current weekly brief with its sources and limitations" in page
     assert "?start=china_situation_top" in page
     assert "?start=china_situation_bottom" in page
     assert "Follow the daily desk on Telegram" in page
     assert 'data-growth-event="follow_clicked"' in page
     assert 'data-growth-event="feed_clicked"' in page
-    assert 'data-growth-event="inquiry_clicked"' in page
-    assert "The GitHub inquiry is public." in page
+    assert 'data-growth-event="weekly_brief_clicked"' in page
+    assert 'href="/weekly-situation.html"' in page
+    assert 'data-growth-event="private_diligence_clicked"' in page
+    assert "?start=china_diligence_top" in page
+    assert "?start=china_diligence_bottom" in page
+    assert "Starting it records your interest and subscribes you" in page
+    assert "/stop ends them" in page
+    assert "funding-inquiry.yml" not in page
     assert len(page) < 700_000
 
 
