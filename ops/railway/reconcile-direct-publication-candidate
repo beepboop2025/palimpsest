@@ -3457,7 +3457,9 @@ def _read_attempt(
         image = deployment.get("meta", {}).get("imageDigest")
         if (
             deployment.get("id") != document["candidate_deployment_id"]
-            or deployment.get("status") != "SUCCESS"
+            # A successful rollback retires the candidate. Its saved running
+            # topology still proves the identity at the one-attempt boundary.
+            or deployment.get("status") not in {"SUCCESS", "REMOVED"}
             or not isinstance(image, str)
             or IMAGE.fullmatch(image) is None
             or topology["image_digest"] != image
