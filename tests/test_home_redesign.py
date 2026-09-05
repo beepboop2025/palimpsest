@@ -175,6 +175,11 @@ def test_home_leads_with_one_attributable_china_funnel():
     assert 'data-growth-location="home_primary"' in home
     assert 'data-growth-location="home_secondary"' in home
     assert "A click is not counted as a subscriber." in home
+    assert 'href="/weekly-situation.html"' in home
+    assert 'data-growth-event="weekly_brief_clicked"' in home
+    assert 'data-growth-event="private_diligence_clicked"' in home
+    assert "?start=china_diligence_home" in home
+    assert "Starting the bot also subscribes you to daily updates" in home
 
 
 def test_growth_measurement_is_bounded_and_respects_browser_opt_outs():
