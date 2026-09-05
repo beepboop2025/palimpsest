@@ -539,6 +539,62 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
     )
 
 
+@pytest.mark.parametrize(
+    "case",
+    ["historical", "restored", "missing_binding", "wrong_id", "changed_manifest", "changed_base"],
+)
+def test_archived_predecessor_uses_only_authenticated_restoration_mapping(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    archived = lineage.receipt
+    raw = _json_bytes(archived)
+    digest = _sha(raw)
+    archive_path = lineage.config.state_root / "receipts" / f"{digest}.json"
+    _write(archive_path, raw, 0o600)
+    restored = "99999999-9999-4999-8999-999999999999"
+    predecessor = {
+        "archive_path": str(archive_path),
+        "base_sha": archived["base_sha"],
+        "deployment_id": archived["railway"]["deployment_id"] if case == "historical" else restored,
+        "input_sha256": archived["input_sha256"],
+        "manifest_sha256": archived["live_manifest"]["sha256"],
+        "receipt_sha256": digest,
+        "release_sha": archived["release_sha"],
+        "schema_version": watchdog.V2_SCHEMA,
+        "tree_sha256": archived["live_manifest"]["tree_sha256"],
+        "wire_generated_at": archived["wire_generated_at"],
+    }
+    if case != "missing_binding":
+        _write(lineage.config.control_root / f"restored-{digest}.json", b"{}\n", 0o640)
+    calls = []
+
+    def authenticated_mapping(control_root, receipt_raw, receipt, group_gid):
+        calls.append(receipt_raw)
+        assert control_root == lineage.config.control_root
+        assert receipt_raw == raw and receipt == archived
+        assert group_gid == lineage.config.pin_gid
+        return restored
+
+    def load_helper(path):
+        assert path == str(lineage.config.installed_rotation_helper)
+        return {"_restored_deployment_id": authenticated_mapping}
+
+    monkeypatch.setattr(watchdog.runpy, "run_path", load_helper)
+    if case == "wrong_id":
+        predecessor["deployment_id"] = "88888888-8888-4888-8888-888888888888"
+    elif case == "changed_manifest":
+        predecessor["manifest_sha256"] = "0" * 64
+    elif case == "changed_base":
+        predecessor["base_sha"] = "0" * 40
+    pin = json.loads(lineage.pin_path.read_bytes())
+    if case in {"historical", "restored"}:
+        assert watchdog._read_predecessor_archive(lineage.config, predecessor, pin=pin) == (digest, raw, archived)
+    else:
+        with pytest.raises(watchdog.WatchdogError, match="immutable archive"):
+            watchdog._read_predecessor_archive(lineage.config, predecessor, pin=pin)
+    assert len(calls) == (0 if case in {"historical", "missing_binding"} else 1)
+
+
 def test_v2_allows_publication_base_to_differ_from_host_deployment(
     lineage: Fixture,
 ) -> None:

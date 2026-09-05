@@ -1554,6 +1554,16 @@ def _read_predecessor_archive(
         "tree_sha256": tree_sha256,
         "wire_generated_at": archived.get("wire_generated_at"),
     }
+    if (
+        schema == V2_SCHEMA
+        and predecessor["deployment_id"] != expected["deployment_id"]
+        and (config.control_root / f"restored-{receipt_digest}.json").exists()
+    ):
+        # Keep historical links unchanged; resolve only a differing restored ID.
+        helper = runpy.run_path(str(config.installed_rotation_helper))
+        expected["deployment_id"] = helper["_restored_deployment_id"](
+            config.control_root, raw, archived, config.pin_gid
+        )
     if predecessor != expected:
         raise WatchdogError("predecessor fields do not match the immutable archive")
     return receipt_digest, raw, archived
