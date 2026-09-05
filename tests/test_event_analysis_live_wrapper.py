@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tarfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -53,6 +54,37 @@ def _load_wrapper():
 
 
 runtime = _load_wrapper()
+
+
+def test_restoration_binding_does_not_rewrite_historical_rotations(tmp_path, monkeypatch):
+    original = "12345678-1234-4123-8123-123456789abc"
+    restored = "87654321-1234-4123-8123-123456789abc"
+    receipt = {"railway": {"deployment_id": original}}
+    raw = b"exact archived receipt\n"
+    config = SimpleNamespace(control_root=tmp_path, installed_rotation_helper=tmp_path / "helper", pin_gid=123)
+    calls = []
+    def resolve(*args):
+        calls.append(args)
+        return restored
+    monkeypatch.setattr(runtime.runpy, "run_path", lambda path: {"_restored_deployment_id": resolve})
+    changed = {"deployment_id": restored}
+    assert runtime._rotation_deployment_id(config, changed, receipt, raw) == original
+    (tmp_path / f"restored-{hashlib.sha256(raw).hexdigest()}.json").write_text("root fixture")
+    assert runtime._rotation_deployment_id(config, {"deployment_id": original}, receipt, raw) == original
+    assert calls == []
+    assert runtime._rotation_deployment_id(config, changed, receipt, raw) == restored
+    assert calls == [(tmp_path, raw, receipt, 123)]
+
+
+def test_invalid_root_restoration_proof_still_stops_analysis(tmp_path, monkeypatch):
+    raw = b"receipt\n"
+    (tmp_path / f"restored-{hashlib.sha256(raw).hexdigest()}.json").write_text("invalid")
+    config = SimpleNamespace(control_root=tmp_path, installed_rotation_helper=tmp_path / "helper", pin_gid=123)
+    def refuse(*args):
+        raise ValueError("restoration proof mismatch")
+    monkeypatch.setattr(runtime.runpy, "run_path", lambda path: {"_restored_deployment_id": refuse})
+    with pytest.raises(ValueError, match="restoration proof mismatch"):
+        runtime._rotation_deployment_id(config, {"deployment_id": "changed"}, {"railway": {"deployment_id": "original"}}, raw)
 
 
 def _git(repository: Path, *arguments: str) -> str:
@@ -734,6 +766,7 @@ def test_generation_two_checks_only_active_installed_artifacts(
     )
     archived_receipt = {
         "live_manifest": {"file_count": 10, "total_bytes": 20},
+        "railway": {"deployment_id": deployment_id},
     }
     monkeypatch.setattr(
         runtime,
