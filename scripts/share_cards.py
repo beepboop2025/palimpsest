@@ -17,9 +17,13 @@ import re
 import struct
 import unicodedata
 import zlib
+from collections import OrderedDict
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from threading import Lock
+from typing import Any, Iterator, Mapping, Sequence
 
 from scripts import share_card_cjk_data
 
@@ -79,6 +83,70 @@ class RenderedCard:
     path: Path
     url: str
     alt: str
+
+
+class _PngRenderCache:
+    """Bound retained immutable render bytes, including complete spec keys."""
+
+    def __init__(self, max_entries: int, max_bytes: int):
+        if type(max_entries) is not int or type(max_bytes) is not int:
+            raise ValueError("PNG cache limits must be positive integers")
+        if max_entries < 1 or max_bytes < 1:
+            raise ValueError("PNG cache limits must be positive integers")
+        self.max_entries = max_entries
+        self.max_bytes = max_bytes
+        self.entries: OrderedDict[bytes, bytes] = OrderedDict()
+        self.retained_bytes = 0
+        self._lock = Lock()
+
+    def get(self, key: bytes) -> bytes | None:
+        with self._lock:
+            png = self.entries.get(key)
+            if png is not None:
+                self.entries.move_to_end(key)
+            return png
+
+    def put(self, key: bytes, png: bytes) -> None:
+        size = len(key) + len(png)
+        if size > self.max_bytes:
+            return
+        with self._lock:
+            previous = self.entries.pop(key, None)
+            if previous is not None:
+                self.retained_bytes -= len(key) + len(previous)
+            while self.entries and (
+                len(self.entries) >= self.max_entries
+                or self.retained_bytes + size > self.max_bytes
+            ):
+                old_key, old_png = self.entries.popitem(last=False)
+                self.retained_bytes -= len(old_key) + len(old_png)
+            self.entries[key] = png
+            self.retained_bytes += size
+
+    def clear(self) -> None:
+        with self._lock:
+            self.entries.clear()
+            self.retained_bytes = 0
+
+
+_PNG_RENDER_CACHE: ContextVar[_PngRenderCache | None] = ContextVar(
+    "palimpsest_png_render_cache", default=None
+)
+
+
+@contextmanager
+def png_render_cache(
+    *, max_entries: int = 4096, max_bytes: int = 64 * 1024 * 1024
+) -> Iterator[_PngRenderCache]:
+    """Opt in for one newsroom invocation; ordinary and rights renders stay uncached."""
+
+    cache = _PngRenderCache(max_entries, max_bytes)
+    token = _PNG_RENDER_CACHE.set(cache)
+    try:
+        yield cache
+    finally:
+        _PNG_RENDER_CACHE.reset(token)
+        cache.clear()
 
 
 # Five-by-seven glyphs. Lowercase is deliberately rendered as uppercase: the
@@ -550,7 +618,30 @@ def render_card(
     spec = normalize_spec(value)
     spec_raw = _canonical_json(spec)
     spec_digest = hashlib.sha256(spec_raw).hexdigest()
-    seed = bytes.fromhex(spec_digest)
+    cache = _PNG_RENDER_CACHE.get()
+    png = cache.get(spec_raw) if cache is not None else None
+    if png is None:
+        png = _render_png(spec, bytes.fromhex(spec_digest))
+        if cache is not None:
+            cache.put(spec_raw, png)
+    if png_dimensions(png) != (WIDTH, HEIGHT):
+        raise ShareCardError("renderer emitted the wrong PNG dimensions")
+    digest = hashlib.sha256(png).hexdigest()
+    path = OUTPUT_ROOT / f"sha256-{digest}.png"
+    return RenderedCard(
+        spec=spec,
+        spec_sha256=spec_digest,
+        png=png,
+        sha256=digest,
+        path=path,
+        url=f"{site.rstrip('/')}/{path.as_posix()}",
+        alt=_card_alt(spec),
+    )
+
+
+def _render_png(spec: Mapping[str, Any], seed: bytes) -> bytes:
+    """Draw exactly the existing PNG; callers never cache mutable metadata."""
+
     canvas = _Canvas(WIDTH, HEIGHT, (3, 8, 11))
     _trace(canvas, seed)
     canvas.rect(0, 0, WIDTH, 7, (0, 219, 233))
@@ -635,20 +726,7 @@ def render_card(
     footer_value = spec["receipt"] or spec["source"]
     _footer_cell(canvas, x=785, width=343, label=footer_label, value=footer_value)
 
-    png = canvas.png()
-    if png_dimensions(png) != (WIDTH, HEIGHT):
-        raise ShareCardError("renderer emitted the wrong PNG dimensions")
-    digest = hashlib.sha256(png).hexdigest()
-    path = OUTPUT_ROOT / f"sha256-{digest}.png"
-    return RenderedCard(
-        spec=spec,
-        spec_sha256=spec_digest,
-        png=png,
-        sha256=digest,
-        path=path,
-        url=f"{site.rstrip('/')}/{path.as_posix()}",
-        alt=_card_alt(spec),
-    )
+    return canvas.png()
 
 
 def manifest_document(cards: Sequence[RenderedCard]) -> dict[str, Any]:
