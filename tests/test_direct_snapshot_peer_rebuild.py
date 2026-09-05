@@ -201,6 +201,33 @@ def test_external_warehouse_is_refused_before_rebuild(snapshot, tmp_path, monkey
     assert peer_context_pull.OUT.read_bytes() == before
 
 
+@pytest.mark.parametrize("link_kind", ["objects-directory", "gzip-file"])
+def test_nested_warehouse_links_are_refused_before_any_read(
+    snapshot, tmp_path, monkeypatch, link_kind
+):
+    warehouse = tmp_path / "data/ooni-bulk"
+    warehouse.mkdir(parents=True)
+    external = tmp_path.parent / f"{tmp_path.name}-external-objects"
+    external.mkdir()
+    if link_kind == "objects-directory":
+        (warehouse / "objects").symlink_to(external, target_is_directory=True)
+    else:
+        objects = warehouse / "objects/CN/web_connectivity"
+        objects.mkdir(parents=True)
+        target = external / "measurement.jsonl.gz"
+        target.write_bytes(b"must not be read")
+        (objects / target.name).symlink_to(target)
+
+    def no_scan(*_args, **_kwargs):
+        pytest.fail("warehouse scan began before nested-link rejection")
+
+    monkeypatch.setattr(ooni_peer_join, "scan_warehouse_for_hosts", no_scan)
+    before = peer_context_pull.OUT.read_bytes()
+    with pytest.raises(SystemExit, match="warehouse contains a symbolic link"):
+        _execute()
+    assert peer_context_pull.OUT.read_bytes() == before
+
+
 def test_cached_live_coverage_cannot_silently_become_a_miss(snapshot):
     document = json.loads(peer_context_pull.OONI_GFW.read_bytes())
     document["top_blocked"] = []

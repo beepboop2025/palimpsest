@@ -4188,6 +4188,8 @@ for candidate in (peer_context_pull.WAREHOUSE, *ooni_peer_join.WAREHOUSE_CANDIDA
     if candidate is not None and candidate.exists():
         if not candidate.resolve().is_relative_to(root):
             raise SystemExit("peer rebuild warehouse escapes the frozen publication snapshot")
+        if candidate.is_symlink() or any(path.is_symlink() for path in candidate.rglob("*")):
+            raise SystemExit("peer rebuild warehouse contains a symbolic link")
 previous = peer_context_pull.load_peer_document(peer_context_pull.OUT) or {}
 retained_live = {
     row["host"]: row
