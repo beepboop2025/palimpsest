@@ -3749,3 +3749,49 @@ def test_reconciler_mutates_at_most_once_after_the_durable_guard(
                 token_value="x",
             )
     assert len(mutation_calls) == expected_mutations
+
+
+def test_recovery_accepts_carried_receipt_only_from_hash_bound_ancestor(monkeypatch):
+    namespace = runpy.run_path(str(RECONCILE))
+    validate = namespace["_validate_pin"]
+    globals_ = validate.__globals__
+    globals_.update(PROJECT_ID="f7c86128-53a7-458a-a931-6628c6e61fb2",
+                    ENVIRONMENT_ID="1d4d9eef-7bad-4c7b-a003-0e66fe9a8fe2",
+                    SERVICE_ID="86a6f49c-b9dc-4be8-acd1-dd180c693230")
+    parent = _successor_pin_fixture(globals_)
+    canonical = namespace["_canonical"]
+    parent_raw = canonical(parent)
+    parent_digest = hashlib.sha256(parent_raw).hexdigest()
+    current = json.loads(parent_raw)
+    current["generation"] += 1
+    proof = current["predecessor"]["pin"]
+    proof.update(generation=parent["generation"], sha256=parent_digest,
+                 path=str(namespace["CONTROL_ROOT"] / "base-rotation-history" / "pins" / (parent_digest + ".json")),
+                 target_sha=parent["target"]["base_sha"])
+    current["rotation_record_path"] = current["rotation_record_path"].replace("/3-", "/4-")
+    reads = []
+    def read(path, **kwargs):
+        reads.append((path, kwargs))
+        assert path == Path(proof["path"])
+        return parent_raw
+    import types
+    monkeypatch.setitem(globals_, "grp", types.SimpleNamespace(getgrnam=lambda _: types.SimpleNamespace(gr_gid=123)))
+    monkeypatch.setitem(globals_, "_read", read)
+    validate(current)
+    assert reads[0][1] == {"uid": 0, "gid": 123, "mode": 0o640}
+    error = namespace["ReconciliationError"]
+    for mutation in ("digest", "base", "generation", "path"):
+        forged = json.loads(canonical(current))
+        if mutation == "digest":
+            forged["predecessor"]["pin"]["sha256"] = "e" * 64
+        elif mutation == "base":
+            forged["predecessor"]["publication_receipt"]["base_sha"] = "e" * 40
+        elif mutation == "generation":
+            forged["predecessor"]["pin"]["generation"] -= 1
+        else:
+            forged["predecessor"]["pin"]["path"] = "/tmp/untrusted.json"
+        with pytest.raises(error):
+            validate(forged)
+    monkeypatch.setitem(globals_, "_read", lambda *a, **kw: parent_raw + b" ")
+    with pytest.raises(error, match="receipt identity"):
+        validate(current)

@@ -620,6 +620,57 @@ def _validate_reference(value: Any, label: str) -> None:
         raise ReconciliationError(f"{label} path is invalid")
 
 
+def _receipt_matches_pin_lineage(pin: dict[str, Any], receipt: dict[str, Any]) -> bool:
+    """Bind a carried receipt to the root pin's immutable ancestor chain.
+
+    The candidate authenticates the root pin bytes. Each archived parent is
+    then read with the existing root ownership and no-follow checks and matched
+    to its content digest before it supplies the next link. A rotation can
+    preserve a receipt from an older generation without changing that receipt.
+    """
+    wanted = _sha256(receipt.get("publication_base_sha256"), "receipt pin digest")
+    base = _sha40(receipt.get("base_sha"), "receipt pin base")
+    history = CONTROL_ROOT / "base-rotation-history" / "pins"
+    current = pin
+    seen: set[str] = set()
+    for _ in range(MAX_PIN_GENERATIONS):
+        proof = current["predecessor"]["pin"]
+        _keys(proof, {"generation", "path", "schema_version", "sha256", "target_sha"}, "receipt ancestor pin")
+        generation = proof.get("generation")
+        digest = _sha256(proof.get("sha256"), "receipt ancestor digest")
+        target = _sha40(proof.get("target_sha"), "receipt ancestor target")
+        path = history / f"{digest}.json"
+        if (isinstance(generation, bool) or not isinstance(generation, int)
+                or generation != current["generation"] - 1 or generation < 0
+                or proof.get("path") != str(path) or digest in seen):
+            return False
+        seen.add(digest)
+        # The immediate parent projection is already authenticated by the pin.
+        if digest == wanted:
+            return target == base
+        if generation == 0:
+            return False
+        try:
+            raw = _read(path, uid=0, gid=grp.getgrnam("palimpsest").gr_gid, mode=0o640)
+        except (ReconciliationError, KeyError):
+            return False
+        if _digest(raw) != digest:
+            return False
+        parent = _object(raw, "receipt ancestor pin")
+        _keys(parent, set(pin), "receipt ancestor pin")
+        if (proof["schema_version"] != SUCCESSOR_PIN_SCHEMA
+                or parent.get("schema_version") != SUCCESSOR_PIN_SCHEMA
+                or parent.get("status") != "verified"
+                or parent.get("generation") != generation
+                or parent.get("target") != {"base_sha": target, "public_main_sha": target}
+                or parent.get("anchor") != pin["anchor"]
+                or parent.get("host") != pin["host"]):
+            return False
+        _keys(parent.get("predecessor"), {"pin", "publication_receipt"}, "receipt ancestor predecessor")
+        current = parent
+    return False
+
+
 def _validate_successor_pin(pin: dict[str, Any]) -> None:
     """Validate the closed v2 pin before using it as recovery authority.
 
@@ -718,7 +769,7 @@ def _validate_successor_pin(pin: dict[str, Any]) -> None:
     )
     prior_generation = predecessor_pin.get("generation")
     prior_digest = _sha256(predecessor_pin.get("sha256"), "predecessor pin digest")
-    prior_target = _sha40(predecessor_pin.get("target_sha"), "predecessor pin target")
+    _sha40(predecessor_pin.get("target_sha"), "predecessor pin target")
     if (
         isinstance(prior_generation, bool)
         or not isinstance(prior_generation, int)
@@ -751,8 +802,7 @@ def _validate_successor_pin(pin: dict[str, Any]) -> None:
     if (
         receipt.get("schema_version") != V2_SCHEMA
         or receipt.get("path") != str(history / "receipts" / f"{receipt_digest}.json")
-        or receipt.get("base_sha") != prior_target
-        or receipt.get("publication_base_sha256") != prior_digest
+        or not _receipt_matches_pin_lineage(pin, receipt)
         or receipt.get("host_deployed_sha") != INCIDENT_BASE
     ):
         raise ReconciliationError("successor predecessor receipt identity is invalid")
