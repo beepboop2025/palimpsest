@@ -1177,6 +1177,10 @@ def _event_content_text(event: Mapping[str, object]) -> str:
 
 
 def _text_has_term(text: str, term: str) -> bool:
+    # An escaped literal cannot match if its text is absent. Keep the exact
+    # boundary expression for every possible match in the captured archive.
+    if term not in text:
+        return False
     return (
         re.search(
             rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])",
