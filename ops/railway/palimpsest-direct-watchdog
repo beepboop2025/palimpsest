@@ -776,7 +776,7 @@ def _validate_pin_rotation_topology(
         railway["deployment_id"] != expected_deployment_id
         or not isinstance(railway["image_digest"], str)
         or re.fullmatch(r"sha256:[0-9a-f]{64}", railway["image_digest"]) is None
-        or railway["reason"] not in {"deploy", "deploymentRollback"}
+        or railway["reason"] not in {"deploy", "deploymentRollback", "rollback"}
         or not isinstance(railway["created_at"], str)
         or len(railway["created_at"]) > 64
     ):
@@ -2275,7 +2275,7 @@ def _validate_rollback_evidence(
     if (
         not isinstance(topology["image_digest"], str)
         or re.fullmatch(r"sha256:[0-9a-f]{64}", topology["image_digest"]) is None
-        or topology["reason"] not in {"deploy", "deploymentRollback"}
+        or topology["reason"] not in {"deploy", "deploymentRollback", "rollback"}
         or not isinstance(topology["created_at"], str)
         or len(topology["created_at"]) > 64
     ):

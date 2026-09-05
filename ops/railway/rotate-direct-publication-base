@@ -1272,7 +1272,7 @@ def _validate_v2_pin_shape(pin: dict[str, Any]) -> None:
         _require_uuid(railway[key], f"successor Railway {key}")
     if not isinstance(railway["image_digest"], str) or IMAGE.fullmatch(railway["image_digest"]) is None:
         raise RotationError("successor Railway image digest is invalid")
-    if railway["reason"] not in {"deploy", "deploymentRollback"}:
+    if railway["reason"] not in {"deploy", "deploymentRollback", "rollback"}:
         raise RotationError("successor Railway reason is invalid")
     _require_timestamp(railway["created_at"], "successor Railway created_at")
     _validate_reference(railway["topology"], "Railway topology reference")
@@ -1482,7 +1482,7 @@ def _validate_topology(
         raise RotationError("Railway active deployment metadata is invalid")
     reason = metadata.get("reason")
     image = metadata.get("imageDigest")
-    if reason not in {"deploy", "deploymentRollback"} or not isinstance(image, str) or IMAGE.fullmatch(image) is None or metadata.get("volumeMounts") != []:
+    if reason not in {"deploy", "deploymentRollback", "rollback"} or not isinstance(image, str) or IMAGE.fullmatch(image) is None or metadata.get("volumeMounts") != []:
         raise RotationError("Railway active deployment image or reason is invalid")
     manifest = metadata.get("serviceManifest")
     if not isinstance(manifest, dict) or not isinstance(manifest.get("build"), dict) or not isinstance(manifest.get("deploy"), dict):

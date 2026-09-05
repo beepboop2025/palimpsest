@@ -499,7 +499,7 @@ elif mode == "predecessor":
     if (
         not isinstance(image_digest, str)
         or re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest) is None
-        or reason not in {"deploy", "deploymentRollback"}
+        or reason not in {"deploy", "deploymentRollback", "rollback"}
     ):
         raise SystemExit("predecessor topology deployment metadata is invalid")
     created_at_text = latest.get("createdAt")
@@ -930,7 +930,7 @@ rollback_state_is_live() {
   [[ "$observed_id" != "$new_deployment_id" \
     && "$observed_id" != "$previous_deployment_id" \
     && "$observed_digest" == "$previous_image_digest" \
-    && "$observed_reason" == deploymentRollback ]] || return 1
+    && "$observed_reason" =~ ^(deploymentRollback|rollback)$ ]] || return 1
   if [[ -n "$rollback_provisional_deployment_id" ]]; then
     [[ "$observed_id" == "$rollback_provisional_deployment_id" \
       && "$observed_digest" == "$rollback_provisional_image_digest" \
