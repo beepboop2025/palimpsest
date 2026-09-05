@@ -2654,7 +2654,7 @@ def render_evidence_index(
         if machine_analyses is not None
         else ""
     )
-    body = f"""<body class="ps newsroom-page newsroom-page--evidence-wire">
+    body = f"""<body class="ps newsroom-page newsroom-page--evidence-wire" data-growth-page="news">
 {site_nav.render("/news/")}
 <main id="main" class="nw-shell">
   <header class="nw-masthead">
@@ -2665,6 +2665,7 @@ def render_evidence_index(
     <h1 class="nw-masthead__headline">Instrument results first. Source reports clearly labeled.</h1>
     <p class="nw-masthead__dek">This is not a replacement newspaper. Palimpsest publishes its own instrument records, labels unavailable results as availability notices, then keeps publisher reports in a separate source index with attribution, source structure, revisions and unknowns visible.</p>
   </header>
+  <nav class="nw-task-strip" aria-label="Keep up with the evidence"><a href="/weekly-situation.html" data-growth-event="weekly_brief_clicked" data-growth-location="news_weekly"><strong>Read the weekly evidence brief</strong><span>Current edition, sources and limitations</span></a><a href="https://t.me/palimpsest_watch_bot?start=china_diligence_news" target="_blank" rel="noopener noreferrer" data-growth-event="private_diligence_clicked" data-growth-location="news_diligence"><strong>Register diligence interest</strong><span>Private bot chat; starting it also subscribes to daily updates. Use /stop to end them.</span></a></nav>
   <div class="nw-meta-line"><span>Results · source index · investigations</span><span>Window {_h(_human_time(wire["window"]["from"]))} → {_h(_human_time(wire["window"]["to"]))}</span><a href="/news/instruments/feed.xml">Instrument RSS</a><a href="/feeds/">All feeds</a><a href="/news/feed.json">Structured instrument + source feed</a></div>
   <div class="nw-status-strip" role="status" aria-label="Edition coverage">
     <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{measurement_count}</strong> measurements · <strong>{availability_count}</strong> availability notices in this edition</span>
