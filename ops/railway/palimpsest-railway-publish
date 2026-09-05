@@ -4415,6 +4415,19 @@ persist_release_bundle
 # This is the last read-only boundary before Railway can change.  Preserve the
 # exact predecessor bytes and active topology so recovery never has to infer a
 # rollback target from a mutable deployment list.
+if [[ -e "$CONTROL_ROOT/restored-$receipt_sha256.json" ]]; then
+  receipt_deployment_id="$("$PYTHON_BIN" -I -S - "$CONTROL_ROOT" "$SUCCESS_RECEIPT" <<'PYRESTORE'
+import grp
+import json
+import runpy
+import sys
+from pathlib import Path
+helper = runpy.run_path("/usr/local/sbin/palimpsest-rotate-direct-publication-base")
+raw = Path(sys.argv[2]).read_bytes()
+print(helper["_restored_deployment_id"](Path(sys.argv[1]), raw, json.loads(raw), grp.getgrnam("palimpsest").gr_gid))
+PYRESTORE
+  )"
+fi
 capture_predecessor_rollback_evidence
 
 # Preparation, durable bundle creation, and predecessor capture can take a

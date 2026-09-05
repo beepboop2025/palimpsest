@@ -1792,6 +1792,56 @@ def _validate_completed_receipt(
         _receipt_matches_bridge(receipt, raw, pin=pin)
 
 
+def _restored_deployment_id(control_root: Path, receipt_raw: bytes, receipt: dict[str, Any], group_gid: int) -> str:
+    """Resolve only a root-recorded restoration of these exact receipt bytes."""
+    original = receipt["railway"]["deployment_id"]
+    digest = _sha256(receipt_raw)
+    path = control_root / f"restored-{digest}.json"
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return original
+    _validate_file(path, uid=0, gid=group_gid, mode=0o640, label="root restoration binding")
+    binding = _strict_json(_read_regular(path, max_bytes=4096), "root restoration binding")
+    _require_keys(binding, {"schema_version", "receipt_sha256", "original_deployment_id", "restored_deployment_id", "manifest_sha256", "image_digest", "recovery_receipt_sha256"}, "root restoration binding")
+    if (
+        binding["schema_version"] != "palimpsest.restored-publication-binding.v1"
+        or binding["receipt_sha256"] != digest
+        or binding["original_deployment_id"] != original
+        or binding["manifest_sha256"] != receipt["live_manifest"]["sha256"]
+        or not isinstance(binding["image_digest"], str)
+        or IMAGE.fullmatch(binding["image_digest"]) is None
+    ):
+        raise RotationError("root restoration does not bind the exact publication")
+    _require_sha(binding["recovery_receipt_sha256"], length=64, label="root restoration proof")
+    _require_uuid(binding["restored_deployment_id"], "restored deployment ID")
+    if binding["restored_deployment_id"] == original:
+        raise RotationError("root restoration must name a distinct deployment")
+    return binding["restored_deployment_id"]
+
+
+def _record_restored_publication(control_root: Path, recovery: dict[str, Any], group_gid: int) -> None:
+    """Called by root only after exact rollback topology and bytes are proved."""
+    if os.geteuid() != 0:
+        raise RotationError("restoration binding requires root")
+    if recovery["outcome"] not in {"predecessor_rolled_back", "predecessor_rollback_reconciled"}:
+        return
+    predecessor = recovery["predecessor"]
+    observed = recovery["observed_topology"]
+    if observed["reason"] not in {"rollback", "deploymentRollback"} or observed["image_digest"] != predecessor["image_digest"]:
+        raise RotationError("restoration image or reason differs")
+    binding = {
+        "schema_version": "palimpsest.restored-publication-binding.v1",
+        "receipt_sha256": predecessor["receipt_sha256"],
+        "original_deployment_id": predecessor["deployment_id"],
+        "restored_deployment_id": observed["deployment_id"],
+        "manifest_sha256": predecessor["manifest_sha256"],
+        "image_digest": observed["image_digest"],
+        "recovery_receipt_sha256": _sha256(_canonical_bytes(recovery)),
+    }
+    _archive_bytes(control_root / f"restored-{predecessor['receipt_sha256']}.json", _canonical_bytes(binding), group_gid=group_gid)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-base-sha", required=True)
@@ -2142,6 +2192,8 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
                 host_deployed_sha=deployed,
             )
 
+        live_deployment_id = _restored_deployment_id(control_root, receipt_raw, receipt, publisher_group.gr_gid)
+
         nonce = time.time_ns()
         provider_raw = _fetch_manifest(PROVIDER_ORIGIN, nonce)
         public_raw = _fetch_manifest(PUBLIC_ORIGIN, nonce)
@@ -2154,7 +2206,7 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
             project_id=args.project_id,
             environment_id=args.environment_id,
             service_id=args.service_id,
-            deployment_id=receipt["railway"]["deployment_id"],
+            deployment_id=live_deployment_id,
         )
         prepared_evidence = {
             "provider_manifest_sha256": _sha256(provider_raw),
@@ -2317,7 +2369,7 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
                 project_id=args.project_id,
                 environment_id=args.environment_id,
                 service_id=args.service_id,
-                deployment_id=receipt["railway"]["deployment_id"],
+                deployment_id=live_deployment_id,
             ) != topology:
                 raise RotationError(
                     "prepared rotation no longer names the active topology"
@@ -2373,7 +2425,7 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
             },
             "railway": {
                 "created_at": topology["created_at"],
-                "deployment_id": receipt["railway"]["deployment_id"],
+                "deployment_id": live_deployment_id,
                 "environment_id": args.environment_id,
                 "image_digest": topology["image_digest"],
                 "project_id": args.project_id,
@@ -2438,7 +2490,7 @@ def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
         if final_provider != provider_raw or final_public != public_raw:
             raise RotationError("live manifest bytes changed before rotation")
         final_topology_raw = _railway_status(args)
-        final_topology = _validate_topology(final_topology_raw, project_id=args.project_id, environment_id=args.environment_id, service_id=args.service_id, deployment_id=receipt["railway"]["deployment_id"])
+        final_topology = _validate_topology(final_topology_raw, project_id=args.project_id, environment_id=args.environment_id, service_id=args.service_id, deployment_id=live_deployment_id)
         if final_topology != topology:
             raise RotationError("active Railway topology changed before rotation")
         if _validate_installed(args, repository=repository, target=args.target_base_sha, owner=publisher_user) != installed:

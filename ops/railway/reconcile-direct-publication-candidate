@@ -12,6 +12,7 @@ import math
 import os
 import pwd
 import re
+import runpy
 import stat
 import subprocess
 import sys
@@ -2928,10 +2929,14 @@ def _predecessor_from_receipt(raw: bytes, receipt: dict[str, Any], pin: dict[str
     _timestamp(receipt["wire_generated_at"], "receipt wire_generated_at")
     railway = receipt["railway"]
     digest = _digest(raw)
+    live_deployment_id = railway["deployment_id"]
+    if (CONTROL_ROOT / f"restored-{digest}.json").exists():
+        helper = runpy.run_path("/usr/local/sbin/palimpsest-rotate-direct-publication-base")
+        live_deployment_id = helper["_restored_deployment_id"](CONTROL_ROOT, raw, receipt, grp.getgrnam("palimpsest").gr_gid)
     return {
         "archive_path": str(STATE_ROOT / "receipts" / f"{digest}.json"),
         "base_sha": _sha40(receipt["base_sha"], "receipt base"),
-        "deployment_id": _uuid(railway["deployment_id"], "receipt deployment"),
+        "deployment_id": _uuid(live_deployment_id, "receipt deployment"),
         "input_sha256": _sha256(receipt["input_sha256"], "receipt input"),
         "manifest_sha256": manifest_digest,
         "receipt_sha256": digest,
@@ -3363,6 +3368,11 @@ def _existing_recovery(journal: str, *, uid: int, gid: int) -> dict[str, Any] | 
     return receipt
 
 
+def _record_restoration_binding(document: dict[str, Any], gid: int) -> None:
+    helper = runpy.run_path("/usr/local/sbin/palimpsest-rotate-direct-publication-base")
+    helper["_record_restored_publication"](CONTROL_ROOT, document, gid)
+
+
 def _write_recovery(candidate: dict[str, Any], *, journal: str, archive: Path, outcome: str, topology: dict[str, Any], uid: int, gid: int, attempt_digest: str | None = None, response_digest: str | None = None) -> dict[str, Any]:
     root = STATE_ROOT / "reconciliations"
     _ensure_directory(root, uid=uid, gid=gid)
@@ -3397,6 +3407,8 @@ def _write_recovery(candidate: dict[str, Any], *, journal: str, archive: Path, o
         ):
             raise ReconciliationError("existing recovery receipt differs from re-proved recovery")
         document = existing
+    if outcome in {"predecessor_rolled_back", "predecessor_rollback_reconciled"}:
+        _record_restoration_binding(document, gid)
     _clear_preparation(candidate, uid=uid, gid=gid)
     _clear_hold(candidate, journal=journal, archive=archive, gid=gid)
     _unlink(CANDIDATE_JOURNAL)

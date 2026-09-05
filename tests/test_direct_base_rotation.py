@@ -976,3 +976,35 @@ def test_perform_rotation_persists_intent_before_install_and_reuses_it_on_retry(
     ]
     assert prepared == {}
     assert not (control_root / "rotation-intent.json").exists()
+
+
+def test_root_restoration_binding_preserves_original_receipt_and_rejects_drift(tmp_path, monkeypatch):
+    ns = _namespace()
+    resolve = ns['_restored_deployment_id']
+    g = resolve.__globals__
+    receipt = _receipt()
+    raw = ns['_canonical_bytes'](receipt)
+    digest = hashlib.sha256(raw).hexdigest()
+    original = receipt['railway']['deployment_id']
+    restored = '705bd041-4c52-4ce7-a137-dc3e4c55cacb'
+    assert resolve(tmp_path, raw, receipt, os.getgid()) == original
+    binding = {
+        'schema_version': 'palimpsest.restored-publication-binding.v1',
+        'receipt_sha256': digest, 'original_deployment_id': original,
+        'restored_deployment_id': restored,
+        'manifest_sha256': receipt['live_manifest']['sha256'],
+        'image_digest': 'sha256:' + 'a' * 64,
+        'recovery_receipt_sha256': 'b' * 64,
+    }
+    path = tmp_path / f'restored-{digest}.json'
+    def validate(path, **kw):
+        assert kw['uid'] == 0 and kw['mode'] == 0o640
+        assert kw['gid'] == os.getgid()
+    monkeypatch.setitem(g, '_validate_file', validate)
+    path.write_bytes(ns['_canonical_bytes'](binding))
+    assert resolve(tmp_path, raw, receipt, os.getgid()) == restored
+    assert receipt['railway']['deployment_id'] == original
+    for key, bad in [('original_deployment_id', restored), ('manifest_sha256', 'c'*64), ('receipt_sha256', 'd'*64), ('restored_deployment_id', original)]:
+        path.write_bytes(ns['_canonical_bytes']({**binding,key:bad}))
+        with pytest.raises(ns['RotationError']):
+            resolve(tmp_path,raw,receipt,os.getgid())
