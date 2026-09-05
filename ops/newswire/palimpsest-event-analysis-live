@@ -17,6 +17,7 @@ import io
 import json
 import os
 import re
+import runpy
 import secrets
 import shutil
 import stat
@@ -650,7 +651,7 @@ def _validate_rotation_topology(
     if (
         type(railway.get("image_digest")) is not str
         or re.fullmatch(r"sha256:[0-9a-f]{64}", railway["image_digest"]) is None
-        or railway.get("reason") not in {"deploy", "deploymentRollback"}
+        or railway.get("reason") not in {"deploy", "rollback", "deploymentRollback"}
         or type(railway.get("created_at")) is not str
         or len(railway["created_at"]) > 64
     ):
@@ -710,6 +711,22 @@ def _validate_rotation_topology(
         or metadata.get("reason") != railway["reason"]
     ):
         raise LiveAnalysisError("publication-base topology deployment changed")
+
+
+def _rotation_deployment_id(config, railway, receipt, receipt_raw):
+    original = receipt["railway"]["deployment_id"]
+    # Earlier rotations still bind the original deployment. Only a changed
+    # topology needs the separately authenticated root restoration record.
+    if railway.get("deployment_id") == original:
+        return original
+    digest = hashlib.sha256(receipt_raw).hexdigest()
+    if not (config.control_root / f"restored-{digest}.json").exists():
+        return original
+    helper = runpy.run_path(str(config.installed_rotation_helper))
+    return helper["_restored_deployment_id"](
+        config.control_root, receipt_raw, receipt,
+        os.getegid() if config.pin_gid < 0 else config.pin_gid,
+    )
 
 
 def _validate_archived_publication_receipt(
@@ -1187,7 +1204,9 @@ def _validate_successor_pin(
         config,
         pin.get("railway"),
         history_root=history_root,
-        expected_deployment_id=predecessor_receipt["deployment_id"],
+        expected_deployment_id=_rotation_deployment_id(
+            config, pin.get("railway", {}), receipt, _receipt_raw
+        ),
     )
     _validate_rotation_record(
         config,
