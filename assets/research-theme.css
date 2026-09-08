@@ -1,0 +1,30 @@
+/* Shared NarcoScope / Palimpsest research interface, version 1. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap');
+:root {
+  color-scheme: dark;
+  --research-bg: #090f18;
+  --research-surface: #111c2b;
+  --research-raised: #18283c;
+  --research-hover: #20334c;
+  --research-line: #30435b;
+  --research-line-subtle: #22334a;
+  --research-text: #e4edf8;
+  --research-secondary: #a8b8cc;
+  --research-muted: #8c9fb7;
+  --research-blue: #89b4ff;
+  --research-amber: #e3b878;
+  --research-green: #7ed3c3;
+  --research-red: #f19d9c;
+  --research-font: 'IBM Plex Sans', system-ui, sans-serif;
+  --research-radius: 8px;
+}
+html { background: var(--research-bg); }
+body { background: var(--research-bg); color: var(--research-text); }
+::selection { background: #355b8b; color: #ffffff; }
+:focus-visible { outline: 2px solid var(--research-blue); outline-offset: 4px; }
+input, select, textarea, button { font: inherit; }
+input, select, textarea { color-scheme: dark; }
+.research-project-link { display: inline-flex; align-items: center; gap: .5rem; color: var(--research-secondary); font: 500 .85rem/1.4 var(--research-font); text-decoration: none; padding: .5rem .7rem; border: 1px solid var(--research-line); border-radius: 6px; }
+.research-project-link:hover { color: var(--research-text); background: var(--research-raised); text-decoration: none; }
+.research-project-link::before { content: ''; width: .45rem; height: .45rem; border-radius: 50%; background: var(--research-green); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }

@@ -29,11 +29,13 @@ looks live is worse than a board that is visibly down.
 Standard library only, like the rest of tests/.
 """
 import html
+from html.parser import HTMLParser
 import pathlib
 import re
 import shutil
 import subprocess
 import sys
+from urllib.parse import urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -81,7 +83,7 @@ def _pages():
 
 def _tracked_html_pages() -> set[str]:
     result = subprocess.run(
-        ["git", "ls-files", "-z", "--", "*.html"],
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.html"],
         cwd=ROOT,
         check=True,
         stdout=subprocess.PIPE,
@@ -321,7 +323,7 @@ def test_observatory_flyout_is_active_for_generated_china_routes():
     )
 
 
-def test_bri_regions_are_an_always_visible_semantic_link_rail():
+def test_bri_regions_remain_real_searchable_workspace_links():
     assert site_nav.REGIONAL_EVIDENCE == (
         ("/china/economy/", "China economy"),
         ("/research/connected/", "Connected research"),
@@ -338,16 +340,56 @@ def test_bri_regions_are_an_always_visible_semantic_link_rail():
     )
 
     rendered = site_nav.render("/")
-    rail = rendered.split('<div class="ps-region-rail">', 1)[1].split(
-        "</div>", 1
-    )[0]
-    assert '<ul class="ps-region-rail__list" aria-label="Regional evidence">' in rail
-    assert 'role="tablist"' not in rail
-    assert 'role="tab"' not in rail
-    for href, label in site_nav.REGIONAL_EVIDENCE:
+    assert '<h2>Connected regional desks</h2>' in rendered
+    assert 'role="tablist"' not in rendered
+    assert 'role="tab"' not in rendered
+    for href, _label in site_nav.REGIONAL_EVIDENCE:
         assert rendered.count(f'href="{href}"') == 1
-        assert f'>{html.escape(label)}</a>' in rail
-    assert "BRI regions" not in rendered
+    regional_section = rendered.split('<h2>Connected regional desks</h2>', 1)[1].split('</section>', 1)[0]
+    assert '/belt-and-road/gwadar/' in regional_section
+    assert '/belt-and-road/balochistan/' in regional_section
+    assert '/belt-and-road/myanmar/' in regional_section
+    assert '<details' not in regional_section
+
+
+class WorkspaceLinks(HTMLParser):
+    def __init__(self, markup):
+        super().__init__()
+        self.links = []
+        self.feed(markup)
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "a" and "ps-workspace-link" in attributes.get("class", ""):
+            self.links.append(attributes)
+
+
+def test_workspace_keeps_every_existing_nav_destination_and_resolves_new_data_routes():
+    links = WorkspaceLinks(site_nav.render("/")).links
+    destinations = {link["href"] for link in links}
+    expected = {href for href, _label in site_nav.REGIONAL_EVIDENCE}
+    for item in site_nav.NAV:
+        if "href" in item:
+            expected.add(item["href"])
+        for column in item.get("columns", []):
+            expected.update(entry[0] for entry in column["links"])
+    assert expected <= destinations
+    assert len(destinations) == len(links), "Each destination should appear once in the sidebar"
+    for _section, entries in site_nav.WORKSPACE_SECTIONS:
+        for href, _label in entries:
+            assert href in destinations
+            path = urlsplit(href).path
+            target = ROOT / path.lstrip("/")
+            if path.endswith("/"):
+                target /= "index.html"
+            assert target.is_file(), f"New workspace route is missing: {href}"
+
+
+def test_workspace_current_state_is_exact_and_market_query_views_are_distinct():
+    for current in ("/china/evidence/", "/china/economy/", "/belt-and-road/myanmar/", "/research/markets/", "/research/markets/?market=arms"):
+        links = WorkspaceLinks(site_nav.render(current)).links
+        selected = [link["href"] for link in links if link.get("aria-current") == "page"]
+        assert selected == [current]
 
 
 def test_regional_rail_fits_seven_routes_on_desktop_and_small_screens():

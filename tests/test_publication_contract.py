@@ -655,7 +655,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v24"' in worker
+    assert 'const CACHE = "palimpsest-v25"' in worker
     assert 'const LIVE_FRESHNESS = new Set(["/freshness", "/freshnessz"]);' in worker
     assert "LIVE_FRESHNESS.has(url.pathname)" in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker

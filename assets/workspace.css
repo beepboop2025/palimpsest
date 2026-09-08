@@ -1,0 +1,188 @@
+/* Shared research desk. Imported by shell.css so generators inherit one shell. */
+:root, body.ps {
+  --ps-nav-h: 68px !important;
+  --tk-void: var(--research-bg) !important;
+  --tk-surface-1: var(--research-surface) !important;
+  --tk-surface-2: var(--research-raised) !important;
+  --tk-surface-3: var(--research-raised) !important;
+  --tk-surface-4: var(--research-hover) !important;
+  --tk-text-0: var(--research-text) !important;
+  --tk-text-1: var(--research-text) !important;
+  --tk-text-2: var(--research-secondary) !important;
+  --tk-text-3: var(--research-muted) !important;
+  --tk-text-4: var(--research-muted) !important;
+  --tk-line-1: var(--research-line-subtle) !important;
+  --tk-line-2: var(--research-line) !important;
+  --tk-live: var(--research-blue) !important;
+  --tk-font-display: var(--research-font) !important;
+  --ps-plane-1: var(--research-surface) !important;
+  --ps-plane-2: var(--research-raised) !important;
+  --ps-plane-3: var(--research-raised) !important;
+  --ps-plane-4: var(--research-bg) !important;
+}
+html { background: var(--research-bg) !important; }
+body.ps {
+  box-sizing: border-box;
+  max-width: 1800px;
+  margin: 0 auto !important;
+  padding: 84px 24px 24px 260px !important;
+  background: var(--research-bg) !important;
+  color: var(--research-text) !important;
+  color-scheme: dark !important;
+  font-family: var(--research-font) !important;
+  font-size: 15px;
+  line-height: 1.65;
+}
+body.ps::before { display: none !important; }
+body.ps *, body.ps *::before, body.ps *::after { box-sizing: border-box; }
+body.ps > main, body.ps > article { width: 100%; max-width: 1440px; min-width: 0; margin: 0 auto; padding: 16px 0 55px !important; }
+body.ps h1, body.ps h2, body.ps h3, body.ps h4 { font-family: var(--research-font) !important; color: var(--research-text); }
+body.ps h1 { font-size: clamp(1.8rem, 3.1vw, 2.8rem) !important; font-weight: 500 !important; line-height: 1.15 !important; letter-spacing: -.04em !important; max-width: 30ch; }
+body.ps h2 { line-height: 1.25; }
+body.ps a { text-underline-offset: .18em; }
+body.ps main a, body.ps > footer a { color: var(--research-blue); }
+body.ps :focus-visible { outline: 2px solid var(--research-blue) !important; outline-offset: 4px; }
+body.ps :is(input, select, textarea) { background: var(--research-bg) !important; color: var(--research-text) !important; border-color: var(--research-line) !important; max-width: 100%; font-family: var(--research-font) !important; }
+body.ps :is(pre, code) { overflow-wrap: anywhere; }
+body.ps [hidden] { display: none !important; }
+body.ps > footer { max-width: 1440px; margin: 0 auto; color: var(--research-secondary); }
+body.ps > .cn-local { padding: 0 12px; top: 68px; }
+body.ps .ps-workspace {
+  position: fixed !important; inset: 0 0 auto !important; height: 68px !important;
+  display: block !important; padding: 0 !important; background: var(--research-bg) !important;
+  border: 0 !important; border-bottom: 1px solid var(--research-line-subtle) !important;
+  box-shadow: none !important; color: var(--research-text); z-index: 100;
+  font-family: var(--research-font) !important;
+}
+body.ps .ps-workspace::before { display: none !important; }
+.ps-workspace-masthead { max-width: 1800px; margin: auto; height: 68px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.ps-workspace-brand { display: flex; align-items: center; gap: 10px; color: var(--research-text) !important; text-decoration: none; }
+.ps-workspace-brand img { flex-shrink: 0; }
+.ps-workspace-brand b { display: block; font: 600 1.35rem/1.2 var(--research-font); letter-spacing: -.035em; }
+.ps-workspace-brand small { display: block; color: var(--research-secondary); font: 400 .75rem/1.4 var(--research-font); margin-top: 3px; }
+.ps-workspace-projects { display: flex; align-items: center; gap: 18px; }
+.ps-workspace-projects > span { font-size: .76rem; color: var(--research-muted); }
+.ps-workspace-panel { position: fixed; top: 88px; left: max(24px, calc((100vw - 1800px) / 2 + 24px)); width: 216px; max-height: calc(100dvh - 110px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-right: 10px; background: var(--research-bg); }
+.ps-workspace-search { display: grid; gap: 8px; margin-bottom: 19px; font: 400 .78rem/1.4 var(--research-font); color: var(--research-secondary); }
+.ps-workspace-search input { display: block; width: 100%; min-width: 0; min-height: 38px; padding: 9px 10px; border: 1px solid var(--research-line); border-radius: 6px; font: 400 .78rem/1.4 var(--research-font); }
+.ps-workspace-section { padding: 0; margin: 0 0 17px; border: 0; }
+.ps-workspace-section h2 { margin: 0; padding: 7px 10px; font: 500 .73rem/1.4 var(--research-font) !important; color: var(--research-muted) !important; }
+.ps-workspace-link { display: block; padding: 9px 12px; margin: 2px 0; border: 0; border-radius: 6px; color: var(--research-secondary) !important; text-decoration: none !important; font: 400 .82rem/1.4 var(--research-font); }
+.ps-workspace-link:hover { color: var(--research-text) !important; background: var(--research-surface); }
+.ps-workspace-link[aria-current="page"] { background: #1b304d; color: #c8dcff !important; box-shadow: inset 3px 0 var(--research-blue); font-weight: 500; }
+.ps-workspace-group > summary { cursor: pointer; padding: 9px 10px; color: var(--research-secondary); font: 400 .8rem/1.4 var(--research-font); background: transparent; }
+.ps-workspace-group > summary::marker { color: var(--research-muted); }
+.ps-workspace-partner { display: block; margin: 20px 8px 14px; padding-top: 17px; border-top: 1px solid var(--research-line); color: var(--research-green); font-size: .83rem; text-decoration: none; }
+.ps-workspace-partner span { display: block; margin-top: 4px; font-size: .73rem; color: var(--research-muted); }
+.ps-workspace-empty { color: var(--research-muted); font-size: .8rem; padding: 8px; }
+.ps-workspace-toggle { display: none; }
+.ps-market-context { margin: 4px 0 28px; padding: 0 0 21px; border-bottom: 1px solid var(--research-line); }
+.ps-market-context > p { max-width: 90ch; margin: 8px 0; color: var(--research-secondary); font-size: .86rem; line-height: 1.7; }
+.ps-market-context h1 { margin: 13px 0; max-width: none; }
+.ps-market-context :is(nav, .ps-market-links) { display: flex; flex-wrap: wrap; gap: 9px 20px; margin-top: 14px; font-size: .8rem; }
+.ps-market-workspace > footer { padding: 22px 0; margin-top: 28px; border-top: 1px solid var(--research-line); color: var(--research-secondary); font-size: .8rem; line-height: 1.7; }
+#global-market-workspace { min-width: 0; }
+/* Map each established page palette onto the common research tokens. */
+body.ps {
+  --cn-porcelain: var(--research-surface) !important; --cn-ink: var(--research-text) !important;
+  --cn-teal: var(--research-blue) !important; --cn-cinnabar: var(--research-red) !important;
+  --cn-brass: var(--research-amber) !important; --cn-brass-accent: var(--research-amber) !important;
+  --cn-paper: var(--research-bg) !important; --cn-rule: var(--research-line) !important;
+  --cn-muted: var(--research-secondary) !important; --cn-wash: var(--research-raised) !important; --cn-gap: var(--research-surface) !important;
+  --cn-serif: var(--research-font) !important; --cn-sans: var(--research-font) !important;
+  --bri-ink: var(--research-text) !important; --bri-muted: var(--research-secondary) !important;
+  --bri-paper: var(--research-bg) !important; --bri-line: var(--research-line) !important;
+  --bri-accent: var(--research-amber) !important; --bri-accent-dark: var(--research-amber) !important;
+  --bri-green: var(--research-green) !important; --bri-dark: var(--research-surface) !important;
+  --nw-ink: var(--research-text) !important; --nw-ink-soft: var(--research-secondary) !important;
+  --nw-paper: var(--research-bg) !important; --nw-paper-deep: var(--research-raised) !important; --nw-white: var(--research-surface) !important;
+  --nw-blue: var(--research-blue) !important; --nw-blue-deep: var(--research-blue) !important;
+  --nw-red: var(--research-red) !important; --nw-green: var(--research-green) !important; --nw-amber: var(--research-amber) !important; --nw-plum: #d1a5de !important;
+  --nw-fog: var(--research-line) !important; --nw-rule: var(--research-line) !important;
+  --nw-display: var(--research-font) !important; --nw-body: var(--research-font) !important;
+  --cs-paper: var(--research-bg) !important; --cs-paper-2: var(--research-raised) !important; --cs-white: var(--research-surface) !important;
+  --cs-ink: var(--research-text) !important; --cs-ink-2: var(--research-secondary) !important;
+  --cs-blue: var(--research-blue) !important; --cs-blue-deep: var(--research-blue) !important;
+  --cs-teal: var(--research-green) !important; --cs-ochre: var(--research-amber) !important; --cs-red: var(--research-red) !important; --cs-line: var(--research-line) !important;
+  --ct-ink: var(--research-text) !important; --ct-paper: var(--research-bg) !important; --ct-line: var(--research-line) !important;
+  --ct-muted: var(--research-secondary) !important; --ct-red: var(--research-red) !important; --ct-blue: var(--research-blue) !important;
+  --rb-ink: var(--research-text) !important; --rb-muted: var(--research-secondary) !important; --rb-paper: var(--research-bg) !important; --rb-line: var(--research-line) !important; --rb-brass: var(--research-amber) !important;
+  --dw-paper: var(--research-bg) !important; --dw-paper-2: var(--research-raised) !important; --dw-ink: var(--research-text) !important; --dw-muted: var(--research-secondary) !important;
+  --dw-red: var(--research-red) !important; --dw-red-dark: var(--research-red) !important; --dw-jade: var(--research-green) !important; --dw-brass: var(--research-amber) !important; --dw-line: var(--research-line) !important;
+  --ca-paper: var(--research-bg) !important; --ca-paper-deep: var(--research-raised) !important; --ca-ink-soft: var(--research-secondary) !important; --ca-red: var(--research-red) !important; --ca-blue: var(--research-blue) !important; --ca-rule: var(--research-line) !important;
+  --pn-carbon: var(--research-text) !important; --pn-soft: var(--research-secondary) !important; --pn-paper: var(--research-bg) !important; --pn-white: var(--research-surface) !important; --pn-blue: var(--research-blue) !important; --pn-blue-deep: var(--research-blue) !important; --pn-rule: var(--research-line) !important; --pn-rule-dark: var(--research-line) !important;
+}
+body.ps.eval-journal-page { --ej-ink: var(--research-text) !important; --ej-ink-soft: var(--research-secondary) !important; --ej-paper: var(--research-bg) !important; --ej-paper-2: var(--research-raised) !important; --ej-white: var(--research-surface) !important; --ej-cyan: var(--research-blue) !important; --ej-red: var(--research-red) !important; --ej-amber: var(--research-amber) !important; --ej-rule: var(--research-line) !important; --ej-display: var(--research-font) !important; --ej-body: var(--research-font) !important; }
+body.ps.ej { --ej-ink: var(--research-bg) !important; --ej-ink-2: var(--research-surface) !important; --ej-ink-3: var(--research-raised) !important; --ej-paper: var(--research-text) !important; --ej-paper-2: var(--research-secondary) !important; --ej-paper-3: var(--research-muted) !important; }
+/* Older dashboards and economic pages have literal colours, retained here as
+   a bounded compatibility layer while their measurement markup stays intact. */
+body.ps :is(.ed-receipt, .ed-controls, .ed-table-scroll, .ed-main summary, .ed-main thead th, .ed-main tbody tr:nth-child(even), .eo-library article, #eo-chart, .eo-connected, .bri-stats > div, .bri-targets li, .bri-contract div, .bri-source, .bri-analysis-aside, .bri-context-card, .bri-evidence-row, .bri-analysis-callout, .bri-limit, .bri-release, .bri-lane, .bri-scale-card, .bri-fact) { background: var(--research-surface) !important; color: var(--research-text) !important; border-color: var(--research-line) !important; }
+body.ps :is(.ed-note, .ed-receipt p, .cr-reporting small, .bri-release span, .bri-state, .bri-limit p, .eo-note) { color: var(--research-secondary) !important; }
+body.ps :is(.bri-card, .bri-captured-archive, .bri-actions a:first-child, .nw-econ, .ct-tabs a:first-child, .ct-stats li, .ct-boundary, .ct-card, .ct-translation, .ct-background, .ct-original div) { background: var(--research-surface) !important; color: var(--research-text) !important; border-color: var(--research-line) !important; }
+body.ps :is(.nw-econ__statement > p, .nw-econ__desk small) { color: var(--research-secondary) !important; }
+body.ps .nw-econ__desk strong { color: var(--research-amber); }
+body.ps :is(.bri-translation, .bri-translation-context, .ca-warning, .ca-evidence, .pn-principle, .tabnav label) { background: var(--research-surface) !important; color: var(--research-text) !important; border-color: var(--research-line) !important; }
+body.ps .et-dossiers { grid-template-columns: minmax(0, 1fr); }
+body.ps .et-dossier, body.ps .et-dossier-heading { min-width: 0; }
+body.ps .et-dossier > summary { flex-wrap: wrap; }
+body.ps .et-mechanism { max-width: 250px; overflow-wrap: anywhere; }
+body.ps .bri-overview-editorial { background: var(--research-surface) !important; }
+body.ps .ej-context strong { font: 500 1.5rem/1.25 var(--research-font); overflow-wrap: anywhere; text-transform: none; }
+body.ps .ej-lead__claim { color: var(--research-secondary); }
+body.ps :is(.ed-main th, .ed-main td, .cr-region, .cr-question, .ed-finding) { border-color: var(--research-line) !important; }
+body.ps .ed-city--down { background: #392333; color: var(--research-red); }
+body.ps .ed-city--up { background: #163834; color: var(--research-green); }
+body.ps .ed-city--flat { background: var(--research-raised); color: var(--research-secondary); }
+body.ps :is(.cn-hero, .cn-pagehead, .bri-hero, .situation-hero, .nw-hero, .ej-hero, .eo-intro, .cr-intro) { padding-top: 24px; padding-bottom: 28px; }
+body.ps :is(.cn-hero__claim, .bri-dek, .eo-deck, .ed-deck, .situation-hero__dek) { font: 400 1rem/1.65 var(--research-font); color: var(--research-secondary); }
+body.ps .bri-analysis-section p { font-family: var(--research-font); font-size: .96rem; }
+body.ps .eo-main h1 { max-width: 30ch; }
+body.ps .eo-findings, body.ps .eo-library { gap: 0 24px; }
+body.ps .eo-cases { gap: 22px; }
+body.ps #eo-chart text { fill: var(--research-secondary); font-family: var(--research-font); }
+body.ps :is(.pc-chart, .pc-chart svg, .cn-map, .bri-map, .leaflet-container) { background: var(--research-surface); }
+body.ps .leaflet-control { background: var(--research-raised); color: var(--research-text); }
+body.ps .leaflet-control a { background: var(--research-raised); color: var(--research-text); }
+body.ps .leaflet-popup-content-wrapper, body.ps .leaflet-popup-tip { background: var(--research-surface); color: var(--research-text); }
+@media (max-width: 1050px) {
+  body.ps { padding-left: 218px !important; padding-right: 18px !important; }
+  .ps-workspace-panel { left: 18px; width: 181px; }
+  .ps-workspace-masthead { padding: 0 18px; }
+  body.ps :is(.ed-intro, .cn-hero, .situation-hero, .bri-analysis-layout) { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  body.ps .eo-cases { grid-template-columns: minmax(0, 1fr); }
+  body.ps .bri-context-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px) {
+  :root, body.ps { --ps-nav-h: 0px !important; }
+  body.ps { padding: 0 14px 20px !important; }
+  body.ps .ps-workspace { position: relative !important; inset: auto !important; height: auto !important; width: calc(100% + 28px); margin: 0 -14px 12px; border: 0 !important; }
+  .ps-workspace-masthead { height: 73px; padding: 0 14px; gap: 10px; border-bottom: 1px solid var(--research-line-subtle); }
+  .ps-workspace-brand { gap: 8px; }
+  .ps-workspace-brand b { font-size: 1.2rem; }
+  .ps-workspace-brand small { max-width: 190px; font-size: .64rem; }
+  .ps-workspace-projects > span { display: none; }
+  .ps-workspace-projects .research-project-link { font-size: .7rem; padding: 7px 8px; white-space: nowrap; }
+  .ps-workspace-toggle { display: flex; align-items: center; justify-content: space-between; gap: 15px; width: calc(100% - 28px); margin: 13px 14px 0; padding: 12px 13px; border: 1px solid var(--research-line); border-radius: 6px; background: var(--research-surface); color: var(--research-text); font: 400 .78rem/1.4 var(--research-font); text-align: left; }
+  .ps-workspace-toggle > span:last-child { color: var(--research-blue); }
+  .ps-workspace-panel { position: static; width: auto; margin: 0 14px; padding: 15px; max-height: 70dvh; border: 1px solid var(--research-line); background: var(--research-surface); }
+  html[data-workspace-ready] .ps-workspace-panel:not([data-open]) { display: none; }
+  .ps-workspace-section { margin-bottom: 12px; }
+  .ps-workspace-link { min-height: 42px; }
+  body.ps > main, body.ps > article { padding-top: 8px !important; }
+  body.ps > .cn-local { top: 0; }
+  body.ps h1 { font-size: 1.8rem !important; }
+  body.ps :is(.eo-findings, .eo-library, .ed-findings, .cr-questions, .bri-context-grid, .bri-contract, .bri-stats, .bri-sources, .bri-topic-contract) { grid-template-columns: minmax(0, 1fr); }
+  body.ps .bri-context-card--wide { grid-column: auto; }
+  body.ps :is(.bri-analysis-callout, .bri-limit, .eo-connected) { padding: 20px; }
+  body.ps .et-dossier-grid, body.ps .et-measures, body.ps .et-records { grid-template-columns: minmax(0, 1fr) !important; }
+  body.ps .et-dossier-grid > *, body.ps .et-dossier-grid li, body.ps .et-measure { min-width: 0; overflow-wrap: anywhere; }
+  body.ps .et-card, body.ps .et-card summary > * { min-width: 0; overflow-wrap: anywhere; }
+  body.ps .et-card summary { flex-wrap: wrap; }
+  body.ps .ps-wrap:is(.ws, .st, .fc) table { display: block; width: 100%; max-width: 100%; overflow-x: auto; }
+  body.ps .event-lens { width: auto; max-width: calc(100% - 24px); }
+  body.ps .event-lens__head { display: grid; gap: 12px; }
+}
+@media print {
+  body.ps { padding: 0 !important; }
+  .ps-workspace { display: none !important; }
+}

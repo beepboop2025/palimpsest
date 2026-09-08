@@ -15,6 +15,72 @@
   var RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
   var NATIVE_TIMELINE = CSS.supports && CSS.supports("animation-timeline", "view()");
 
+  function initWorkspaceNav() {
+    var workspace = document.querySelector(".ps-workspace");
+    if (!workspace || workspace.hasAttribute("data-ready")) return;
+    workspace.setAttribute("data-ready", "");
+    var panel = workspace.querySelector(".ps-workspace-panel");
+    var toggle = workspace.querySelector(".ps-workspace-toggle");
+    var search = workspace.querySelector('input[type="search"]');
+    var links = [].slice.call(workspace.querySelectorAll(".ps-workspace-link"));
+    var compact = matchMedia("(max-width: 700px)");
+    var here = new URL(window.location.href);
+    var normalized = function (path) { return path.replace(/\/+$/, "") || "/"; };
+    var currentLink = null;
+    links.forEach(function (link) {
+      var destination = new URL(link.href, here);
+      var current = destination.origin === here.origin && normalized(destination.pathname) === normalized(here.pathname);
+      if (current && normalized(here.pathname) === "/research/markets") {
+        var market = here.searchParams.get("market");
+        if (["drugs", "arms", "economy"].indexOf(market) === -1) market = null;
+        current = destination.searchParams.get("market") === market;
+      }
+      link.removeAttribute("aria-current");
+      if (current && !currentLink) { link.setAttribute("aria-current", "page"); currentLink = link; }
+    });
+    if (currentLink) {
+      var currentLabel = workspace.querySelector("[data-workspace-current]");
+      currentLabel.textContent = currentLink.textContent + " ⌄";
+      var group = currentLink.closest("details");
+      if (group) group.open = true;
+    }
+    function setOpen(open, focus) {
+      panel.toggleAttribute("data-open", open);
+      toggle.setAttribute("aria-expanded", String(open));
+      if (focus) (open ? search : toggle).focus();
+    }
+    toggle.addEventListener("click", function () { setOpen(!panel.hasAttribute("data-open"), true); });
+    workspace.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && compact.matches && panel.hasAttribute("data-open")) {
+        event.preventDefault(); setOpen(false, true);
+      }
+    });
+    panel.addEventListener("click", function (event) {
+      if (compact.matches && event.target.closest("a[href]")) setOpen(false, false);
+    });
+    compact.addEventListener("change", function () { setOpen(false, false); });
+    search.addEventListener("input", function () {
+      var query = search.value.trim().toLowerCase();
+      var matches = 0;
+      links.forEach(function (link) {
+        var visible = !query || (link.textContent + " " + link.getAttribute("href")).toLowerCase().includes(query);
+        link.hidden = !visible;
+        if (visible) matches += 1;
+      });
+      [].forEach.call(workspace.querySelectorAll(".ps-workspace-section"), function (section) {
+        section.hidden = !section.querySelector(".ps-workspace-link:not([hidden])");
+        if (query && section.tagName === "DETAILS" && !section.hidden) section.open = true;
+      });
+      workspace.querySelector(".ps-workspace-empty").hidden = matches > 0;
+    });
+    document.documentElement.setAttribute("data-workspace-ready", "");
+    [].forEach.call(document.querySelectorAll(".ps-wrap.ws table, .ps-wrap.st table, .ps-wrap.fc table"), function (table) {
+      // These older reports have direct tables rather than labelled wrappers.
+      // Keep their mobile horizontal scroll reachable from the keyboard.
+      if (!table.hasAttribute("tabindex")) table.setAttribute("tabindex", "0");
+    });
+  }
+
   /* ---------------------------------------------------------------- nav ---- */
   /* Flyouts open on hover with intent (a small delay stops them flickering as
      the pointer crosses the bar) and on click/keyboard without any delay. */
@@ -928,6 +994,7 @@
   }
 
   function init() {
+    initWorkspaceNav();
     initNav();
     initStagger();
     initReveal();

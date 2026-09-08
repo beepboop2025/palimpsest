@@ -33,8 +33,10 @@ def test_home_has_one_heading_and_clear_publication_routes():
         "data-home-wire-source-state",
     ):
         assert marker in page
-    assert "See what changed." in page
-    assert "Inspect the evidence." in page
+    assert "Follow China’s economy." in page
+    assert "Examine the public record." in page
+    for route in ("/china/evidence/", "/china/economy/", "/research/markets/", "/research/connected/"):
+        assert f'href="{route}"' in page
     assert "Not a newspaper" in page
     assert "AI assistance, named" in page
     assert 'id="main"' in page
@@ -145,9 +147,9 @@ def test_home_visual_system_is_responsive_and_motion_safe():
     assert "@media (max-width: 560px)" in css
     assert "@media (prefers-reduced-motion: reduce)" in css
     assert ":focus-visible" in css
-    assert "--hm-blue: #245dff" in css
-    assert "--hm-teal: #087e8b" in css
-    assert "--hm-paper: #f4f8fb" in css
+    assert "--hm-blue: var(--research-blue)" in css
+    assert "--hm-teal: var(--research-green)" in css
+    assert "--hm-paper: var(--research-bg)" in css
     responsive = css.split("@media (max-width: 980px)", 1)[1].split(
         "@media (max-width: 860px)", 1
     )[0]
