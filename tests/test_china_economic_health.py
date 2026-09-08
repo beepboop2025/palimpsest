@@ -94,6 +94,13 @@ def test_discovery_is_bounded_to_release_links():
         discover(b'<ul class="list"><a href="https://example.com/">Profits of Industrial Enterprises</a></ul>')
 
 
+def test_historical_singular_profit_title_preserves_the_same_family():
+    from collectors.nbs_releases import classify
+    assert classify("The Profit of Industrial Enterprises above the Designated Size from January to July in 2025") == "industrial_profits"
+    assert classify("Profits of Industrial Enterprises above the Designated Size in 2026") == "industrial_profits"
+    assert classify("Profit outlook for listed technology shares") is None
+
+
 def test_historical_export_retains_revisions_and_rejects_tampering(tmp_path):
     from scripts.china_economic_health_pull import export_history
     import csv
