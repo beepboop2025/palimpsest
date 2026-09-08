@@ -79,6 +79,8 @@ def soup_from(raw: bytes) -> BeautifulSoup:
 
 def classify(title: str) -> str | None:
     folded = title.casefold().replace("’", "'")
+    if "profit of industrial enterprises" in folded:
+        return "industrial_profits"
     return next((key for key, (_, term) in FAMILIES.items() if term in folded), None)
 
 
