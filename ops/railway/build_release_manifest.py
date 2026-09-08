@@ -172,6 +172,7 @@ CRITICAL_PATHS = (
     "readings/belt-and-road-observatory-latest.json",
     "readings/bri-economic-observations-latest.json",
     "readings/catalog.json",
+    "readings/research-catalog-latest.json",
     "readings/catalog.jsonld",
     "readings/china-publication-rights-latest.json",
     "readings/chinese-translations-latest.json",

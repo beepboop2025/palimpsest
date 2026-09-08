@@ -1,0 +1,2849 @@
+{
+  "schema": "palimpsest-research-catalog/v1",
+  "generated_at": "2026-09-08T19:30:22.267966Z",
+  "metadata_only": true,
+  "availability_semantics": "Editorial registry only. Unknown means public observation availability and freshness have not been established by this index. Inspect the linked public resource and its publication-rights status.",
+  "datasets": [
+    {
+      "id": "china-evidence-observatory",
+      "name": "China evidence observatory",
+      "description": "Economic histories, external trade comparisons, document changes and rights-aware research coverage. Missing data and disagreements do not establish concealment.",
+      "layer": "economy",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "NBS",
+        "Eurostat",
+        "Official institutional publications",
+        "SAFE acquisition metadata"
+      ],
+      "license": {
+        "name": "Source-specific NBS and Eurostat terms; original document metadata; no SAFE numeric publication",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md",
+        "latest": "https://palimpsest.info/readings/china-evidence-observatory-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-economic-history-analysis",
+      "name": "Comparable China economic histories",
+      "description": "Deduplicated NBS monthly business series, 70-city housing histories and exact same-URL numeric revision comparisons. Point-in-time availability is not reconstructed.",
+      "layer": "economy",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "National Bureau of Statistics of China"
+      ],
+      "license": {
+        "name": "NBS statistical-data terms; no downstream sublicense",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md",
+        "latest": "https://palimpsest.info/readings/china-economic-history-analysis-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-mirror-trade",
+      "name": "EU mirror trade with China, Pakistan and Myanmar",
+      "description": "EU-reported monthly product values and net mass since 2010, both flows, EU27 and selected member-country views. Overlapping geographic and product aggregates must not be added.",
+      "layer": "economy",
+      "cadence": "P7D",
+      "geography": [
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "Eurostat, EU-reported international trade in goods"
+      ],
+      "license": {
+        "name": "Eurostat EU-declared trade reuse with attribution",
+        "url": "https://ec.europa.eu/eurostat/about-us/policies/copyright"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md",
+        "latest": "https://palimpsest.info/readings/china-mirror-trade-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-publication-watch",
+      "name": "Official China publication-change watch",
+      "description": "Captured document baselines, revised text fingerprints, index changes and repeated URL-absence checks with separate transport/access failure states. Historical methodology cases cite official announcements.",
+      "layer": "economy",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "NBS",
+        "MOF",
+        "SAFE",
+        "PBOC",
+        "GACC",
+        "NEA",
+        "MOT",
+        "SPB"
+      ],
+      "license": {
+        "name": "Original acquisition metadata and editorial summaries; source bodies remain private",
+        "url": "https://www.palimpsest.info/china/evidence/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md",
+        "latest": "https://palimpsest.info/readings/china-publication-watch-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-external-accounts",
+      "name": "SAFE external-account acquisition coverage",
+      "description": "Metadata for privately retained regional cross-border receipt/payment and balance-of-payments workbooks. Numeric observations and derived findings are withheld pending publication permission.",
+      "layer": "economy",
+      "cadence": "P7D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "State Administration of Foreign Exchange"
+      ],
+      "license": {
+        "name": "SAFE permission required; public metadata only",
+        "url": "https://www.safe.gov.cn/safe/flsm/index.html"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md",
+        "latest": "https://palimpsest.info/readings/china-external-accounts-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-economic-health",
+      "name": "Detailed China economic release tables",
+      "description": "Official NBS table cells across activity, profits, ownership, prices, investment, trade-related activity and 70-city housing. Source headings, missing values and release/collection clocks are preserved. Coverage counts are cells and vintages, not independent respondents; two release families remain unavailable.",
+      "layer": "economy",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "National Bureau of Statistics of China"
+      ],
+      "license": {
+        "name": "NBS statistical data with source attribution; no downstream sublicense",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/economy/",
+        "method": "https://palimpsest.info/docs/CONNECTED-ECONOMIC-RESEARCH.md",
+        "latest": "https://palimpsest.info/readings/china-economic-health-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-economic-analysis",
+      "name": "China economic findings and cross-sections",
+      "description": "Deterministic industrial profit breadth, working-capital, manufacturing PMI and unweighted housing-city comparisons, with original source-cell citations. Official aggregates do not replicate China Beige Book's private firm panel.",
+      "layer": "economy",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "National Bureau of Statistics of China"
+      ],
+      "license": {
+        "name": "NBS statistical data with source attribution; no downstream sublicense",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/economy/",
+        "method": "https://palimpsest.info/docs/CONNECTED-ECONOMIC-RESEARCH.md",
+        "latest": "https://palimpsest.info/readings/china-economic-analysis-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "regional-economic-context",
+      "name": "Regional external debt and household conditions",
+      "description": "24 annual World Bank indicators for China, Pakistan and Myanmar. Preserves the full requested annual grid and separates latest available values from missing final years. These are country observations, not bilateral Chinese lending, district statistics or project accounts.",
+      "layer": "economy",
+      "cadence": "P7D",
+      "geography": [
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "World Bank World Development Indicators"
+      ],
+      "license": {
+        "name": "World Bank data, CC BY 4.0, with source attribution",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/research/connected/",
+        "method": "https://palimpsest.info/docs/CONNECTED-ECONOMIC-RESEARCH.md",
+        "latest": "https://palimpsest.info/readings/regional-economic-context-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "regional-research-wire",
+      "name": "Expanded China and regional reporting capture",
+      "description": "Twenty publisher and research feeds organized for China, CPEC/Gwadar, Balochistan, BRI and Myanmar. Keeps attributed title/link/time metadata; no publisher article bodies. Deduplicates shared publisher feeds and shows source failures. Reporting volume is not incident frequency.",
+      "layer": "cross-layer",
+      "cadence": "PT3H",
+      "geography": [
+        "CN",
+        "PK",
+        "MM",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Attributed publisher and research feeds listed in the artifact"
+      ],
+      "license": {
+        "name": "Publisher metadata and links only; underlying publisher rights retained",
+        "url": "https://palimpsest.info/research/connected/#sources"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/research/connected/",
+        "method": "https://palimpsest.info/docs/CONNECTED-ECONOMIC-RESEARCH.md",
+        "latest": "https://palimpsest.info/readings/regional-research-wire-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "connected-research",
+      "name": "Shared Palimpsest and NarcoScope regional research",
+      "description": "Five regional desks and 18 research questions with dated national comparisons, China economic findings, reporting metadata, source clocks and missing primary evidence. Country/theme/time navigation only; no actor relationship, culpability or causal inference.",
+      "layer": "cross-layer",
+      "cadence": "PT3H",
+      "geography": [
+        "CN",
+        "PK",
+        "MM",
+        "GLOBAL"
+      ],
+      "sources": [
+        "NBS",
+        "World Bank WDI",
+        "Attributed regional publishers",
+        "NarcoScope pinned official aggregate"
+      ],
+      "license": {
+        "name": "NBS statistical attribution, World Bank CC BY 4.0 and publisher metadata terms remain source-specific",
+        "url": "https://palimpsest.info/research/connected/#sources"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/research/connected/",
+        "method": "https://palimpsest.info/docs/CONNECTED-ECONOMIC-RESEARCH.md",
+        "latest": "https://palimpsest.info/readings/connected-research-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "belt-and-road-observatory",
+      "name": "Belt and Road Observatory coverage contract",
+      "description": "Global BRI project, finance, debt, trade, infrastructure and local-impact source ledger, with first deep dossiers for Pakistan/CPEC/Gwadar, Myanmar/CMEC/Kyaukpyu and a plural Balochistan political-economy record. This live coverage and source contract includes production-verified national economic context; it does not claim every registered source has been ingested, and project-finance adapters remain pending.",
+      "layer": "cross-layer",
+      "cadence": "P1D",
+      "geography": [
+        "GLOBAL",
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "China and host-country primary records",
+        "World Bank and UN datasets",
+        "rights-reviewed research datasets",
+        "NarcoScope official aggregate bridge"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/",
+        "method": "https://palimpsest.info/protocol/belt-and-road-observatory-v2.schema.json",
+        "latest": "https://palimpsest.info/readings/belt-and-road-observatory-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "gwadar-regional-analysis",
+      "name": "Recurring Gwadar and CPEC evidence analysis",
+      "description": "Content-addressed analytical edition built from the sealed regional newswire, named-source and independence-group counts, World Bank national context and UCDP annual uncertainty. Publisher claims remain attributed; topical overlap cannot establish delivery, coordination, responsibility, benefit, harm or causation.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/gwadar/analysis/",
+        "method": "https://palimpsest.info/scripts/build_bri_observatory.py",
+        "latest": "https://palimpsest.info/belt-and-road/gwadar/analysis/article.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "balochistan-regional-analysis",
+      "name": "Recurring Balochistan rights and political-economy analysis",
+      "description": "Content-addressed analytical edition connecting attributed rights documentation, civic and state reporting, resource governance, Gwadar and CPEC political economy without upgrading allegations into findings or topical overlap into proof of Pakistan-China coordination.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "regional media and documentation sources",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/balochistan/analysis/",
+        "method": "https://palimpsest.info/scripts/build_bri_observatory.py",
+        "latest": "https://palimpsest.info/belt-and-road/balochistan/analysis/article.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "myanmar-regional-analysis",
+      "name": "Recurring Myanmar corridor, conflict and rights analysis",
+      "description": "Content-addressed analytical edition built from attributed national and regional Myanmar reporting, including Rakhine, Kachin and Shan, with CMEC and Kyaukpyu overlap measured but never treated as project, actor or causal proof.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "MM",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "regional Myanmar media",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/myanmar/analysis/",
+        "method": "https://palimpsest.info/scripts/build_bri_observatory.py",
+        "latest": "https://palimpsest.info/belt-and-road/myanmar/analysis/article.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "bri-regional-archive",
+      "name": "BRI and regional-corridor captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed BRI, CPEC/Gwadar, Balochistan and Myanmar classifiers, bundled with source-registry coverage, World Bank national context, UCDP annual aggregate context and cited editorial evidence. Chinese-dominant records join to the content-addressed English translation sidecar while retaining the original text. It is a metadata-link-only archive of what Palimpsest captured, not every article published on the internet; article bodies, person records and tactical records are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "GLOBAL",
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire event-version ledger",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates",
+        "cited official and multilateral editorial evidence"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/",
+        "method": "https://palimpsest.info/protocol/regional-data-dump-v1.schema.json",
+        "latest": "https://palimpsest.info/belt-and-road/data/regional-data.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "gwadar-regional-archive",
+      "name": "CPEC and Gwadar captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed CPEC and Gwadar classifier, with downloadable JSON, JSONL and CSV metadata indexes plus joined English translations for Chinese-dominant records, national economic, annual conflict and cited editorial context. Source reports and allegations remain attributed; overlap does not establish delivery, responsibility, benefit, harm, coordination or causation, and article bodies are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire event-version ledger",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates",
+        "cited official and multilateral editorial evidence"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/gwadar/",
+        "method": "https://palimpsest.info/protocol/regional-data-dump-v1.schema.json",
+        "latest": "https://palimpsest.info/belt-and-road/gwadar/data/regional-data.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "balochistan-regional-archive",
+      "name": "Balochistan rights and political-economy captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed Balochistan classifier, with downloadable JSON, JSONL and CSV metadata indexes plus joined English translations for Chinese-dominant records, national economic, annual conflict and cited editorial context. Peaceful civic advocacy, rights documentation, parliamentary politics, armed groups and legal designations remain separate lanes; reports and allegations are attributed, not adjudicated, and article bodies are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire event-version ledger",
+        "regional media and documentation sources",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates",
+        "cited official, civic and multilateral editorial evidence"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/balochistan/",
+        "method": "https://palimpsest.info/protocol/regional-data-dump-v1.schema.json",
+        "latest": "https://palimpsest.info/belt-and-road/balochistan/data/regional-data.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "myanmar-regional-archive",
+      "name": "Myanmar corridor, conflict and rights captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed Myanmar, CMEC and Kyaukpyu classifier, with downloadable JSON, JSONL and CSV metadata indexes plus joined English translations for Chinese-dominant records, national economic, annual conflict and cited editorial context. Publisher accounts remain attributed, national and subnational evidence remain distinct, topical overlap is not causal proof, and article bodies are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "MM",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire event-version ledger",
+        "regional Myanmar media",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates",
+        "cited official, civic and multilateral editorial evidence"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/myanmar/",
+        "method": "https://palimpsest.info/protocol/regional-data-dump-v1.schema.json",
+        "latest": "https://palimpsest.info/belt-and-road/myanmar/data/regional-data.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "chinese-news-english-translations",
+      "name": "Chinese-language captured-news English translations",
+      "description": "Content-addressed machine-draft English translations of every current Chinese-dominant Palimpsest wire item, every Chinese-dominant revision in the append-only event-version ledger, and every eligible current event record not already represented by that ledger. Each record preserves immutable item/event version bindings, original Chinese metadata, source and collection clocks, and separates bounded translation from clearly labeled background. Coverage is limited to captured headline and feed-excerpt metadata: Palimpsest does not fetch or republish article bodies, and original publishers retain their rights.",
+      "layer": "content",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Chinese-dominant Palimpsest Evidence Wire metadata",
+        "publisher canonical links and source clocks"
+      ],
+      "license": {
+        "name": "Metadata-link-only and source-controlled; original publishers retain rights; Palimpsest method, schema and code use the repository license",
+        "url": "https://palimpsest.info/data.html#rights"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/english/",
+        "method": "https://palimpsest.info/protocol/chinese-translations-v1.schema.json",
+        "latest": "https://palimpsest.info/readings/chinese-translations-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "bri-economic-observations",
+      "name": "BRI-country World Development Indicators context",
+      "description": "Attributed annual World Development Indicators for China, Pakistan and Myanmar with observed, forecast and unavailable rows kept distinct. This is country-period context only: it cannot establish a BRI project, actor, corridor or causal effect, and source nulls are never converted to zero.",
+      "layer": "economy",
+      "cadence": "P7D",
+      "geography": [
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "World Bank World Development Indicators"
+      ],
+      "license": {
+        "name": "World Bank WDI, CC BY 4.0; attribution required",
+        "url": "https://datacatalog.worldbank.org/public-licenses"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/",
+        "method": "https://palimpsest.info/docs/BRI-WDI-OBSERVATIONS.md",
+        "latest": "https://palimpsest.info/readings/bri-economic-observations-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "ucdp-annual-aggregate-context",
+      "name": "UCDP annual aggregate context for Myanmar and Balochistan",
+      "description": "Receipt-bound UCDP version 26.1 annual historical context: Balochistan and Myanmar conflict-year identifiers plus Pakistan and Myanmar country-year uncertainty bounds. Actor names, event narratives, coordinates, person records and tactical fields never cross the public boundary; Pakistan fatality totals are national rather than Balochistan-only, and the data cannot establish a NarcoScope actor, route, project or causal link.",
+      "layer": "cross-layer",
+      "cadence": "P12M",
+      "geography": [
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "Uppsala Conflict Data Program version 26.1 annual bulk datasets"
+      ],
+      "license": {
+        "name": "UCDP version 26.1, CC BY 4.0; attribution and dataset citations required",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/belt-and-road/",
+        "method": "https://palimpsest.info/docs/UCDP-AGGREGATE-CONTEXT.md",
+        "latest": "https://palimpsest.info/readings/ucdp-aggregate-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "ddti",
+      "name": "Domestic Discourse Tightening Index",
+      "description": "Ranks topics receiving censor attention in China Digital Times' curated deletion and directive feeds; it measures attention allocation, not a population deletion rate.",
+      "layer": "content",
+      "cadence": "PT3H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "China Digital Times"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest code and derived fields; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/dashboards/ddti_observatory.html",
+        "method": "https://palimpsest.info/docs/METHODOLOGY.md",
+        "latest": "https://palimpsest.info/readings/ddti-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "ooni-gfw",
+      "name": "OONI Great Firewall signal",
+      "description": "Windowed China blocking rates from openly published OONI measurements, with denominators and per-test evidence kept visible.",
+      "layer": "network",
+      "cadence": "PT2H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "OONI"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0 source data",
+        "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/ooni-gfw.html",
+        "method": "https://palimpsest.info/docs/MEASURING-GFW-DNS-INJECTION.md",
+        "latest": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "ooni-bulk",
+      "name": "OONI bulk evidence warehouse",
+      "description": "Hourly, country- and test-scoped replication of OONI JSONL evidence with byte budgets, checksums, resumable manifests, and privacy-minimized public rollups.",
+      "layer": "network",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "IR",
+        "MM",
+        "PK",
+        "RU",
+        "TR"
+      ],
+      "sources": [
+        "OONI Open Data on AWS"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0",
+        "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/data.html#dataset-ooni-bulk",
+        "method": "https://palimpsest.info/docs/HETZNER-NODE-ARCHITECTURE.md",
+        "latest": "https://palimpsest.info/readings/ooni-bulk-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "inside-view",
+      "name": "Inside View",
+      "description": "Controlled DNS comparisons from consented Globalping cloud probes in mainland China against independent control locations.",
+      "layer": "network",
+      "cadence": "PT2H",
+      "geography": [
+        "CN",
+        "DE",
+        "NL"
+      ],
+      "sources": [
+        "Globalping",
+        "Team Cymru"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest output; provider terms apply",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/inside-view.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/inside-view-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "bleedthrough",
+      "name": "BLEEDTHROUGH DNS-injector telemetry",
+      "description": "Bounded external-vantage measurements of coarse DNS-injector response-process changes across declared Chinese network groups. Only the privacy-minimized v2 relay is public; target IPs, prefix samples, baselines, and probe-level observations remain private. A response transition is a measurement lead, not attribution of an actor or intent.",
+      "layer": "network",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "DE"
+      ],
+      "sources": [
+        "Palimpsest Hetzner measurement node",
+        "RIPEstat public BGP data"
+      ],
+      "license": {
+        "name": "MIT for sanitized Palimpsest method and aggregates; upstream RIPE terms apply",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/bleedthrough.html",
+        "method": "https://palimpsest.info/docs/BLEEDTHROUGH.md",
+        "latest": "https://palimpsest.info/readings/bleedthrough-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "cloudflare-radar-tcp",
+      "name": "Cloudflare passive TCP telemetry",
+      "description": "Country-level reset and timeout stage distributions from Cloudflare's passive network sample; useful for corroboration, never treated as causal proof of censorship.",
+      "layer": "network",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "IR",
+        "MM",
+        "PK",
+        "RU",
+        "TR"
+      ],
+      "sources": [
+        "Cloudflare Radar"
+      ],
+      "license": {
+        "name": "CC BY-NC 4.0",
+        "url": "https://creativecommons.org/licenses/by-nc/4.0/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/data.html#dataset-cloudflare-radar-tcp",
+        "method": "https://palimpsest.info/docs/CLOUDFLARE-RADAR-TCP.md",
+        "latest": "https://palimpsest.info/readings/cloudflare-radar-tcp-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "in-path-interference",
+      "name": "In-path interference",
+      "description": "OONI-derived middlebox rewriting and transport anomaly families kept separate from reachability and execution failures.",
+      "layer": "network",
+      "cadence": "PT2H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "OONI"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0 source data",
+        "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/in-path-interference.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/in-path-interference-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "censored-planet",
+      "name": "Censored Planet side-channel",
+      "description": "Independent longitudinal Internet-wide interference rates and alert events from the Censored Planet observatory.",
+      "layer": "network",
+      "cadence": "P1D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Censored Planet"
+      ],
+      "license": {
+        "name": "Upstream terms; Palimpsest publishes attribution and provenance",
+        "url": "https://censoredplanet.org/data/raw"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/ooni-gfw.html",
+        "method": "https://palimpsest.info/docs/CENSORED-PLANET-INGEST.md",
+        "latest": "https://palimpsest.info/readings/censored-planet-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "ioda-outages",
+      "name": "IODA outage evidence",
+      "description": "Independent BGP, active-probing, and telescope outage events used to distinguish censorship from wider connectivity loss.",
+      "layer": "network",
+      "cadence": "PT2H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Georgia Tech IODA"
+      ],
+      "license": {
+        "name": "Upstream terms; Palimpsest derived output MIT",
+        "url": "https://ioda.inetintel.cc.gatech.edu/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#network",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/ioda-outages-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "net4people",
+      "name": "net4people event stream",
+      "description": "Recent, publicly discussed censorship and circumvention events extracted from the net4people research forum.",
+      "layer": "network",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "net4people/bbs"
+      ],
+      "license": {
+        "name": "Repository and contributor terms apply",
+        "url": "https://github.com/net4people/bbs"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#network",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/net4people-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "circumvention-demand",
+      "name": "Circumvention demand",
+      "description": "Tor usage telemetry used as a demand-side cross-check, with transport changes retained as context rather than causal proof.",
+      "layer": "network",
+      "cadence": "P1D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Tor Metrics"
+      ],
+      "license": {
+        "name": "CC0 source data",
+        "url": "https://metrics.torproject.org/collector.html"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#network",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/circumvention-demand-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "vantage-fusion",
+      "name": "Vantage fusion interval",
+      "description": "Fuses OONI, Censored Planet, and event evidence into an uncertainty interval; it refuses to publish a false point estimate when vantages diverge.",
+      "layer": "network",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest derived from OONI, Censored Planet, net4people"
+      ],
+      "license": {
+        "name": "Mixed upstream licenses; see component datasets",
+        "url": "https://palimpsest.info/for-researchers.html"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/data.html#dataset-vantage-fusion",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/vantage-fusion-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "weibo-hotsearch",
+      "name": "Weibo allowed-attention denominator",
+      "description": "Archived hot-search boards provide the visible-attention denominator needed to avoid treating topic popularity as deletion pressure.",
+      "layer": "content",
+      "cadence": "PT1H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Public Weibo hot-search archive"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "gdelt",
+      "name": "GDELT cross-signal",
+      "description": "Compares topics drawing domestic censor attention with global news coverage and abstains when the global denominator is unavailable.",
+      "layer": "content",
+      "cadence": "PT3H",
+      "geography": [
+        "GLOBAL",
+        "CN"
+      ],
+      "sources": [
+        "GDELT"
+      ],
+      "license": {
+        "name": "GDELT source terms; Palimpsest derived output MIT",
+        "url": "https://www.gdeltproject.org/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/gdelt-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "github-refuge",
+      "name": "GitHub as refuge",
+      "description": "Watches a bounded public repository panel for disappearance and pressure events without equating an API failure with removal.",
+      "layer": "content",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GitHub public repositories"
+      ],
+      "license": {
+        "name": "Repository-specific upstream licenses",
+        "url": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/github-refuge-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "research-corpus",
+      "name": "Public research-corpus ledger",
+      "description": "Tracks exact default-branch commit cursors and aggregate Git ref counts for five censorship-research repositories without republishing notice bodies, affected identifiers, URL test targets, keyword lists, or routing rules.",
+      "layer": "content",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "github/gov-takedowns",
+        "github/dmca",
+        "citizenlab/test-lists",
+        "citizenlab/chat-censorship",
+        "gfwlist/gfwlist"
+      ],
+      "license": {
+        "name": "Metadata-only aggregate; repository-specific upstream licenses",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/docs/RESEARCH-CORPUS-INGEST.md"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/data.html#dataset-research-corpus",
+        "method": "https://palimpsest.info/docs/RESEARCH-CORPUS-INGEST.md",
+        "latest": "https://palimpsest.info/readings/research-corpus-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "wayback",
+      "name": "Wayback reconstruction",
+      "description": "Reconstructs prior public states for watched URLs and separates deletion, mutation, reachability, and archival absence.",
+      "layer": "content",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Internet Archive CDX"
+      ],
+      "license": {
+        "name": "Internet Archive terms; Palimpsest metadata MIT",
+        "url": "https://archive.org/about/terms.php"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/wayback-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "undertext",
+      "name": "UNDERTEXT differential fusion",
+      "description": "Fuses already-published Wayback reconstructions, Weibo-board joins, and DDTI public records into shared China observation rows. Optional Wikipedia-only live surfaces stay gated; live Weibo, Baidu, and Baike are never enabled from this runner.",
+      "layer": "content",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Internet Archive CDX",
+        "Weibo hot-search archive",
+        "China Digital Times public RSS"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/erasure/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md",
+        "latest": "https://palimpsest.info/readings/undertext-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "erasure-trail",
+      "name": "Journalist erasure trail",
+      "description": "Deterministic journalist projection of already-published China observations: first-seen, last-seen, snapshots, hashes, source URLs, CSV export and a citation line. Clock is the newest input timestamp. Does not invent a live ledger or a private-message feed.",
+      "layer": "content",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "UNDERTEXT fusion",
+        "Internet Archive CDX",
+        "Weibo hot-search archive",
+        "China Digital Times"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/erasure/",
+        "method": "https://palimpsest.info/docs/FOR-JOURNALISTS.md",
+        "latest": "https://palimpsest.info/readings/erasure-trail-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "censorship-practice-dossiers",
+      "name": "Piece-level censorship-practice dossiers",
+      "description": "Deterministic dossier for every qualifying item in retained public inputs: evidence state, observed or reported mechanism, explicit actor attribution, timeline, exact-identity measurement joins, input hashes, counter-readings, unknowns and collector gaps. Reporting about censorship is not represented as itself censored; ordinary edits and archive gaps are excluded and counted.",
+      "layer": "content",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Public deletion-ledger feeds",
+        "Bounded social observations",
+        "Weibo hot-search archive",
+        "DDTI",
+        "UNDERTEXT",
+        "Internet Archive CDX"
+      ],
+      "license": {
+        "name": "Upstream rights retained; bounded excerpts and Palimpsest derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/erasure/",
+        "method": "https://palimpsest.info/docs/CENSORSHIP-PRACTICE-DOSSIERS.md",
+        "latest": "https://palimpsest.info/readings/censorship-practice-dossiers-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "public-deletion-ledgers",
+      "name": "Public deletion ledgers",
+      "description": "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style). Each feed is a candidate; if every ledger is unreachable the runner abstains rather than publish a zero.",
+      "layer": "content",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "China Digital Times RSS",
+        "GreatFire public RSS",
+        "FreeWeibo-style public feed"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/osint-china.html",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md",
+        "latest": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "archive-news-context",
+      "name": "Archive news context",
+      "description": "Deterministic point-in-time join of live news-wire, official-first-seen, and public-deletion-ledger observations to Common Crawl derived host features. Public copy is context-only: coverage on a watched official host, or shared topics with a watched host. No article-body fetch, causal inference, motive sentence, raw Common Crawl URL dump, or WARC body.",
+      "layer": "content",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Common Crawl derived host features",
+        "News-wire-live observations",
+        "Official first-seen landings",
+        "Public deletion ledgers"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/osint-china.html",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md",
+        "latest": "https://palimpsest.info/readings/archive-news-context-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "greatfire-context",
+      "name": "GreatFire attributed verdicts",
+      "description": "Caches GreatFire Analyzer 90-day URL verdicts (CC BY 4.0) for hosts Palimpsest already holds. Palimpsest is not the origin of these measurements and does not crawl the 700k catalog.",
+      "layer": "network",
+      "cadence": "PT12H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire Analyzer open API"
+      ],
+      "license": {
+        "name": "GreatFire Analyzer CC BY 4.0; Palimpsest derived metadata MIT",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/osint-china.html",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md",
+        "latest": "https://palimpsest.info/readings/greatfire-context-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "peer-context",
+      "name": "Attributed peer-context warehouse",
+      "description": "Joins GreatFire, OONI, bounded CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts. Peer rows never become Palimpsest capture.",
+      "layer": "cross-layer",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire Analyzer",
+        "OONI",
+        "China Digital Times",
+        "Weiboscope citation"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md",
+        "latest": "https://palimpsest.info/readings/peer-context-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "peer-context-rank",
+      "name": "Peer-context review ranker",
+      "description": "Orders and flags cached GreatFire, OONI, and CDT peer rows against each peer series' own history. Review rank only. It does not write the warehouse, replace event-analysis sentences, or become a join on the Situation desk.",
+      "layer": "cross-layer",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire cache",
+        "OONI host/ASN series",
+        "China Digital Times titles"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/osint-china.html",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md",
+        "latest": "https://palimpsest.info/readings/peer-context-rank-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "ooni-peer-context",
+      "name": "OONI peer-context host join",
+      "description": "Host/ASN feature rows joined from already-held ooni-gfw-latest or warehouse/ooni-bulk. Does not re-download the 33G archive. Silent or miss joins fail closed.",
+      "layer": "network",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "OONI Probe / OONI data"
+      ],
+      "license": {
+        "name": "OONI data license; Palimpsest derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md",
+        "latest": "https://palimpsest.info/readings/ooni-peer-context-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "cdt-context",
+      "name": "CDT peer editorial context",
+      "description": "Titles, links, bounded excerpts, and gazetteer terms from public CDT RSS. Full articles are not republished. A silent feed fails closed.",
+      "layer": "content",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "China Digital Times RSS"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md",
+        "latest": "https://palimpsest.info/readings/cdt-context-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "weiboscope-context",
+      "name": "Weiboscope documented abstention",
+      "description": "Citation pointer only (doi:10.25442/hku.16674565). The 2012 226M-message dump is not downloaded or stored.",
+      "layer": "content",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Weiboscope / HKU JMSC citation"
+      ],
+      "license": {
+        "name": "Citation only; no dump retained",
+        "url": "https://doi.org/10.25442/hku.16674565"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md",
+        "latest": "https://palimpsest.info/readings/weiboscope-context-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "app-storefront",
+      "name": "App Storefront panel",
+      "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",
+      "layer": "platform",
+      "cadence": "PT2H",
+      "geography": [
+        "CN",
+        "US"
+      ],
+      "sources": [
+        "Apple iTunes Search API"
+      ],
+      "license": {
+        "name": "Apple service terms; Palimpsest derived output MIT",
+        "url": "https://www.apple.com/legal/internet-services/itunes/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/app-store.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/app-storefront-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "apple-censorship",
+      "name": "AppleCensorship country corpus",
+      "description": "Country-level app availability composition and peer comparison from GreatFire's public AppleCensorship corpus.",
+      "layer": "platform",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire AppleCensorship"
+      ],
+      "license": {
+        "name": "Upstream terms; Palimpsest attribution required",
+        "url": "https://applecensorship.com/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/app-store.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/apple-censorship-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "blocklist",
+      "name": "Blocklist archaeology",
+      "description": "Version-to-version keyword additions with hashes and source provenance; evidence samples are bounded and interpretation remains separate.",
+      "layer": "platform",
+      "cadence": "P1W",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Citizen Lab chat-censorship"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0 source data",
+        "url": "https://github.com/citizenlab/chat-censorship"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/blocklist.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/blocklist-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "baike-redaction",
+      "name": "Baike redaction differential",
+      "description": "Entity-page comparison method retained for authorized access; the public artifact explicitly reports when collection is unavailable.",
+      "layer": "content",
+      "cadence": "P1D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Baidu Baike"
+      ],
+      "license": {
+        "name": "Upstream rights retained",
+        "url": "https://baike.baidu.com/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/baike-redaction-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "data-darkness",
+      "name": "Official-data darkness",
+      "description": "Publication is gated because the current aggregate includes CFETS-derived freshness values whose redistribution is denied. The public endpoint exposes restriction metadata only; unavailable is not zero or calm.",
+      "layer": "state",
+      "cadence": "PT12H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "PBOC",
+        "SAFE",
+        "NBS",
+        "NRA"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-econ",
+      "name": "China economic telemetry",
+      "description": "Historical collection metadata for official CFETS and related benchmarks. Value publication is gated because written redistribution licensing has not been established; the same-path public endpoints expose restriction metadata only.",
+      "layer": "state",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "CFETS",
+        "official statistical publications"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-economic-observations",
+      "name": "China economic observation ledger",
+      "description": "Metadata-only restricted endpoint for the former narrow, aggregate-only bitemporal ledger; it was an auditable interchange, not an estimate of true GDP. The reviewed policy denies CFETS/ChinaMoney value publication, so zero observation rows or derivatives are public; restricted is not a current economic reading.",
+      "layer": "economy",
+      "cadence": "P1D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "CFETS/ChinaMoney"
+      ],
+      "license": {
+        "name": "Mixed rights: official-source data rights retained; Palimpsest code, schema and metadata MIT",
+        "url": "https://palimpsest.info/data.html#rights"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-economic-wdi-history",
+      "name": "China World Development Indicators history",
+      "description": "Attributed CC BY 4.0 annual China structural indicators in a Git-tracked append-only EconomicObservation v1 ledger. It preserves reference-period, World Bank dataset-release and Palimpsest-collection clocks plus value revisions. It is context-only, not an independent China official-data confirmation, current-liquidity feed, activity index or scoring authority; exact-response availability gates current-coverage claims.",
+      "layer": "economy",
+      "cadence": "P7D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "World Bank World Development Indicators"
+      ],
+      "license": {
+        "name": "World Bank WDI, CC BY 4.0; attribution required",
+        "url": "https://datacatalog.worldbank.org/public-licenses"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/sources/world_bank_wdi/",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md",
+        "latest": "https://palimpsest.info/readings/china-econ-wdi-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-economic-forecast",
+      "name": "China named-series forecast and backtest audit",
+      "description": "Publication-gated pseudo-real-time backtests derived from the restricted China observation ledger. Named-series forecasts stay null; no score, warming state or direction is public while denied upstream values remain in the dependency graph.",
+      "layer": "economy",
+      "cadence": "P1D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest bitemporal China economic observation ledger"
+      ],
+      "license": {
+        "name": "Mixed rights: upstream observations retained; Palimpsest forecast code, schema and metadata MIT",
+        "url": "https://palimpsest.info/data.html#rights"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/china/",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "cny-fix-gap",
+      "name": "CNY fixing gap",
+      "description": "Publication-gated comparison formerly derived from CFETS central parity and independent central-bank reference rates. The current public endpoint exposes restriction metadata only and does not infer a zero gap.",
+      "layer": "state",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "EU",
+        "CA"
+      ],
+      "sources": [
+        "CFETS",
+        "ECB",
+        "Bank of Canada"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest derived output MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "believability",
+      "name": "Physical-economy believability band",
+      "description": "A transparent band from electricity, rail freight, credit, coal, and steel telemetry that is kept as a counterpoint rather than a replacement statistic.",
+      "layer": "state",
+      "cadence": "P1M",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "NBS",
+        "PBOC",
+        "NRA"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest derived output MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/BELIEVABILITY.md",
+        "latest": "https://palimpsest.info/readings/believability-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "stock-connect",
+      "name": "Stock Connect flows",
+      "description": "Weekday northbound and southbound flow observations from HKEX, with source units and publication dates preserved.",
+      "layer": "state",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "HKEX"
+      ],
+      "license": {
+        "name": "HKEX source terms; Palimpsest metadata MIT",
+        "url": "https://www.hkex.com.hk/"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md",
+        "latest": "https://palimpsest.info/readings/stock-connect-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "silence-index",
+      "name": "Silence Index",
+      "description": "Compares domestic censor-attention topics with globally visible coverage and an allowed-attention denominator; abstention is a first-class output.",
+      "layer": "content",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest derived from DDTI, Weibo, GDELT"
+      ],
+      "license": {
+        "name": "Mixed upstream licenses; see component datasets",
+        "url": "https://palimpsest.info/for-researchers.html"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/silence-index-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "event-flags",
+      "name": "Anytime-valid event flags",
+      "description": "Conformal change alarms over source histories with explicit reporting, stale, closed, and no-data states.",
+      "layer": "cross-layer",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#stats",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/event-flags-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "board-alarm",
+      "name": "Multiplicity-controlled board alarm",
+      "description": "Layer-aware e-value board that pays for multiple testing and shows evidence coverage beside every alarm state.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#stats",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/board-alarm-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "coverage-guard",
+      "name": "Coverage guard",
+      "description": "Detects sample and source-coverage degradation so a smaller denominator is not silently presented as a calmer signal.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#stats",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/coverage-guard-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "cross-layer",
+      "name": "Cross-layer timing",
+      "description": "Daily-collapsed lead and lag estimates across independent layers; it labels temporal order and never upgrades it to causation.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/index.html#stats",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/cross-layer-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "forecast-ledger",
+      "name": "Forecast ledger",
+      "description": "Scores Palimpsest's own forecasts against later observations, including misses and results that are not yet scoreable.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest event histories"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/for-researchers.html#forecast",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md",
+        "latest": "https://palimpsest.info/readings/forecast-ledger-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "erasure-observatory",
+      "name": "Information Erasure Observatory",
+      "description": "Composite across network, narrative, and model layers, computed only over reporting layers and committed to a hash-chained ledger.",
+      "layer": "cross-layer",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest layer readings"
+      ],
+      "license": {
+        "name": "Mixed upstream licenses; composite method MIT",
+        "url": "https://palimpsest.info/for-researchers.html"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/erasure-observatory.html",
+        "method": "https://palimpsest.info/docs/ERASURE-OBSERVATORY.md",
+        "latest": "https://palimpsest.info/readings/erasure-observatory-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "newsroom",
+      "name": "Palimpsest Newsroom",
+      "description": "Deterministic, evidence-linked news dispatches projected from the normalized OSINT China roll-up without model-written claims or causal inference.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest OSINT China roll-up"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/",
+        "method": "https://palimpsest.info/docs/NEWSROOM.md",
+        "latest": "https://palimpsest.info/readings/newsroom-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "newswire",
+      "name": "Palimpsest Evidence Wire",
+      "description": "Metadata-only RSS and Atom intake from a closed allowlist, normalized into versioned event dossiers with source-by-source coverage receipts, independence groups, declared scan links and explicit limitations. It republishes neither article bodies nor inferred causes.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "PK",
+        "MM",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Closed allowlist in config/news_sources.json"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata and derived fields; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/wire/",
+        "method": "https://palimpsest.info/docs/EVIDENCE-WIRE.md",
+        "latest": "https://palimpsest.info/readings/newswire-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-article-stream",
+      "name": "Palimpsest China Article Stream",
+      "description": "Temporarily publication-gated mixed China article stream because the current artifact embeds economic context derived from rights-denied CFETS inputs. A filtered build is required before unaffected publisher metadata can return.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "Palimpsest per-event analysis",
+        "Optional human-reviewed ScamShield aggregate"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata and analysis; upstream publisher rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/",
+        "method": "https://palimpsest.info/docs/EVIDENCE-WIRE.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "social-observations",
+      "name": "Bounded Social Observation Ledger",
+      "description": "Versioned, publication-safe metadata from a closed registry of institutional Telegram and Instagram sources. Official APIs or an authenticated companion runtime provide bounded observations; native identifiers, credentials, engagement, comments, direct messages, locations and media binaries never enter the public artifact. Social observations are context, not corroboration.",
+      "layer": "narrative",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "HK",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Closed allowlist in config/social_sources.json",
+        "Instagram Graph API",
+        "Authenticated ScamShield Telegram export"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata and derived fields; publisher and platform rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/SOCIAL-OBSERVATION-PIPELINE.md",
+        "latest": "https://palimpsest.info/readings/social-observations-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "dragon-whispers",
+      "name": "Dragon Whispers Reviewed Telegram Context",
+      "description": "Human-reviewed, privacy-minimized analytical signals derived from configured public Telegram sources. Raw forwards stay in Telegram; the website excludes source identifiers, raw messages, exact IOCs and named allegations, and the resulting signals never count as evidence or corroboration.",
+      "layer": "narrative",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Verified ScamShield evidence capsules",
+        "Human review receipts"
+      ],
+      "license": {
+        "name": "MIT for sanitized Palimpsest structure and analysis; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/whispers/",
+        "method": "https://palimpsest.info/docs/SOCIAL-OBSERVATION-PIPELINE.md",
+        "latest": "https://palimpsest.info/readings/dragon-whispers-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "live-watch",
+      "name": "Public vantage watch",
+      "description": "The way to get more grey data is more public vantages, continuously, then join them. Sealed coverage of the box live-event lane. Day NDJSON stays on the node. Git only gets a summary. Never corroboration.",
+      "layer": "narrative",
+      "cadence": "PT1H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Reviewed live-tap registry"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest summaries; upstream board rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/rumour/",
+        "method": "https://palimpsest.info/docs/LIVE-EVENT-INGEST.md",
+        "latest": "https://palimpsest.info/readings/live-watch-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "rumour-board",
+      "name": "Rumour-board context",
+      "description": "Taken from rumour boards. One labeled slice of the public-vantage stack. Grow named Telegram first. 4chan is a weak China live source and stays context, never corroboration. Rows never increment independent source groups.",
+      "layer": "narrative",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Reviewed rumour-board taps"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest structure; upstream board rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/rumour/",
+        "method": "https://palimpsest.info/docs/LIVE-EVENT-INGEST.md",
+        "latest": "https://palimpsest.info/readings/rumour-board-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-situation",
+      "name": "China Situation Synthesis",
+      "description": "Temporarily publication-gated deterministic event dossiers that preserve different evidentiary roles, exact URL joins, and the rule that topic-level measurements never become article verification. The current mixed artifact carries CFETS-derived Observatory context, so whole-endpoint quarantine applies until an unaffected rebuild exists.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "Bounded Social Observation Ledger",
+        "Dragon Whispers",
+        "Palimpsest Observatory event analysis"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest synthesis and metadata; upstream publisher rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/SOCIAL-OBSERVATION-PIPELINE.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-censorship-analysis",
+      "name": "Palimpsest China Censorship Analysis",
+      "description": "Publication-gated cross-instrument analysis of content attention, silence, network interference, erasure and app distribution. Every analytical sentence still cites an exact aggregate newsroom receipt, incompatible denominators remain separate, and non-live instruments remain visible as availability warnings. The public HTML, JSON and RSS surfaces remain as explicit availability notices, but the value-bearing reading and download stay withheld while source rights are denied. Unavailable is not zero and must not be read as no change.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "Palimpsest aggregate newsroom feed"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest structure and analysis; upstream rights retained per cited reading",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/china/analysis/",
+        "method": "https://palimpsest.info/docs/CHINA-CENSORSHIP-ANALYSIS.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "china-economic-pulse",
+      "name": "China Economic Pulse",
+      "description": "Publication-gated revision-safe synthesis whose current dependency graph includes rights-denied CFETS values. Its coverage gates formerly preserved as-of clocks and abstained from a composite rather than estimating true GDP; the public endpoint is now metadata-only and exposes no metrics, warming states, scores or direction.",
+      "layer": "economy",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "Palimpsest aggregate economic readings",
+        "config/china_econ_sources.json"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest synthesis; mixed upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/economy/",
+        "method": "https://palimpsest.info/docs/EVIDENCE-WIRE.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "investigations",
+      "name": "Palimpsest Investigations Desk",
+      "description": "Review-gated research leads assembled from hash-bound public evidence, explicit counterevidence and falsification conditions. Cases remain research leads until every human publication gate passes; the system does not automate allegations, motives or causal attribution.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest OSINT China roll-up",
+        "Palimpsest China Economic Pulse",
+        "Hash-bound public source receipts"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest structure and analysis; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/investigations/",
+        "method": "https://palimpsest.info/docs/INVESTIGATIONS.md",
+        "latest": "https://palimpsest.info/readings/investigations-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "evidence-mesh",
+      "name": "Palimpsest Evidence Mesh",
+      "description": "Temporarily publication-gated deterministic evidence inventory. It maps partner artifacts without treating them as automatically admitted evidence, but the current mixed endpoint carries dependency material derived from a rights-denied CFETS family; a future filtered build can restore unaffected resources.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest public readings and catalog",
+        "Pinned aggregate Intelligence Commons partner artifacts"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata; upstream rights and restrictions retained per resource",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/analysis/",
+        "method": "https://palimpsest.info/docs/EVIDENCE-MESH.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "machine-investigations",
+      "name": "Palimpsest Machine Analysis Desk",
+      "description": "Temporarily publication-gated deterministic machine analysis with sentence-level citations, no human interviews, explicit countercases and an AbstentionReport below threshold. The current mixed endpoint embeds an economic-readiness branch derived from rights-denied CFETS inputs, so whole-endpoint quarantine applies pending a filtered rebuild.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest Evidence Mesh",
+        "Palimpsest OSINT-China roll-up",
+        "Economic pulse and primary-document receipts"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest structure and analysis; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/analysis/",
+        "method": "https://palimpsest.info/docs/MACHINE-INVESTIGATIONS.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "primary-documents",
+      "name": "Primary Document Archive",
+      "description": "Metadata-only receipts for exact bytes captured from a closed registry of official statistics, transport, energy, satellite, survey and exchange-filing surfaces. Every revision keeps separate publication, retrieval and acceptance clocks; a captured catalog is not a parsed observation.",
+      "layer": "economy",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "HK",
+        "GLOBAL"
+      ],
+      "sources": [
+        "NBS",
+        "PBOC",
+        "GACC",
+        "MOT",
+        "State Post Bureau",
+        "NEA",
+        "IMF PortWatch",
+        "Copernicus",
+        "NASA",
+        "HKEX",
+        "SSE",
+        "SZSE",
+        "World Bank"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest receipts; publisher rights and terms apply to retained source bytes",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/standards/",
+        "method": "https://palimpsest.info/docs/REPORTING-NEWSROOM-V2.md",
+        "latest": "https://palimpsest.info/readings/primary-documents-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "corroboration",
+      "name": "Reviewed Corroboration Ledger",
+      "description": "Conservative event-to-primary-document candidates and human decisions. A topical match never confirms an event automatically; only an accepted release-document edge with compatible clocks and a distinct independence group can increase support.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "HK",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "Palimpsest Primary Document Archive",
+        "config/corroboration_decisions.json"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest linkage metadata; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/standards/",
+        "method": "https://palimpsest.info/docs/REPORTING-NEWSROOM-V2.md",
+        "latest": "https://palimpsest.info/readings/corroboration-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "network-rounds",
+      "name": "Frozen Multiprotocol Network Rounds",
+      "description": "Longitudinal receipts for a frozen target panel with protocol, method, China cloud-ASN and region, same-round external control, routing and outage scope kept separate. Results describe the observed vantages and never a national censorship percentage.",
+      "layer": "network",
+      "cadence": "PT2H",
+      "geography": [
+        "CN",
+        "DE",
+        "NL"
+      ],
+      "sources": [
+        "Palimpsest Inside View",
+        "IODA",
+        "Internet Archive",
+        "App Storefront"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest aggregate receipts; provider and upstream terms apply",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/standards/",
+        "method": "https://palimpsest.info/docs/REPORTING-NEWSROOM-V2.md",
+        "latest": "https://palimpsest.info/readings/network-rounds-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "source-workflow",
+      "name": "Protected Human-Source Workflow Summary",
+      "description": "Public aggregate readiness for pseudonymous, externally encrypted source records. Identity, contact details, attribution labels and note text stay in a private content-addressed store; consent, verification, safety and right-to-reply status are exposed only as package counts.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Protected reporter-managed source records"
+      ],
+      "license": {
+        "name": "MIT for aggregate workflow metadata; protected records are not public",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/standards/",
+        "method": "https://palimpsest.info/docs/REPORTING-NEWSROOM-V2.md",
+        "latest": "https://palimpsest.info/readings/source-workflow-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "editorial-readiness",
+      "name": "Newsroom Editorial Readiness Gate",
+      "description": "Machine-recomputed publication floors for attributed wire briefs, explainers and investigations, combining evidence receipts with explicit human edit, fact-check, source-safety, right-to-reply, visual, citation and correction attestations. Passing never publishes automatically.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Evidence Wire",
+        "Primary Document Archive",
+        "Corroboration Ledger",
+        "Investigations Desk",
+        "Protected Human-Source Workflow"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/news/standards/",
+        "method": "https://palimpsest.info/docs/REPORTING-NEWSROOM-V2.md",
+        "latest": "https://palimpsest.info/readings/editorial-readiness-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "generative-firewall",
+      "name": "Generative Firewall Index",
+      "description": "Frozen bilingual prompt suites measure refusal and state-narrative substitution in state-aligned models against separately interpreted controls.",
+      "layer": "model",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Hosted model APIs and sealed Palimpsest probe bank"
+      ],
+      "license": {
+        "name": "MIT for method and derived scores; provider terms for outputs",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/generative-firewall-index.html",
+        "method": "https://palimpsest.info/docs/METHODOLOGY.md",
+        "latest": "https://palimpsest.info/readings/latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "refusal-drift",
+      "name": "Frontier refusal churn",
+      "description": "Compares each model only with its own prior frozen-suite run and publishes churn separately from the closed v1 drift series.",
+      "layer": "model",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Hosted model APIs and sealed Palimpsest probe bank"
+      ],
+      "license": {
+        "name": "MIT for method and derived scores; provider terms for outputs",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/eval-registry.html#drift",
+        "method": "https://palimpsest.info/docs/FRONTIER-DRIFT.md",
+        "latest": "https://palimpsest.info/readings/refusal-drift-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "gfi-transcripts",
+      "name": "GFI v2 full transcript matrix",
+      "description": "Every full model response and null transport abstention behind the current Generative Firewall Index, organized as the exact preregistered model by prompt-arm by sample matrix whose response digests are sealed in the public eval registry.",
+      "layer": "model",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Hosted model APIs, preregistered GFI v2 protocol and Palimpsest eval registry"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata and method; model-output provider terms remain applicable",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/generative-firewall-index.html",
+        "method": "https://palimpsest.info/readings/gfi-evaluation-protocol-v2.json",
+        "latest": "https://palimpsest.info/readings/gfi-transcripts-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "eval-registry",
+      "name": "Verifiable evaluation registry",
+      "description": "Append-only, pre-registered model-evaluation runs with hash links, Merkle roots, and independently recomputable verification status.",
+      "layer": "model",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest sealed evaluation runs"
+      ],
+      "license": {
+        "name": "MIT for registry code and metadata; provider terms for model outputs",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/eval-registry.html",
+        "method": "https://palimpsest.info/docs/EVAL-REGISTRY.md",
+        "latest": "https://palimpsest.info/readings/eval-registry-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "eval-assurance",
+      "name": "AI eval claim assurance",
+      "description": "Deterministic claim-by-claim audit of integrity, exact-prompt precommitment, raw-response recomputation, pipeline reproducibility, statistical design, independent human construct validation and unaffiliated replication. Publishes a claim ceiling instead of one composite quality score.",
+      "layer": "model",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest public eval registry, protocols, readings and transcripts"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/eval-registry.html#assurance",
+        "method": "https://palimpsest.info/docs/EVAL-ASSURANCE.md",
+        "latest": "https://palimpsest.info/readings/eval-assurance-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "eval-journal",
+      "name": "AI Eval Journal",
+      "description": "Evidence-bound articles about Palimpsest's AI-evaluation origins, method changes, failures and current claim ceiling. Every article carries limitations, a falsifier, verification commands and fresh SHA-256 receipts for its local evidence.",
+      "layer": "model",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Closed Palimpsest article records and explicitly cited public eval artifacts"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest text, method and structured records; cited upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/evals/",
+        "method": "https://palimpsest.info/protocol/eval-journal-v1.schema.json",
+        "latest": "https://palimpsest.info/readings/eval-journal-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "eval-articles",
+      "name": "Live Eval Findings",
+      "description": "Continuously rebuilt analysis of the latest verified refusal-drift panel. Findings retain controls, denominators, Wilson intervals, counterreadings, limitations, falsifiers, sentence-level selectors and content-addressed revision receipts.",
+      "layer": "model",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest refusal-drift reading, transcripts and verified eval registry"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest text, method and structured records; model-output provider terms remain applicable to cited transcripts",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/journal/",
+        "method": "https://palimpsest.info/docs/EVAL-FINDINGS.md",
+        "latest": "https://palimpsest.info/readings/eval-articles-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "reading-analysis",
+      "name": "Reading analysis and review rank",
+      "description": "Temporarily publication-gated per-instrument unusualness and editorial-review context because the current mixed artifact includes CFETS-derived values. It is not a motive sentence or cross-instrument rate; no zero, calm, rank or direction is public until a filtered rebuild separates unaffected instruments.",
+      "layer": "cross-layer",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories",
+        "Palimpsest newswire",
+        "Palimpsest newsroom"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/osint-china.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "weekly-situation",
+      "name": "Weekly situation report",
+      "description": "Sealed weekly fusion of DDTI, Weibo, GDELT, GitHub-refuge, board alarm, forecast skill and the Generative Firewall Index. DDTI ranks; other layers annotate. Frozen template. No model prose.",
+      "layer": "cross-layer",
+      "cadence": "PT1H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest sealed readings"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/weekly-situation.html",
+        "method": "https://palimpsest.info/docs/WEEKLY-SITUATION.md",
+        "latest": "https://palimpsest.info/readings/weekly-situation-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "collector-health",
+      "name": "Collector health board",
+      "description": "Public projection of Evidence Atlas evidence_state: fresh, stale, gated, abstained or missing. A stale seal is still a seal, never a zero.",
+      "layer": "integrity",
+      "cadence": "PT1H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest Evidence Atlas"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/status.html",
+        "method": "https://palimpsest.info/docs/WEEKLY-SITUATION.md",
+        "latest": "https://palimpsest.info/readings/collector-health-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "gazetteer-phylogeny",
+      "name": "Gazetteer phylogeny",
+      "description": "Public graph of human-authored mutation_of edges in the Chinese sensitive-term gazetteer. Advisory only. No model adds a node.",
+      "layer": "content",
+      "cadence": "PT1H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest human gazetteer"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/for-researchers.html",
+        "method": "https://palimpsest.info/docs/WEEKLY-SITUATION.md",
+        "latest": "https://palimpsest.info/readings/gazetteer-phylogeny-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    },
+    {
+      "id": "anchors",
+      "name": "External integrity anchors",
+      "description": "Deposits ledger roots outside Palimpsest's infrastructure and reports verification problems without hiding partial failure.",
+      "layer": "integrity",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Internet Archive",
+        "OpenTimestamps"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "urls": {
+        "landing_page": "https://palimpsest.info/readings/eval-registry.html#anchors",
+        "method": "https://palimpsest.info/docs/INTEGRITY.md",
+        "latest": "https://palimpsest.info/readings/anchors-latest.json"
+      },
+      "artifacts": {
+        "evidence_state": "unknown",
+        "observed_at": null
+      },
+      "values_included": false
+    }
+  ],
+  "seiche": {
+    "api": "https://api.seiche.info/api/v2/research-network",
+    "site": "https://seiche.info/#RESEARCH",
+    "tool": "research_network"
+  }
+}

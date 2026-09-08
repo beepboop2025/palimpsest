@@ -219,6 +219,10 @@ INVALID_PARAMS = -32602
 INTERNAL_ERROR = -32603
 
 SERVER_INSTRUCTIONS = (
+    "Use research_catalog to page the complete editorial dataset registry. Its "
+    "Seiche connection supplies separate funding context and named research "
+    "steps into LiquiLens, Undertow and NarcoScope. Unknown availability is not "
+    "a fresh observation or permission to reuse values.\n\n"
     "Palimpsest is an open observatory of erasure, publishing timestamped signals "
     "with explicit health and operational state. It covers THREE distinct "
     "applications:\n\n"
@@ -286,6 +290,11 @@ SERVER_INSTRUCTIONS = (
 
 # name -> (path on palimpsest.info, one-line description)
 SIGNALS = {
+    "research-catalog": (
+        "/readings/research-catalog-latest.json",
+        "complete published dataset catalog, including economic histories, mirror "
+        "trade, publication changes, regional research and the shared global library; "
+        "source metadata and access states only, not permission to copy values"),
     "generative-firewall-index": (
         "/readings/latest.json",
         "the Generative Firewall Index: how much Chinese LLMs refuse or redirect "
@@ -462,7 +471,7 @@ SIGNALS = {
         "/readings/editorial-readiness-latest.json",
         "machine-recomputed wire, explainer and investigation publication gates"),
     "evidence-catalog": (
-        "/readings/catalog.json",
+        "/readings/research-catalog-latest.json",
         "the Evidence Atlas catalog: provenance, rights, cadence, freshness, "
         "geographic scope, limitations and files for every documented dataset"),
     "osint-china": (
@@ -760,6 +769,38 @@ def _fetch(name: str) -> dict:
 
 
 # ------------------------------------------------------------------- tools --
+def tool_research_catalog(args: dict) -> dict:
+    """Page through the complete producer catalog instead of a frozen signal list."""
+    if not isinstance(args, dict) or set(args) - {"offset", "limit"}:
+        raise ValueError("only offset and limit are supported")
+    offset, limit = args.get("offset", 0), args.get("limit", 12)
+    if type(offset) is not int or not 0 <= offset <= 1000 or type(limit) is not int or not 1 <= limit <= 25:
+        raise ValueError("offset must be 0..1000 and limit must be 1..25")
+    catalog = _fetch("research-catalog")
+    if catalog.get("schema") != "palimpsest-research-catalog/v1" or not isinstance(catalog.get("datasets"), list):
+        raise ValueError("published research catalog is unavailable or incompatible")
+    rows = catalog["datasets"]
+    if len(rows) > 1000 or not all(isinstance(row, dict) and isinstance(row.get("id"), str) for row in rows):
+        raise ValueError("published research catalog is invalid")
+    selected = []
+    for row in rows[offset:offset + limit]:
+        item = {key: row.get(key) for key in ("id", "name", "description", "layer", "cadence", "geography", "sources")}
+        for field, keys in {"artifacts": ("evidence_state", "observed_at"), "license": ("name", "url"), "urls": ("latest", "landing_page", "method")}.items():
+            mapping = row.get(field) if isinstance(row.get(field), dict) else {}
+            item[field] = {key: mapping.get(key) for key in keys}
+        item["values_included"] = False
+        selected.append(item)
+    selected, truncated, _ = _sanitized({"datasets": selected}, 25)
+    return {"schema": "palimpsest.research-catalog.v1", "generated_at": catalog.get("generated_at"),
+            "source_url": SITE + "/readings/research-catalog-latest.json", "metadata_only": True,
+            "offset": offset, "total": len(rows), "returned": len(selected["datasets"]),
+            "next_offset": offset + limit if offset + limit < len(rows) else None,
+            "datasets": selected["datasets"], "truncated": truncated,
+            "seiche": {"site": "https://seiche.info/#RESEARCH", "api": "https://api.seiche.info/api/v2/research-network",
+                       "mcp": "https://api.seiche.info/mcp", "tool": "research_network", "arguments": {"topic": "all"}},
+            "boundary": "Source-reported access and freshness states retain their original clocks. Inspect the original resource before using values. Seiche supplies separate funding context and research steps into LiquiLens, Undertow and NarcoScope; no common score or causal conclusion is implied."}
+
+
 def tool_list_signals(args: dict) -> dict:
     rights = economic_rights_status()
     signals = []
@@ -2689,6 +2730,16 @@ def tool_query_economic_observations(args: dict) -> dict:
 
 
 TOOLS = {
+    "research_catalog": (
+        "Discover every Palimpsest dataset, including the latest China economic "
+        "histories, external trade, regional research, information controls and "
+        "model evaluations. Paginated metadata retains source clocks, rights and "
+        "access states. Includes the Seiche research_network handoff for funding, "
+        "institution and market-liquidity context; values are not copied.",
+        {"type": "object", "properties": {
+            "offset": {"type": "integer", "minimum": 0, "maximum": 1000, "default": 0},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 25, "default": 12}},
+         "additionalProperties": False}, tool_research_catalog),
     "list_signals": (
         "List every published signal Palimpsest exposes across its three "
         "applications: name, one-line description and source URL for each. "
@@ -2843,6 +2894,7 @@ TOOLS = {
 
 # Human-facing display names, served as MCP `title` beside the machine name.
 TOOL_TITLES = {
+    "research_catalog": "Complete research catalog and Seiche connection",
     "list_signals": "List published signals",
     "get_signal": "One signal's full reading",
     "get_newsroom": "Evidence and reporting desks",

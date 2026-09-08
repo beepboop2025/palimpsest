@@ -692,7 +692,7 @@ def test_economic_query_is_discoverable_bounded_and_has_no_url_argument():
     query = tools["query_economic_observations"]
     schema = query["inputSchema"]
 
-    assert len(tools) == 6
+    assert len(tools) == 7
     assert "url" not in schema["properties"]
     assert schema["additionalProperties"] is False
     assert schema["properties"]["revision_view"]["enum"] == [
