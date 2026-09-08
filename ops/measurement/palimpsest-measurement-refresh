@@ -15,6 +15,11 @@ readonly DEPLOYED_COMMIT_FILE="${PALIMPSEST_DEPLOYED_COMMIT_FILE:-/etc/palimpses
 readonly PYTHON_BIN="${PALIMPSEST_PYTHON_BIN:-/usr/bin/python3}"
 readonly JOB_TIMEOUT="${PALIMPSEST_COLLECTOR_TIMEOUT:-12m}"
 readonly SILENCE_INDEX_TIMEOUT="${PALIMPSEST_SILENCE_INDEX_TIMEOUT:-18m}"
+readonly MEASUREMENT_SCOPE="${PALIMPSEST_MEASUREMENT_SCOPE:-core}"
+case "$MEASUREMENT_SCOPE" in
+  core|regional-research) ;;
+  *) printf 'invalid measurement scope\n' >&2; exit 1 ;;
+esac
 
 work_root=""
 checkout=""
@@ -100,6 +105,9 @@ public_outputs_for_job() {
     app-storefront) printf '%s\n' readings/app-storefront-latest.json readings/app-storefront-history.jsonl ;;
     apple-censorship) printf '%s\n' readings/apple-censorship-latest.json readings/apple-censorship-history.jsonl ;;
     china-econ) printf '%s\n' readings/china-econ-latest.json readings/china-econ-history.jsonl readings/china-econ-observations.jsonl readings/china-econ-observations-latest.json ;;
+    china-economic-health) printf '%s\n' readings/china-economic-health-latest.json ;;
+    regional-research) printf '%s\n' readings/regional-research-wire-latest.json ;;
+    regional-economics) printf '%s\n' readings/regional-economic-context-latest.json ;;
     cny-fix-gap) printf '%s\n' readings/cny-fix-gap-latest.json readings/cny-fix-gap-history.jsonl ;;
     stock-connect) printf '%s\n' readings/stock-connect-latest.json readings/stock-connect-history.jsonl ;;
     data-darkness) printf '%s\n' readings/data-darkness-latest.json readings/data-darkness-history.jsonl ;;
@@ -284,6 +292,11 @@ job_due() {
 run_job() {
   local name="$1" interval_minutes="$2" timeout_limit
   shift 2
+  case "$name" in
+    china-economic-health|regional-research|regional-economics)
+      [[ "$MEASUREMENT_SCOPE" == regional-research ]] || return 0 ;;
+    *) [[ "$MEASUREMENT_SCOPE" == core ]] || return 0 ;;
+  esac
   if ! job_due "$name" "$interval_minutes"; then
     log "skip $name; cadence not due"
     return 0
@@ -347,6 +360,9 @@ run_job github-refuge 720 "$PYTHON_BIN" -m scripts.github_refuge_pull
 run_job app-storefront 360 "$PYTHON_BIN" -m scripts.app_storefront_pull
 run_job apple-censorship 1440 "$PYTHON_BIN" -m scripts.apple_censorship_pull
 run_job china-econ 360 "$PYTHON_BIN" -m scripts.china_econ_pull
+run_job china-economic-health 360 env PALIMPSEST_ECONOMIC_HEALTH_STORE="$STATE_ROOT/private/china-economic-health" "$PYTHON_BIN" -m scripts.china_economic_health_pull --index-pages 2 --max-releases 14
+run_job regional-research 180 env PALIMPSEST_REGIONAL_RESEARCH_STORE="$STATE_ROOT/private/regional-research" "$PYTHON_BIN" -m scripts.regional_research_pull
+run_job regional-economics 10080 env PALIMPSEST_REGIONAL_ECONOMIC_STORE="$STATE_ROOT/private/regional-economics" "$PYTHON_BIN" -m scripts.regional_economic_pull
 run_job cny-fix-gap 1440 "$PYTHON_BIN" -m scripts.cny_fix_gap_pull
 run_job stock-connect 1440 "$PYTHON_BIN" -m scripts.stock_connect_pull
 run_job data-darkness 1440 "$PYTHON_BIN" -m scripts.data_darkness_pull

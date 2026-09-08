@@ -31,6 +31,8 @@ END = "<!--/PS_NAV-->"
 # not need JavaScript, a menu disclosure, or prior knowledge of the BRI page to
 # reach the regional evidence boundaries.
 REGIONAL_EVIDENCE = (
+    ("/china/economy/", "China economy"),
+    ("/research/connected/", "Connected research"),
     ("/belt-and-road/", "BRI & Corridors"),
     ("/belt-and-road/gwadar/", "CPEC / Gwadar"),
     ("/belt-and-road/balochistan/", "Balochistan"),

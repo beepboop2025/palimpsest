@@ -1,0 +1,41 @@
+[Unit]
+Description=Collect China economic tables and connected regional research
+Wants=network-online.target
+After=network-online.target
+OnSuccess=palimpsest-railway-publish.service
+ConditionPathExists=/opt/palimpsest-research/source/.git
+ConditionPathExists=/etc/palimpsest/regional-research-commit
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+WorkingDirectory=/opt/palimpsest-research/source
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PALIMPSEST_PYTHON_BIN=/opt/palimpsest/collector-venv/bin/python
+Environment=PALIMPSEST_SOURCE_REPOSITORY=/opt/palimpsest-research/source
+Environment=PALIMPSEST_DEPLOYED_COMMIT_FILE=/etc/palimpsest/regional-research-commit
+Environment=PALIMPSEST_MEASUREMENT_STATE_ROOT=/var/lib/palimpsest/regional-research
+Environment=PALIMPSEST_MEASUREMENT_SCOPE=regional-research
+ExecStart=/opt/palimpsest-research/source/ops/measurement/palimpsest-measurement-refresh
+TimeoutStartSec=45m
+UMask=0027
+Nice=12
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+MemoryMax=1500M
+TasksMax=64
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/palimpsest/readings /var/lib/palimpsest/regional-research /var/lib/palimpsest/railway-publication
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+

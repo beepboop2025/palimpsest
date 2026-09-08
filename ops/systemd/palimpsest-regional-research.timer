@@ -1,0 +1,11 @@
+[Unit]
+Description=Check due China and regional collectors hourly
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=true
+Unit=palimpsest-regional-research.service
+
+[Install]
+WantedBy=timers.target
