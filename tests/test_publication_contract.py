@@ -44,6 +44,16 @@ def _d(timestamp, provenance, denominator=None, *, reason=None):
 
 # signal -> what it declares. `denominator=None` REQUIRES a written reason.
 CONTRACT = {
+    "china-evidence-observatory": _d("generated_at", ["input_sha256", "datasets", "use_policy"],
+        reason="Independently dated dataset coverage and cited investigations; no pooled score or claim that missing data establish concealment."),
+    "china-economic-history-analysis": _d("generated_at", ["input_sha256", "coverage", "limitations"],
+        reason="Distinct source-series months, city histories and revision pairs have separate denominators; repeated vintages are deduplicated."),
+    "china-mirror-trade": _d("generated_at", ["source", "rights", "coverage", "history_export"],
+        reason="EU reporter-partner-product-flow-month cells preserve value and weight separately; overlapping aggregates cannot share a denominator."),
+    "china-publication-watch": _d("generated_at", ["method_version", "coverage", "limitations"],
+        reason="Configured, retained and currently available document counts differ; repeated 404/410 observations require prior successful capture."),
+    "china-external-accounts": _d("generated_at", ["source", "rights", "coverage", "interpretation"],
+        reason="Acquisition counts only; public numeric observations must be zero and private economic quantities never enter this artifact."),
     "china-economic-health": _d(
         "generated_at", ["source", "collection", "coverage", "interpretation"],
         reason="Source table cells and release vintages have separate coverage counts; they are not independent respondents or one sampled population."),
@@ -645,7 +655,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v23"' in worker
+    assert 'const CACHE = "palimpsest-v24"' in worker
     assert 'const LIVE_FRESHNESS = new Set(["/freshness", "/freshnessz"]);' in worker
     assert "LIVE_FRESHNESS.has(url.pathname)" in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker

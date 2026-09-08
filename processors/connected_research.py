@@ -87,7 +87,7 @@ REGIONS = {
 }
 
 
-def build_connected(wire: dict, economy: dict, china: dict, partner: dict, input_hashes: dict) -> dict:
+def build_connected(wire: dict, economy: dict, china: dict, partner: dict, input_hashes: dict, observatory: dict | None = None) -> dict:
     if wire.get("schema") != "palimpsest.regional-research-wire.v1" or economy.get("schema") != "palimpsest.regional-economic-context.v1":
         raise ValueError("connected research input schema mismatch")
     if economy["context_policy"]["aggregate_level"] != "country" or economy["source"]["redistribution_status"] != "allowed_with_attribution":
@@ -115,7 +115,7 @@ def build_connected(wire: dict, economy: dict, china: dict, partner: dict, input
                         "latest_publication": items[0]["published_at"] if items else None,
                         "questions": questions, "recent_reporting": recent[:10], "economic_findings": economic_findings(country_series),
                         "national_indicators": [{"country_code": row["country_code"], "indicator_id": row["indicator_id"], "name": row["name"], "unit": row["unit"], "latest_available": row["latest_available"], "last_requested_period": row["last_requested_period"], "source_url": row["source_url"]} for row in country_series]})
-    return {"schema": "palimpsest.connected-research.v1", "generated_at": wire["generated_at"],
+    result = {"schema": "palimpsest.connected-research.v1", "generated_at": wire["generated_at"],
             "input_sha256": input_hashes,
             "source_clocks": {"regional_collection": wire["generated_at"], "economic_retrieval": economy["generated_at"], "china_analysis": china["generated_at"], "narcoscope_data_as_of": partner["dataAsOf"]},
             "regions": regions, "china_findings": china["findings"], "source_status": wire["sources"],
@@ -126,3 +126,19 @@ def build_connected(wire: dict, economy: dict, china: dict, partner: dict, input
                            "actor_inference": "prohibited", "causal_inference": "not_established", "missing_values": "unavailable_not_zero",
                            "rights": "NBS statistical data with attribution; World Bank CC BY 4.0; publisher reporting metadata and links only"},
             "limitations": ["Captured coverage is not exhaustive. Multiple articles or feed endpoints from the same publisher are not independent corroboration.", "National economic series are not Balochistan district or CPEC project measurements.", "No source here replicates China Beige Book's independent respondent panel."]}
+    if observatory is not None:
+        if observatory.get("schema") != "palimpsest.china-evidence-observatory.v1" or observatory.get("use_policy") != {
+            "concealment_inference": "not_established_by_gaps_or_disagreement", "actor_inference": "prohibited",
+            "private_numeric_data": "excluded", "missing_values": "unavailable_not_zero"}:
+            raise ValueError("evidence observatory policy mismatch")
+        if set(input_hashes) != {"china", "economy", "partner", "wire", "observatory"}:
+            raise ValueError("observatory input is not pinned")
+        result["observatory"] = {"schema": "palimpsest.china-evidence-observatory-summary.v1",
+                                 "source_url": "https://www.palimpsest.info/china/evidence/",
+                                 "input_sha256": input_hashes["observatory"],
+                                 **{key: observatory[key] for key in ("generated_at", "datasets", "findings", "methodology_cases", "use_policy")}}
+        result["observatory"]["datasets"] = [{**dataset, "coverage": {key: value for key,value in dataset["coverage"].items() if type(value) is int}}
+                                              for dataset in observatory["datasets"]]
+        result["source_clocks"]["observatory"] = observatory["generated_at"]
+        result["use_policy"]["rights"] += "; Eurostat EU-reported trade under source reuse terms; SAFE acquisition metadata only"
+    return result

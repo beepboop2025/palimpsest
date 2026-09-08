@@ -2530,6 +2530,22 @@ def _contains_denied_json_value(
     inherited_lineage: bool = False,
 ) -> bool:
     if isinstance(value, dict):
+        if value.get("schema") == "palimpsest.china-external-accounts.v1":
+            # This closed contract contains acquisition counts and identities
+            # only. It grants no SAFE numeric publication or export entitlement.
+            from processors.china_external_accounts import validate_public as validate_safe_metadata
+            try:
+                validate_safe_metadata(value)
+            except (KeyError, TypeError, ValueError, OverflowError):
+                return True
+            return inherited_lineage
+        if value.get("schema") == "palimpsest.china-mirror-trade.v1":
+            from processors.china_mirror_trade import publication_source_group as trade_publication_group
+            try:
+                group = trade_publication_group(value)
+            except (KeyError, TypeError, ValueError, OverflowError):
+                return True
+            allowed_source_ids = allowed_source_ids | {group}
         if value.get("schema") == "palimpsest.china-economic-health.v1":
             # Reviewed NBS statistical tables retain their own attribution terms.
             # This does not add a Seiche redistribution entitlement or admit

@@ -106,6 +106,9 @@ public_outputs_for_job() {
     apple-censorship) printf '%s\n' readings/apple-censorship-latest.json readings/apple-censorship-history.jsonl ;;
     china-econ) printf '%s\n' readings/china-econ-latest.json readings/china-econ-history.jsonl readings/china-econ-observations.jsonl readings/china-econ-observations-latest.json ;;
     china-economic-health) printf '%s\n' readings/china-economic-health-latest.json readings/china-economic-history.csv ;;
+    china-publication-watch) printf '%s\n' readings/china-publication-watch-latest.json ;;
+    china-mirror-trade) printf '%s\n' readings/china-mirror-trade-latest.json readings/china-mirror-trade-history.csv ;;
+    china-external-accounts) printf '%s\n' readings/china-external-accounts-latest.json ;;
     regional-research) printf '%s\n' readings/regional-research-wire-latest.json ;;
     regional-economics) printf '%s\n' readings/regional-economic-context-latest.json ;;
     cny-fix-gap) printf '%s\n' readings/cny-fix-gap-latest.json readings/cny-fix-gap-history.jsonl ;;
@@ -293,7 +296,7 @@ run_job() {
   local name="$1" interval_minutes="$2" timeout_limit
   shift 2
   case "$name" in
-    china-economic-health|regional-research|regional-economics)
+    china-economic-health|china-publication-watch|china-mirror-trade|china-external-accounts|regional-research|regional-economics)
       [[ "$MEASUREMENT_SCOPE" == regional-research ]] || return 0 ;;
     *) [[ "$MEASUREMENT_SCOPE" == core ]] || return 0 ;;
   esac
@@ -361,6 +364,9 @@ run_job app-storefront 360 "$PYTHON_BIN" -m scripts.app_storefront_pull
 run_job apple-censorship 1440 "$PYTHON_BIN" -m scripts.apple_censorship_pull
 run_job china-econ 360 "$PYTHON_BIN" -m scripts.china_econ_pull
 run_job china-economic-health 360 env PALIMPSEST_ECONOMIC_HEALTH_STORE="$STATE_ROOT/private/china-economic-health" "$PYTHON_BIN" -m scripts.china_economic_health_pull --index-pages 2 --max-releases 14
+run_job china-publication-watch 360 env PALIMPSEST_PUBLICATION_WATCH_STORE="$STATE_ROOT/private/china-publication-watch" "$PYTHON_BIN" -m scripts.china_publication_watch_pull
+run_job china-mirror-trade 1440 env PALIMPSEST_CHINA_MIRROR_TRADE_STORE="$STATE_ROOT/private/china-mirror-trade" "$PYTHON_BIN" -m scripts.china_mirror_trade_pull
+run_job china-external-accounts 10080 env PALIMPSEST_EXTERNAL_ACCOUNTS_STORE="$STATE_ROOT/private/china-external-accounts" "$PYTHON_BIN" -m scripts.china_external_accounts_pull
 run_job regional-research 180 env PALIMPSEST_REGIONAL_RESEARCH_STORE="$STATE_ROOT/private/regional-research" "$PYTHON_BIN" -m scripts.regional_research_pull
 run_job regional-economics 10080 env PALIMPSEST_REGIONAL_ECONOMIC_STORE="$STATE_ROOT/private/regional-economics" "$PYTHON_BIN" -m scripts.regional_economic_pull
 run_job cny-fix-gap 1440 "$PYTHON_BIN" -m scripts.cny_fix_gap_pull

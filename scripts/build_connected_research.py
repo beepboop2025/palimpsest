@@ -13,7 +13,8 @@ from scripts.build_china_economic_health import esc
 
 ROOT = Path(__file__).resolve().parents[1]
 INPUTS = {"wire": "readings/regional-research-wire-latest.json", "economy": "readings/regional-economic-context-latest.json",
-          "china": "readings/china-economic-analysis-latest.json", "partner": "integrations/intelligence-commons/narcoscope-palimpsest-corridors-v2.json"}
+          "china": "readings/china-economic-analysis-latest.json", "partner": "integrations/intelligence-commons/narcoscope-palimpsest-corridors-v2.json",
+          "observatory": "readings/china-evidence-observatory-latest.json"}
 
 
 def reporting(items: list[dict]) -> str:
@@ -22,6 +23,9 @@ def reporting(items: list[dict]) -> str:
 
 def render(data: dict) -> str:
     sections = []
+    if data.get("observatory"):
+        findings = ''.join(f'<article class="ed-finding"><h3>{esc(f["title"])}</h3><p>{esc(f["text"])}</p><p class="ed-note">{esc(f["interpretation"])}</p><a href="{esc(f["data_path"])}">Inspect the evidence</a></article>' for f in data["observatory"]["findings"])
+        sections.append(f'<section><h2>Investigate the economic and publication record</h2><p>Compare historical business conditions, city housing persistence, EU mirror trade and documented changes to official statistics.</p><p><a href="/china/evidence/">Open the China evidence observatory and full data library</a></p><div class="ed-findings">{findings}</div></section>')
     for region in data["regions"]:
         questions = []
         trends = ''.join(f'<article class="ed-finding"><h3>{esc(f["title"])}</h3><p>{esc(f["text"])}</p><p class="ed-note">{esc(f["interpretation"])}</p><a href="{esc(f["evidence"][0]["source_url"])}">World Bank national series</a></article>' for f in region["economic_findings"])

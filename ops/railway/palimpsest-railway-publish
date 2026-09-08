@@ -4247,6 +4247,8 @@ publish_clock="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 "$PYTHON_BIN" -m scripts.build_china_site
 "$PYTHON_BIN" -m scripts.build_china_economic_health
 "$PYTHON_BIN" -m scripts.build_china_economic_health --check
+"$PYTHON_BIN" -m scripts.build_china_evidence_observatory
+"$PYTHON_BIN" -m scripts.build_china_evidence_observatory --check
 "$PYTHON_BIN" -m scripts.build_connected_research
 "$PYTHON_BIN" -m scripts.build_connected_research --check
 "$PYTHON_BIN" -m scripts.undertext_pull
