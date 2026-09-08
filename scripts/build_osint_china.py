@@ -738,6 +738,13 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # is listed in SIGNALS.
 EXCLUDED_LATEST_FILES = frozenset(
     {
+        # Shared economic/research context has its own source denominators;
+        # it is not an additional censorship measurement or independent lane.
+        "china-economic-health-latest.json",
+        "china-economic-analysis-latest.json",
+        "connected-research-latest.json",
+        "regional-economic-context-latest.json",
+        "regional-research-wire-latest.json",
         "china-article-stream-latest.json",
         "bri-economic-observations-latest.json",
         "belt-and-road-observatory-latest.json",

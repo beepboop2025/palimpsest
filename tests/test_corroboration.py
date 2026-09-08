@@ -16,7 +16,7 @@ from core.corroboration import (
     validate_corroboration,
 )
 from core.evidence_documents import EvidenceDocumentStore
-from core.newswire import SourceRegistry, collect_newswire, load_source_registry
+from core.newswire import collect_newswire, load_source_registry
 from core.primary_documents import collect_primary_documents, load_primary_source_registry
 
 
@@ -58,14 +58,7 @@ def _wire(
         for row in load_source_registry().sources
         if row.id == "scmp-china-economy"
     )
-    registry = SourceRegistry(
-        schema_version="palimpsest-news-sources.v1",
-        window_hours=168,
-        max_items_per_source=16,
-        max_events=32,
-        sources=(source,),
-        sha256="0" * 64,
-    )
+    registry = load_source_registry()
     raw = (
         '<?xml version="1.0"?><rss version="2.0"><channel><item>'
         f"<title>{html.escape(title)}</title>"
@@ -76,7 +69,7 @@ def _wire(
     ).encode()
     return collect_newswire(
         registry,
-        lambda _url, **_kwargs: raw,
+        lambda feed_url, **_kwargs: raw if feed_url == source.feed_url else b'<rss version="2.0"><channel></channel></rss>',
         now=now,
     )
 

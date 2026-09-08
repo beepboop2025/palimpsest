@@ -19,8 +19,12 @@ SCHEMA = "palimpsest.china-economic-health.v1"
 
 
 def atomic_json(path: Path, value: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
     raw = (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode()
+    atomic_bytes(path, raw)
+
+
+def atomic_bytes(path: Path, raw: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(dir=path.parent, prefix=".economic-")
     try:
         with os.fdopen(fd, "wb") as stream:
@@ -142,8 +146,30 @@ def _collect(store, output, index_pages, max_releases, pause_seconds, transport,
                            "Original column headings govern units, reference periods and denominators. Monthly, cumulative and year-on-year values are distinct.",
                            "Ownership categories can overlap and must not be summed. Capture time is not economic observation time.",
                            "China Beige Book panel coverage, borrowing rejection, private credit terms and province-by-sector firm panels remain unavailable."]}
+    history_path = output.with_name("china-economic-history.csv")
+    history = export_history(store, history_path, captures=captures)
+    document["history_export"] = history
     atomic_json(output, document)
     return document
+
+
+def export_history(store: Path, output: Path, *, captures=None) -> dict:
+    """Export every retained current-parser vintage after checking its digest."""
+    from scripts.build_china_economic_health import csv_bytes
+    if captures is None:
+        manifest = json.loads((store / "manifest.json").read_text())
+        captures = [row for row in manifest["captures"].values() if row.get("parser_version") == PARSER_VERSION]
+    releases = []
+    for record in sorted(captures, key=lambda row: (row["released_at"], row["source_url"], row["collected_at"], row["release_id"])):
+        raw = (store / "releases" / (record["release_id"] + ".json")).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != record["normalized_sha256"]:
+            raise ValueError("historical normalized evidence hash mismatch")
+        releases.append(json.loads(raw))
+    raw = csv_bytes({"releases": releases}).encode()
+    atomic_bytes(output, raw)
+    return {"path": "/readings/china-economic-history.csv", "sha256": hashlib.sha256(raw).hexdigest(),
+            "vintages": len(releases), "numeric_cells": sum(row["numeric_cells"] for row in releases),
+            "interpretation": "Release vintages can repeat observations or revise them; use their source periods and raw hashes before comparing or deduplicating."}
 
 
 def reparse_store(store: Path) -> int:

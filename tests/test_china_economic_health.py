@@ -92,3 +92,51 @@ def test_discovery_is_bounded_to_release_links():
     assert discover(INDEX)[0]["url"] == URL
     with pytest.raises(NBSReleaseError):
         discover(b'<ul class="list"><a href="https://example.com/">Profits of Industrial Enterprises</a></ul>')
+
+
+def test_historical_export_retains_revisions_and_rejects_tampering(tmp_path):
+    from scripts.china_economic_health_pull import export_history
+    import csv
+    store = tmp_path / "private"
+    args = dict(store=store, output=tmp_path / "latest.json", index_pages=1, pause_seconds=0)
+    first = collect(**args, transport=lambda url: HTML if url == URL else INDEX)
+    revised = HTML.replace(b"3.5", b"4.5")
+    second = collect(**args, transport=lambda url: revised if url == URL else INDEX)
+    assert second["history_export"]["vintages"] == 2
+    assert second["history_export"]["numeric_cells"] == 2 * first["coverage"]["latest_numeric_cells"]
+    with (tmp_path / "china-economic-history.csv").open() as stream:
+        rows = list(csv.DictReader(stream))
+    assert {row["raw_value"] for row in rows} >= {"3.5", "4.5"}
+    assert len({row["raw_sha256"] for row in rows}) == 2
+    path = next((store / "releases").glob("*.json"))
+    path.write_text(path.read_text() + " ")
+    with pytest.raises(ValueError, match="historical normalized evidence hash"):
+        export_history(store, tmp_path / "rejected.csv")
+
+
+def test_publication_accepts_attributed_nbs_contract_without_allowing_denied_values(tmp_path):
+    import copy
+    from scripts.stage_pages_rights import _contains_denied_json_value
+    snapshot = collect(store=tmp_path / "private", output=tmp_path / "latest.json",
+                       index_pages=1, pause_seconds=0,
+                       transport=lambda url: HTML if url == URL else INDEX)
+    def denied(value):
+        return _contains_denied_json_value(value, policy_scope=True,
+            denied_source_ids=frozenset({"cfets_benchmarks", "chinamoney"}),
+            allowed_source_ids=frozenset({"world_bank_wdi"}))
+    assert not denied(snapshot)
+    for field, value in [
+        ("rights", {**snapshot["releases"][0]["rights"], "license": "CC-BY-4.0"}),
+        ("source_url", "https://example.org/statistics"),
+        ("independence_group", "world_bank_wdi"),
+        ("extra", {"source_id": "cfets_benchmarks", "value": 1.23}),
+    ]:
+        changed = copy.deepcopy(snapshot)
+        changed["releases"][0][field] = value
+        assert denied(changed), field
+    disguised = {"independence_group": "nbs_official_statistics", "value": 7}
+    assert denied(disguised)
+    assert denied({"source_id": "chinamoney", "child": snapshot})
+    changed = copy.deepcopy(snapshot)
+    changed["releases"][0]["tables"][0]["cells"][0]["value"] = 99
+    assert denied(changed)

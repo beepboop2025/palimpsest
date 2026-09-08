@@ -2530,6 +2530,17 @@ def _contains_denied_json_value(
     inherited_lineage: bool = False,
 ) -> bool:
     if isinstance(value, dict):
+        if value.get("schema") == "palimpsest.china-economic-health.v1":
+            # Reviewed NBS statistical tables retain their own attribution terms.
+            # This does not add a Seiche redistribution entitlement or admit
+            # arbitrary NBS-labelled mappings. Continue the recursive scan so
+            # denied lineage remains denied even inside a valid NBS document.
+            from processors.china_economic_health import publication_source_group
+            try:
+                group = publication_source_group(value)
+            except (KeyError, TypeError, ValueError, OverflowError):
+                return True
+            allowed_source_ids = allowed_source_ids | {group}
         if _is_raw_newswire_document(value):
             return True
         if _has_numeric_sibling_to_restricted_availability(value):

@@ -2,23 +2,44 @@
 from __future__ import annotations
 
 import re
+import math
+from datetime import datetime
 
-from collectors.nbs_releases import number, source_policy
+from collectors.nbs_releases import FAMILIES, INDEX_URL, TERMS_URL, digest, number, source_policy
+
+NBS_GROUP = "nbs_official_statistics"
+NBS_PUBLISHER = "National Bureau of Statistics of China"
+NBS_RIGHTS = {
+    "status": "attributed_statistical_data",
+    "terms_url": TERMS_URL,
+    "attribution": "Quoted from the website of the National Bureau of Statistics (www.stats.gov.cn)",
+    "license": "NBS statistical-data terms; no downstream sublicense",
+}
 
 
 def validate(document: dict) -> None:
     if document.get("schema") != "palimpsest.china-economic-health.v1":
         raise ValueError("unsupported economic-health schema")
+    if document.get("source") != {"publisher": NBS_PUBLISHER, "independence_group": NBS_GROUP, "index_url": INDEX_URL}:
+        raise ValueError("economic source identity mismatch")
     families = set()
     for release in document["releases"]:
         source_policy(release["source_url"])
+        if release["publisher"] != NBS_PUBLISHER or release["independence_group"] != NBS_GROUP or release["family"] not in FAMILIES:
+            raise ValueError("economic release identity mismatch")
         if release["family"] in families:
             raise ValueError("multiple current releases for one family")
         families.add(release["family"])
         if not re.fullmatch(r"[0-9a-f]{64}", release["raw_sha256"]):
             raise ValueError("economic source hash missing")
-        if release["rights"]["status"] != "attributed_statistical_data":
+        if release["rights"] != NBS_RIGHTS:
             raise ValueError("economic source rights missing")
+        identity = digest({"url": release["source_url"], "raw_sha256": release["raw_sha256"], "parser_version": release["parser_version"]})
+        if release["release_id"] != identity:
+            raise ValueError("economic release identity hash mismatch")
+        clocks = [datetime.fromisoformat(release[key].replace("Z", "+00:00")) for key in ("released_at", "collected_at")]
+        if any(clock.tzinfo is None for clock in clocks) or clocks[0] > clocks[1]:
+            raise ValueError("economic release clocks are invalid")
         cells = [cell for table in release["tables"] for cell in table["cells"]]
         for cell in cells:
             if cell["value"] != number(cell["raw_value"]):
@@ -29,6 +50,40 @@ def validate(document: dict) -> None:
             raise ValueError("economic cell count mismatch")
     if len(families) != document["coverage"]["families_available"]:
         raise ValueError("economic coverage count mismatch")
+
+
+def publication_source_group(document: dict) -> str:
+    """Admit this closed NBS statistical contract, not the Seiche export ledger."""
+    validate(document)
+    def exact(value, fields):
+        if not isinstance(value, dict) or set(value) != set(fields.split()):
+            raise ValueError("unexpected NBS publication fields")
+    top = "schema generated_at status source collection coverage family_status releases interpretation"
+    exact(document, top + (" history_export" if "history_export" in document else ""))
+    exact(document["collection"], "checked_at discovered_releases checked_releases successful_releases new_vintages failures")
+    for failure in document["collection"]["failures"]:
+        exact(failure, "url family error")
+    exact(document["coverage"], "families_available families_expected latest_numeric_cells latest_missing_cells retained_vintages retained_numeric_cells independent_source_groups")
+    for state in document["family_status"]:
+        exact(state, "family label status released_at retained_vintages latest_discovered_url")
+    if "history_export" in document:
+        exact(document["history_export"], "path sha256 vintages numeric_cells interpretation")
+    for release in document["releases"]:
+        exact(release, "release_id family title source_url publisher independence_group released_at publisher_time_zone collected_at raw_sha256 raw_bytes parser_version measurement_scope rights tables narrative_metrics numeric_cells missing_cells")
+        for table in release["tables"]:
+            exact(table, "table_id table_sha256 context columns rows cells")
+            for cell in table["cells"]:
+                exact(cell, "source_row source_column row_label column_label raw_value value status")
+        for metric in release["narrative_metrics"]:
+            exact(metric, "firm_size metric source_locator unit value")
+            if (metric["firm_size"] not in {"large", "medium", "small"}
+                    or metric["metric"] != "manufacturing_pmi"
+                    or metric["unit"] != "diffusion index"
+                    or type(metric["value"]) not in {int, float}
+                    or not math.isfinite(metric["value"])
+                    or not 0 <= metric["value"] <= 100):
+                raise ValueError("invalid published NBS firm-size PMI")
+    return NBS_GROUP
 
 
 def evidence(release: dict, table: dict, cell: dict) -> dict:

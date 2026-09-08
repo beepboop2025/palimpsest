@@ -22,6 +22,7 @@ CRITICAL_PATHS = (
     "assets/economic-desk.js",
     "assets/connected-research.css",
     "readings/china-economic-health-latest.json",
+    "readings/china-economic-history.csv",
     "readings/china-economic-analysis-latest.json",
     "readings/connected-research-latest.json",
     "readings/regional-research-wire-latest.json",

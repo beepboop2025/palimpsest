@@ -4341,8 +4341,7 @@ situation_build_log="$work_root/china-situation-build.log"
 (
   set -Eeuo pipefail
   "$PYTHON_BIN" -m scripts.build_bri_observatory "${bri_translation_args[@]}"
-  "$PYTHON_BIN" -m scripts.build_bri_observatory --check \
-    "${bri_translation_args[@]}"
+  "$PYTHON_BIN" -m scripts.build_bri_observatory --check "${bri_translation_args[@]}"
 ) >"$bri_build_log" 2>&1 &
 bri_build_pid=$!
 (

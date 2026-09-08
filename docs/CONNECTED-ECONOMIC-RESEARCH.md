@@ -21,7 +21,11 @@ respondents or distinct economic indicators.
 | Regional reporting | 20 publisher/research feeds, metadata and links, publisher-group deduplication, individual collection receipts | `readings/regional-research-wire-latest.json` |
 | Connected research | Five regional desks, 18 research questions, annual economic comparisons, source-linked reporting, explicit missing primary records | `readings/connected-research-latest.json` |
 
-The economic desk is `/china/economy/`; its CSV is `/china/economy/data.csv`.
+The economic desk is `/china/economy/`; its latest-table CSV is `/china/economy/data.csv`.
+All retained current-parser vintages are downloadable as
+`/readings/china-economic-history.csv`. Its digest and vintage/cell counts are
+bound by the current economic-health snapshot. Repeated periods and revisions
+remain separate rows; this export must not be treated as independent samples.
 The connected desk is `/research/connected/`. Both are in the site navigation.
 NBS energy releases without unambiguous tables and national-accounts releases
 not captured by the current parser remain unavailable. A failed refresh preserves
@@ -83,6 +87,11 @@ NBS statistical data are attributed under its
 [published statistical-data terms](https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html).
 The collector retains raw evidence privately; the public export includes
 statistical tables and attribution, not article prose or an invented sublicense.
+The publication filter recognizes the closed NBS statistical-data contract only
+after validating source identity, URLs, exact attribution, release identity and
+source tokens. It continues scanning for denied lineage inside that contract;
+an arbitrary NBS-labelled mapping is not sufficient. This public-information
+contract does not add an entitlement to the separate Seiche export ledger.
 World Bank WDI observations retain source and CC BY 4.0 attribution. Publisher
 feeds contribute title/link/time metadata only; article bodies and raw feed
 responses are not retained. Existing restricted China money-market feeds and
