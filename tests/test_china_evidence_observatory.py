@@ -136,3 +136,24 @@ def test_six_month_persistence_without_six_months_is_unavailable():
     findings = history._findings([], housing)
     assert "unavailable" in findings[0]["text"]
     assert "0 of 0" not in findings[0]["text"]
+
+
+def test_inventory_heading_translation_preserves_prior_year_comparison(monkeypatch):
+    rows = []
+    for year, heading, value in (
+        (2025, "Turnover Days for Inventory of Finished Goods", 20.5),
+        (2026, "Turnover Days of Finished Goods Inventory", 21.3),
+    ):
+        item = row(family="industrial_profits", column=heading, value=value, period="Total")
+        item.update(release_title=f"Industrial Profits in July {year}",
+                    released_at=f"{year}-08-27T00:00:00Z",
+                    collected_at="2026-09-08T12:00:00Z",
+                    column_label=heading + " | Days")
+        rows.append(item)
+    unrelated = dict(rows[-1], column_label="Turnover Days of Raw Materials Inventory | Days", value="999", raw_value="999")
+    result = from_rows(monkeypatch, rows + [unrelated])
+    inventory = next(s for s in result["series"] if s["id"] == "inventory-days")
+    assert [(p["period"], p["value"]) for p in inventory["points"]] == [("2025-07", 20.5), ("2026-07", 21.3)]
+    finding = next(f for f in result["findings"] if f["id"] == "inventory-days")
+    assert "+0.8 days from the same month a year earlier" in finding["text"]
+    assert finding["evidence"][1]["column_label"] == "Turnover Days for Inventory of Finished Goods | Days"
