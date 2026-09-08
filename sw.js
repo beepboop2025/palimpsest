@@ -3,11 +3,16 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v23";
+const CACHE = "palimpsest-v24";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_FRESHNESS = new Set(["/freshness", "/freshnessz"]);
 const LIVE_EVIDENCE_READINGS = new Set([
+  "/readings/china-evidence-observatory-latest.json",
+  "/readings/china-economic-history-analysis-latest.json",
+  "/readings/china-publication-watch-latest.json",
+  "/readings/china-mirror-trade-latest.json",
+  "/readings/china-external-accounts-latest.json",
   "/readings/china-economic-health-latest.json",
   "/readings/china-economic-analysis-latest.json",
   "/readings/regional-economic-context-latest.json",

@@ -741,6 +741,11 @@ EXCLUDED_LATEST_FILES = frozenset(
         # Shared economic/research context has its own source denominators;
         # it is not an additional censorship measurement or independent lane.
         "china-economic-health-latest.json",
+        "china-evidence-observatory-latest.json",
+        "china-economic-history-analysis-latest.json",
+        "china-publication-watch-latest.json",
+        "china-mirror-trade-latest.json",
+        "china-external-accounts-latest.json",
         "china-economic-analysis-latest.json",
         "connected-research-latest.json",
         "regional-economic-context-latest.json",

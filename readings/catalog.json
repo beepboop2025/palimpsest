@@ -1,6 +1,6 @@
 {
   "schema": "palimpsest-data-catalog/v1",
-  "generated_at": "2026-09-08T13:24:11.630848Z",
+  "generated_at": "2026-09-08T16:12:16.210564Z",
   "id": "palimpsest-evidence-atlas",
   "name": "Palimpsest Evidence Atlas",
   "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, Belt and Road infrastructure and economic evidence, complete retained regional news archives, Chinese-to-English captured-metadata translations, and model-evaluation datasets.",
@@ -9,10 +9,10 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 93,
+    "datasets": 98,
     "states": {
       "disabled": 1,
-      "fresh": 10,
+      "fresh": 15,
       "gated": 18,
       "private-node": 1,
       "stale": 51,
@@ -21,7 +21,7 @@
     "layers": {
       "content": 17,
       "cross-layer": 32,
-      "economy": 9,
+      "economy": 14,
       "integrity": 2,
       "model": 7,
       "narrative": 4,
@@ -29,10 +29,279 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 57364049,
+    "published_bytes": 109358219,
     "history_rows": 9938
   },
   "datasets": [
+    {
+      "id": "china-evidence-observatory",
+      "name": "China evidence observatory",
+      "description": "Economic histories, external trade comparisons, document changes and rights-aware research coverage. Missing data and disagreements do not establish concealment.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "deterministic-derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "NBS",
+        "Eurostat",
+        "Official institutional publications",
+        "SAFE acquisition metadata"
+      ],
+      "latest": "readings/china-evidence-observatory-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "datasets",
+        "findings",
+        "methodology_cases"
+      ],
+      "license": {
+        "name": "Source-specific NBS and Eurostat terms; original document metadata; no SAFE numeric publication",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-09-08T16:07:16Z",
+        "age_seconds": 300,
+        "counts": {
+          "datasets": 4,
+          "findings": 25,
+          "methodology_cases": 3
+        },
+        "latest_bytes": 82800,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/china-evidence-observatory-latest.json",
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md"
+      }
+    },
+    {
+      "id": "china-economic-history-analysis",
+      "name": "Comparable China economic histories",
+      "description": "Deduplicated NBS monthly business series, 70-city housing histories and exact same-URL numeric revision comparisons. Point-in-time availability is not reconstructed.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "deterministic-derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "National Bureau of Statistics of China"
+      ],
+      "latest": "readings/china-economic-history-analysis-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "coverage.archive_numeric_cells",
+        "coverage.comparable_series",
+        "coverage.city_housing_series",
+        "coverage.deduplicated_series_months"
+      ],
+      "license": {
+        "name": "NBS statistical-data terms; no downstream sublicense",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-09-08T15:57:04Z",
+        "age_seconds": 912,
+        "counts": {
+          "coverage.archive_numeric_cells": 31591,
+          "coverage.comparable_series": 28,
+          "coverage.city_housing_series": 140,
+          "coverage.deduplicated_series_months": 1932
+        },
+        "latest_bytes": 1201751,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/china-economic-history-analysis-latest.json",
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md"
+      }
+    },
+    {
+      "id": "china-mirror-trade",
+      "name": "EU mirror trade with China, Pakistan and Myanmar",
+      "description": "EU-reported monthly product values and net mass since 2010, both flows, EU27 and selected member-country views. Overlapping geographic and product aggregates must not be added.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "P7D",
+      "geography": [
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "Eurostat, EU-reported international trade in goods"
+      ],
+      "latest": "readings/china-mirror-trade-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "coverage.series",
+        "coverage.rows",
+        "coverage.numeric_cells",
+        "coverage.unavailable_cells"
+      ],
+      "license": {
+        "name": "Eurostat EU-declared trade reuse with attribution",
+        "url": "https://ec.europa.eu/eurostat/about-us/policies/copyright"
+      },
+      "distributions": [
+        {
+          "name": "china-mirror-trade-history",
+          "path": "readings/china-mirror-trade-history.csv",
+          "format": "csv",
+          "mediatype": "text/csv",
+          "available": true,
+          "bytes": 43430266,
+          "url": "https://palimpsest.info/readings/china-mirror-trade-history.csv"
+        }
+      ],
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-09-08T16:07:16Z",
+        "age_seconds": 300,
+        "counts": {
+          "coverage.series": 828,
+          "coverage.rows": 166428,
+          "coverage.numeric_cells": 283994,
+          "coverage.unavailable_cells": 48862
+        },
+        "latest_bytes": 963594,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/china-mirror-trade-latest.json",
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md"
+      }
+    },
+    {
+      "id": "china-publication-watch",
+      "name": "Official China publication-change watch",
+      "description": "Captured document baselines, revised text fingerprints, index changes and repeated URL-absence checks with separate transport/access failure states. Historical methodology cases cite official announcements.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "NBS",
+        "MOF",
+        "SAFE",
+        "PBOC",
+        "GACC",
+        "NEA",
+        "MOT",
+        "SPB"
+      ],
+      "latest": "readings/china-publication-watch-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "coverage.watched_documents",
+        "coverage.retained_documents",
+        "coverage.available_documents",
+        "coverage.removal_observations"
+      ],
+      "license": {
+        "name": "Original acquisition metadata and editorial summaries; source bodies remain private",
+        "url": "https://www.palimpsest.info/china/evidence/"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-09-08T16:02:26Z",
+        "age_seconds": 590,
+        "counts": {
+          "coverage.watched_documents": 36,
+          "coverage.retained_documents": 26,
+          "coverage.available_documents": 19,
+          "coverage.removal_observations": 0
+        },
+        "latest_bytes": 41938,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/china-publication-watch-latest.json",
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md"
+      }
+    },
+    {
+      "id": "china-external-accounts",
+      "name": "SAFE external-account acquisition coverage",
+      "description": "Metadata for privately retained regional cross-border receipt/payment and balance-of-payments workbooks. Numeric observations and derived findings are withheld pending publication permission.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "P7D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "State Administration of Foreign Exchange"
+      ],
+      "latest": "readings/china-external-accounts-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "coverage.workbooks_retained",
+        "coverage.numeric_observations_private",
+        "coverage.public_numeric_observations"
+      ],
+      "license": {
+        "name": "SAFE permission required; public metadata only",
+        "url": "https://www.safe.gov.cn/safe/flsm/index.html"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-09-08T16:06:58Z",
+        "age_seconds": 318,
+        "counts": {
+          "coverage.workbooks_retained": 8,
+          "coverage.numeric_observations_private": 115047,
+          "coverage.public_numeric_observations": 0
+        },
+        "latest_bytes": 20992,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/china-external-accounts-latest.json",
+        "landing_page": "https://palimpsest.info/china/evidence/",
+        "method": "https://palimpsest.info/docs/CHINA-EVIDENCE-OBSERVATORY.md"
+      }
+    },
     {
       "id": "china-economic-health",
       "name": "Detailed China economic release tables",
@@ -77,21 +346,21 @@
           "format": "csv",
           "mediatype": "text/csv",
           "available": true,
-          "bytes": 6671984,
+          "bytes": 12876028,
           "url": "https://palimpsest.info/readings/china-economic-history.csv"
         }
       ],
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-09-08T12:40:52Z",
-        "age_seconds": 2599,
+        "observed_at": "2026-09-08T15:57:04Z",
+        "age_seconds": 912,
         "counts": {
           "coverage.families_available": 10,
           "coverage.latest_numeric_cells": 3248,
           "coverage.latest_missing_cells": 61,
-          "coverage.retained_vintages": 52
+          "coverage.retained_vintages": 109
         },
-        "latest_bytes": 672255,
+        "latest_bytes": 677512,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -130,8 +399,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-09-08T12:40:52Z",
-        "age_seconds": 2599,
+        "observed_at": "2026-09-08T15:57:04Z",
+        "age_seconds": 912,
         "counts": {
           "findings": 5
         },
@@ -180,7 +449,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-09-08T12:39:35.468237Z",
-        "age_seconds": 2676,
+        "age_seconds": 12760,
         "counts": {
           "coverage.observed_rows": 1702,
           "coverage.unavailable_rows": 170,
@@ -231,7 +500,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-09-08T12:53:26Z",
-        "age_seconds": 1845,
+        "age_seconds": 11930,
         "counts": {
           "items": 161,
           "sources": 20
@@ -282,13 +551,13 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-09-08T12:53:26Z",
-        "age_seconds": 1845,
+        "observed_at": "2026-09-08T16:07:16Z",
+        "age_seconds": 300,
         "counts": {
           "regions": 5,
           "china_findings": 5
         },
-        "latest_bytes": 598660,
+        "latest_bytes": 642188,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -336,7 +605,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-26T19:34:49Z",
-        "age_seconds": 1100962,
+        "age_seconds": 1111047,
         "counts": {
           "coverage_report.source_count": 43,
           "coverage_report.build_ready_source_count": 11,
@@ -388,7 +657,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "coverage.event_count": 3,
           "coverage.source_count": 1,
@@ -443,7 +712,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "coverage.event_count": 7,
           "coverage.source_count": 4,
@@ -498,7 +767,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "coverage.event_count": 18,
           "coverage.source_count": 3,
@@ -595,7 +864,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "captured_news.counts.event_versions": 67,
           "captured_news.counts.unique_events": 55,
@@ -684,7 +953,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "captured_news.counts.event_versions": 13,
           "captured_news.counts.unique_events": 12,
@@ -774,7 +1043,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "captured_news.counts.event_versions": 12,
           "captured_news.counts.unique_events": 11,
@@ -864,7 +1133,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "captured_news.counts.event_versions": 32,
           "captured_news.counts.unique_events": 27,
@@ -950,7 +1219,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "coverage.translated_records": 2217,
           "coverage.unique_content_digests": 1805,
@@ -1006,7 +1275,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-26T13:17:34.790676Z",
-        "age_seconds": 1123596,
+        "age_seconds": 1133681,
         "counts": {
           "coverage.source_rows": 3564,
           "coverage.observed_rows": 1940,
@@ -1056,7 +1325,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-26T19:28:50Z",
-        "age_seconds": 1101321,
+        "age_seconds": 1111406,
         "counts": {
           "coverage.conflict_year_records": 331,
           "coverage.country_year_records": 74,
@@ -1104,7 +1373,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T04:07:05.744406Z",
-        "age_seconds": 1329425,
+        "age_seconds": 1339510,
         "counts": {
           "n_observations": 107,
           "n_terms": 218
@@ -1152,7 +1421,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T02:00:59.167017Z",
-        "age_seconds": 1336992,
+        "age_seconds": 1347077,
         "counts": {
           "n_measurements": 281957,
           "n_tests_with_data": 6
@@ -1255,7 +1524,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-24T02:10:02.474356Z",
-        "age_seconds": 1336449,
+        "age_seconds": 1346533,
         "counts": {
           "panel_size": 11,
           "n_censored_answered": 5,
@@ -1308,7 +1577,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-25T00:57:18.347665Z",
-        "age_seconds": 1254413,
+        "age_seconds": 1264497,
         "counts": {
           "vantages_probed": 216,
           "vantages_injecting": 210,
@@ -1404,7 +1673,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T02:07:57.791787Z",
-        "age_seconds": 1336573,
+        "age_seconds": 1346658,
         "counts": {},
         "latest_bytes": 4264,
         "history_bytes": 11064,
@@ -1449,7 +1718,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T06:07:17.858453Z",
-        "age_seconds": 1322213,
+        "age_seconds": 1332298,
         "counts": {
           "series_points": 70,
           "n_events": 0
@@ -1494,7 +1763,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T02:04:27Z",
-        "age_seconds": 1336784,
+        "age_seconds": 1346869,
         "counts": {},
         "latest_bytes": 668,
         "history_bytes": 19596,
@@ -1540,7 +1809,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T02:10:22.786113Z",
-        "age_seconds": 1336428,
+        "age_seconds": 1346513,
         "counts": {
           "n_recent": 11,
           "n_blocking": 2,
@@ -1588,7 +1857,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T05:52:26Z",
-        "age_seconds": 1323105,
+        "age_seconds": 1333190,
         "counts": {
           "history_days": 419
         },
@@ -1632,7 +1901,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T02:27:09.647044Z",
-        "age_seconds": 1335421,
+        "age_seconds": 1345506,
         "counts": {},
         "latest_bytes": 2094,
         "history_bytes": 517,
@@ -1677,7 +1946,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T05:55:38Z",
-        "age_seconds": 1322913,
+        "age_seconds": 1332998,
         "counts": {
           "board_entries": 2937,
           "ddti_terms_joined": 2
@@ -1728,7 +1997,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T02:17:50.053556Z",
-        "age_seconds": 1335981,
+        "age_seconds": 1346066,
         "counts": {
           "n_terms": 25,
           "n_with_global_data": 3,
@@ -1780,7 +2049,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T02:10:18.409322Z",
-        "age_seconds": 1336433,
+        "age_seconds": 1346517,
         "counts": {
           "n_watched": 7,
           "n_present": 7,
@@ -1835,7 +2104,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T02:11:10.327610Z",
-        "age_seconds": 1336381,
+        "age_seconds": 1346465,
         "counts": {
           "n_sources": 5,
           "n_changed": 0,
@@ -1887,7 +2156,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T15:58:43.094767Z",
-        "age_seconds": 1286728,
+        "age_seconds": 1296813,
         "counts": {
           "n_watched": 21,
           "n_deletions": 3,
@@ -1939,7 +2208,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-25T00:57:18Z",
-        "age_seconds": 1254413,
+        "age_seconds": 1264498,
         "counts": {
           "n_observations": 57
         },
@@ -1989,7 +2258,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-25T00:57:18Z",
-        "age_seconds": 1254413,
+        "age_seconds": 1264498,
         "counts": {
           "n_rows": 63
         },
@@ -2046,7 +2315,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-26T07:22:00Z",
-        "age_seconds": 1144931,
+        "age_seconds": 1155016,
         "counts": {
           "counts.captured_items_reviewed": 370,
           "counts.dossiers": 15,
@@ -2101,7 +2370,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-23T23:08:00Z",
-        "age_seconds": 1347371,
+        "age_seconds": 1357456,
         "counts": {
           "n_observations": 15,
           "n_feeds_ok": 1
@@ -2199,7 +2468,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-25T00:33:10Z",
-        "age_seconds": 1255861,
+        "age_seconds": 1265946,
         "counts": {
           "n_verdicts": 22,
           "n_urls_queried": 48
@@ -2253,7 +2522,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-25T00:48:00Z",
-        "age_seconds": 1254971,
+        "age_seconds": 1265056,
         "counts": {
           "n_hosts": 22,
           "n_greatfire": 22,
@@ -2307,7 +2576,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-24T10:34:36Z",
-        "age_seconds": 1306175,
+        "age_seconds": 1316260,
         "counts": {
           "n_peer_series": 43,
           "n_peer_series_scored": 1,
@@ -2488,7 +2757,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T02:13:36.117867Z",
-        "age_seconds": 1336235,
+        "age_seconds": 1346320,
         "counts": {
           "panel_size": 12,
           "n_tracked": 10,
@@ -2537,7 +2806,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T06:06:32.985529Z",
-        "age_seconds": 1322258,
+        "age_seconds": 1332343,
         "counts": {
           "country.total_tested": 110432
         },
@@ -2584,7 +2853,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-24T05:07:24.104946Z",
-        "age_seconds": 1325807,
+        "age_seconds": 1335892,
         "counts": {
           "n_additions": 503,
           "n_gazetteer_proposals": 17
@@ -2633,7 +2902,7 @@
       "artifacts": {
         "evidence_state": "disabled",
         "observed_at": "2026-07-30T20:31:16.856256Z",
-        "age_seconds": 3430374,
+        "age_seconds": 3440459,
         "counts": {
           "n_entities": 10,
           "n_comparable": 0,
@@ -2829,7 +3098,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-24T12:19:23.641642Z",
-        "age_seconds": 1299887,
+        "age_seconds": 1309972,
         "counts": {
           "ledger_after.records": 2041,
           "response_coverage.populated_indicators": 46,
@@ -2977,7 +3246,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-18T07:23:09Z",
-        "age_seconds": 1836062,
+        "age_seconds": 1846147,
         "counts": {
           "n_components_present": 1,
           "n_components_required": 3,
@@ -3026,7 +3295,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-21T14:03:19Z",
-        "age_seconds": 1552852,
+        "age_seconds": 1562937,
         "counts": {
           "history_days": 159
         },
@@ -3075,7 +3344,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T15:19:03Z",
-        "age_seconds": 1289108,
+        "age_seconds": 1299193,
         "counts": {
           "n_topics_considered": 25,
           "n_scored": 0,
@@ -3126,7 +3395,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T07:32:12.140291Z",
-        "age_seconds": 798719,
+        "age_seconds": 808804,
         "counts": {
           "n_signals": 15,
           "n_reporting": 1,
@@ -3173,7 +3442,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T07:32:12.196824Z",
-        "age_seconds": 798719,
+        "age_seconds": 808804,
         "counts": {},
         "latest_bytes": 8275,
         "history_bytes": 5722,
@@ -3216,7 +3485,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T07:32:12.233442Z",
-        "age_seconds": 798719,
+        "age_seconds": 808803,
         "counts": {},
         "latest_bytes": 4327,
         "history_bytes": 5893,
@@ -3262,7 +3531,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-30T07:32:12.318667Z",
-        "age_seconds": 798719,
+        "age_seconds": 808803,
         "counts": {
           "n_pairs_tested": 9,
           "n_confirmed": 0
@@ -3312,7 +3581,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T07:32:12.265622Z",
-        "age_seconds": 798719,
+        "age_seconds": 808803,
         "counts": {
           "n_forecasts": 1606,
           "n_signals_scored": 8,
@@ -3360,7 +3629,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T06:31:11.332716Z",
-        "age_seconds": 1320780,
+        "age_seconds": 1330864,
         "counts": {
           "layers_contributing": 2
         },
@@ -3406,7 +3675,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T07:32:14Z",
-        "age_seconds": 798717,
+        "age_seconds": 808802,
         "counts": {
           "n_stories": 39
         },
@@ -3457,7 +3726,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "n_items": 603,
           "n_events": 559,
@@ -3562,7 +3831,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-26T07:22:00Z",
-        "age_seconds": 1144931,
+        "age_seconds": 1155016,
         "counts": {
           "n_observations": 22,
           "coverage.configured": 8,
@@ -3612,7 +3881,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-15T08:16:38Z",
-        "age_seconds": 2092053,
+        "age_seconds": 2102138,
         "counts": {
           "n_entries": 0
         },
@@ -3657,7 +3926,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-20T09:50:33Z",
-        "age_seconds": 1654418,
+        "age_seconds": 1664503,
         "counts": {
           "n_events": 0,
           "n_taps": 19
@@ -3703,7 +3972,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-20T09:50:33Z",
-        "age_seconds": 1654418,
+        "age_seconds": 1664503,
         "counts": {
           "n_entries": 0
         },
@@ -3893,7 +4162,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "n_cases": 2
         },
@@ -4048,7 +4317,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-12T11:09:06Z",
-        "age_seconds": 2340905,
+        "age_seconds": 2350990,
         "counts": {
           "n_documents": 13,
           "n_vintages": 16,
@@ -4103,7 +4372,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "n_events": 559,
           "n_candidate_edges": 0,
@@ -4158,7 +4427,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-24T02:10:02Z",
-        "age_seconds": 1336449,
+        "age_seconds": 1346534,
         "counts": {
           "n_rounds": 29,
           "n_comparable_rounds": 0,
@@ -4206,7 +4475,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-12T11:24:43Z",
-        "age_seconds": 2339968,
+        "age_seconds": 2350053,
         "counts": {
           "n_packages": 3,
           "n_records": 0
@@ -4261,7 +4530,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T08:45:26Z",
-        "age_seconds": 794325,
+        "age_seconds": 804410,
         "counts": {
           "summary.wire_events": 559,
           "summary.wire_eligible": 559,
@@ -4310,7 +4579,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-23T08:02:43.590725Z",
-        "age_seconds": 1401688,
+        "age_seconds": 1411772,
         "counts": {},
         "latest_bytes": 199555,
         "history_bytes": 157099,
@@ -4355,7 +4624,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-24T04:54:42.622246Z",
-        "age_seconds": 1326569,
+        "age_seconds": 1336653,
         "counts": {},
         "latest_bytes": 67243,
         "history_bytes": 75157,
@@ -4403,7 +4672,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-23T08:02:43.590725Z",
-        "age_seconds": 1401688,
+        "age_seconds": 1411772,
         "counts": {
           "n_models": 3,
           "n_prompt_arms": 44,
@@ -4454,7 +4723,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T06:31:10.572234Z",
-        "age_seconds": 1320781,
+        "age_seconds": 1330865,
         "counts": {
           "runs": 542,
           "models": 7,
@@ -4506,7 +4775,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T06:31:10.572234Z",
-        "age_seconds": 1320781,
+        "age_seconds": 1330865,
         "counts": {
           "summary.checks": 11,
           "summary.pass": 9,
@@ -4556,7 +4825,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T06:31:10.572234Z",
-        "age_seconds": 1320781,
+        "age_seconds": 1330865,
         "counts": {
           "n_articles": 4
         },
@@ -4600,7 +4869,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T04:54:42.622246Z",
-        "age_seconds": 1326569,
+        "age_seconds": 1336653,
         "counts": {
           "n_articles": 4
         },
@@ -4697,7 +4966,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T07:32:12.407491Z",
-        "age_seconds": 798719,
+        "age_seconds": 808803,
         "counts": {
           "n_layers_present": 9,
           "working_hardest": 12,
@@ -4745,7 +5014,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T07:32:14.168529Z",
-        "age_seconds": 798717,
+        "age_seconds": 808802,
         "counts": {
           "summary.n_datasets": 82
         },
@@ -4791,7 +5060,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-30T07:32:14.219744Z",
-        "age_seconds": 798717,
+        "age_seconds": 808801,
         "counts": {
           "n_nodes": 154,
           "n_edges": 18
@@ -4839,7 +5108,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-24T16:50:02.488084Z",
-        "age_seconds": 1283649,
+        "age_seconds": 1293733,
         "counts": {
           "wayback_snapshots": 3,
           "readings_problems": 0

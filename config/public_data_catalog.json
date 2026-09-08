@@ -11,6 +11,169 @@
   },
   "datasets": [
     {
+      "id": "china-evidence-observatory",
+      "name": "China evidence observatory",
+      "description": "Economic histories, external trade comparisons, document changes and rights-aware research coverage. Missing data and disagreements do not establish concealment.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "deterministic-derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "NBS",
+        "Eurostat",
+        "Official institutional publications",
+        "SAFE acquisition metadata"
+      ],
+      "latest": "readings/china-evidence-observatory-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "datasets",
+        "findings",
+        "methodology_cases"
+      ],
+      "license": {
+        "name": "Source-specific NBS and Eurostat terms; original document metadata; no SAFE numeric publication",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      }
+    },
+    {
+      "id": "china-economic-history-analysis",
+      "name": "Comparable China economic histories",
+      "description": "Deduplicated NBS monthly business series, 70-city housing histories and exact same-URL numeric revision comparisons. Point-in-time availability is not reconstructed.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "deterministic-derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "National Bureau of Statistics of China"
+      ],
+      "latest": "readings/china-economic-history-analysis-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "coverage.archive_numeric_cells",
+        "coverage.comparable_series",
+        "coverage.city_housing_series",
+        "coverage.deduplicated_series_months"
+      ],
+      "license": {
+        "name": "NBS statistical-data terms; no downstream sublicense",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      }
+    },
+    {
+      "id": "china-mirror-trade",
+      "name": "EU mirror trade with China, Pakistan and Myanmar",
+      "description": "EU-reported monthly product values and net mass since 2010, both flows, EU27 and selected member-country views. Overlapping geographic and product aggregates must not be added.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "P7D",
+      "geography": [
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "Eurostat, EU-reported international trade in goods"
+      ],
+      "latest": "readings/china-mirror-trade-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "coverage.series",
+        "coverage.rows",
+        "coverage.numeric_cells",
+        "coverage.unavailable_cells"
+      ],
+      "license": {
+        "name": "Eurostat EU-declared trade reuse with attribution",
+        "url": "https://ec.europa.eu/eurostat/about-us/policies/copyright"
+      },
+      "distributions": [
+        {
+          "name": "china-mirror-trade-history",
+          "path": "readings/china-mirror-trade-history.csv",
+          "format": "csv",
+          "mediatype": "text/csv"
+        }
+      ]
+    },
+    {
+      "id": "china-publication-watch",
+      "name": "Official China publication-change watch",
+      "description": "Captured document baselines, revised text fingerprints, index changes and repeated URL-absence checks with separate transport/access failure states. Historical methodology cases cite official announcements.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "NBS",
+        "MOF",
+        "SAFE",
+        "PBOC",
+        "GACC",
+        "NEA",
+        "MOT",
+        "SPB"
+      ],
+      "latest": "readings/china-publication-watch-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "coverage.watched_documents",
+        "coverage.retained_documents",
+        "coverage.available_documents",
+        "coverage.removal_observations"
+      ],
+      "license": {
+        "name": "Original acquisition metadata and editorial summaries; source bodies remain private",
+        "url": "https://www.palimpsest.info/china/evidence/"
+      }
+    },
+    {
+      "id": "china-external-accounts",
+      "name": "SAFE external-account acquisition coverage",
+      "description": "Metadata for privately retained regional cross-border receipt/payment and balance-of-payments workbooks. Numeric observations and derived findings are withheld pending publication permission.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "P7D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "State Administration of Foreign Exchange"
+      ],
+      "latest": "readings/china-external-accounts-latest.json",
+      "landing_page": "china/evidence/",
+      "method": "docs/CHINA-EVIDENCE-OBSERVATORY.md",
+      "count_fields": [
+        "coverage.workbooks_retained",
+        "coverage.numeric_observations_private",
+        "coverage.public_numeric_observations"
+      ],
+      "license": {
+        "name": "SAFE permission required; public metadata only",
+        "url": "https://www.safe.gov.cn/safe/flsm/index.html"
+      }
+    },
+    {
       "id": "china-economic-health",
       "name": "Detailed China economic release tables",
       "description": "Official NBS table cells across activity, profits, ownership, prices, investment, trade-related activity and 70-city housing. Source headings, missing values and release/collection clocks are preserved. Coverage counts are cells and vintages, not independent respondents; two release families remain unavailable.",
@@ -45,7 +208,12 @@
           "format": "csv",
           "mediatype": "text/csv"
         },
-        {"name":"china-economic-health-history-csv","path":"readings/china-economic-history.csv","format":"csv","mediatype":"text/csv"}
+        {
+          "name": "china-economic-health-history-csv",
+          "path": "readings/china-economic-history.csv",
+          "format": "csv",
+          "mediatype": "text/csv"
+        }
       ]
     },
     {
@@ -177,13 +345,30 @@
       "collection_mode": "rights-gated-source-registry",
       "status": "live",
       "cadence": "P1D",
-      "geography": ["GLOBAL", "CN", "PK", "MM"],
-      "sources": ["China and host-country primary records", "World Bank and UN datasets", "rights-reviewed research datasets", "NarcoScope official aggregate bridge"],
+      "geography": [
+        "GLOBAL",
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "China and host-country primary records",
+        "World Bank and UN datasets",
+        "rights-reviewed research datasets",
+        "NarcoScope official aggregate bridge"
+      ],
       "latest": "readings/belt-and-road-observatory-latest.json",
       "landing_page": "belt-and-road/",
       "method": "protocol/belt-and-road-observatory-v2.schema.json",
-      "count_fields": ["coverage_report.source_count", "coverage_report.build_ready_source_count", "watch_targets"],
-      "license": {"name": "MIT for Palimpsest schema and metadata; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "coverage_report.source_count",
+        "coverage_report.build_ready_source_count",
+        "watch_targets"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "gwadar-regional-analysis",
@@ -194,13 +379,28 @@
       "collection_mode": "deterministic-evidence-analysis",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["PK", "CN"],
-      "sources": ["Palimpsest Evidence Wire", "World Bank World Development Indicators", "UCDP annual aggregates"],
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates"
+      ],
       "latest": "belt-and-road/gwadar/analysis/article.json",
       "landing_page": "belt-and-road/gwadar/analysis/",
       "method": "scripts/build_bri_observatory.py",
-      "count_fields": ["coverage.event_count", "coverage.source_count", "coverage.independence_group_count", "coverage.relation_event_count"],
-      "license": {"name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "coverage.event_count",
+        "coverage.source_count",
+        "coverage.independence_group_count",
+        "coverage.relation_event_count"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "balochistan-regional-analysis",
@@ -211,13 +411,30 @@
       "collection_mode": "deterministic-evidence-analysis",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["PK", "CN"],
-      "sources": ["Palimpsest Evidence Wire", "regional media and documentation sources", "World Bank World Development Indicators", "UCDP annual aggregates"],
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "regional media and documentation sources",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates"
+      ],
       "latest": "belt-and-road/balochistan/analysis/article.json",
       "landing_page": "belt-and-road/balochistan/analysis/",
       "method": "scripts/build_bri_observatory.py",
-      "count_fields": ["coverage.event_count", "coverage.source_count", "coverage.independence_group_count", "coverage.documentation_event_count", "coverage.relation_event_count"],
-      "license": {"name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "coverage.event_count",
+        "coverage.source_count",
+        "coverage.independence_group_count",
+        "coverage.documentation_event_count",
+        "coverage.relation_event_count"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "myanmar-regional-analysis",
@@ -228,13 +445,29 @@
       "collection_mode": "deterministic-evidence-analysis",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["MM", "CN"],
-      "sources": ["Palimpsest Evidence Wire", "regional Myanmar media", "World Bank World Development Indicators", "UCDP annual aggregates"],
+      "geography": [
+        "MM",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "regional Myanmar media",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates"
+      ],
       "latest": "belt-and-road/myanmar/analysis/article.json",
       "landing_page": "belt-and-road/myanmar/analysis/",
       "method": "scripts/build_bri_observatory.py",
-      "count_fields": ["coverage.event_count", "coverage.source_count", "coverage.independence_group_count", "coverage.relation_event_count"],
-      "license": {"name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "coverage.event_count",
+        "coverage.source_count",
+        "coverage.independence_group_count",
+        "coverage.relation_event_count"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "bri-regional-archive",
@@ -245,19 +478,60 @@
       "collection_mode": "append-only-metadata-ledger-projection",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["GLOBAL", "CN", "PK", "MM"],
-      "sources": ["Palimpsest Evidence Wire event-version ledger", "World Bank World Development Indicators", "UCDP annual aggregates", "cited official and multilateral editorial evidence"],
+      "geography": [
+        "GLOBAL",
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire event-version ledger",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates",
+        "cited official and multilateral editorial evidence"
+      ],
       "latest": "belt-and-road/data/regional-data.json",
       "landing_page": "belt-and-road/",
       "method": "protocol/regional-data-dump-v1.schema.json",
-      "count_fields": ["captured_news.counts.event_versions", "captured_news.counts.unique_events", "captured_news.counts.sources", "captured_news.counts.events_with_english_translation", "economic_context.observation_count", "conflict_context.country_year_count", "conflict_context.conflict_year_count"],
-      "distributions": [
-        {"name": "bri-captured-index-json", "path": "belt-and-road/data/captured-index.json", "format": "json", "mediatype": "application/json"},
-        {"name": "bri-captured-index-jsonl", "path": "belt-and-road/data/captured-index.jsonl", "format": "jsonl", "mediatype": "application/x-ndjson"},
-        {"name": "bri-captured-index-csv", "path": "belt-and-road/data/captured-index.csv", "format": "csv", "mediatype": "text/csv"},
-        {"name": "bri-regional-editorial-evidence-json", "path": "config/regional_editorials.json", "format": "json", "mediatype": "application/json"}
+      "count_fields": [
+        "captured_news.counts.event_versions",
+        "captured_news.counts.unique_events",
+        "captured_news.counts.sources",
+        "captured_news.counts.events_with_english_translation",
+        "economic_context.observation_count",
+        "conflict_context.country_year_count",
+        "conflict_context.conflict_year_count"
       ],
-      "license": {"name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "distributions": [
+        {
+          "name": "bri-captured-index-json",
+          "path": "belt-and-road/data/captured-index.json",
+          "format": "json",
+          "mediatype": "application/json"
+        },
+        {
+          "name": "bri-captured-index-jsonl",
+          "path": "belt-and-road/data/captured-index.jsonl",
+          "format": "jsonl",
+          "mediatype": "application/x-ndjson"
+        },
+        {
+          "name": "bri-captured-index-csv",
+          "path": "belt-and-road/data/captured-index.csv",
+          "format": "csv",
+          "mediatype": "text/csv"
+        },
+        {
+          "name": "bri-regional-editorial-evidence-json",
+          "path": "config/regional_editorials.json",
+          "format": "json",
+          "mediatype": "application/json"
+        }
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "gwadar-regional-archive",
@@ -268,18 +542,52 @@
       "collection_mode": "append-only-metadata-ledger-projection",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["PK", "CN"],
-      "sources": ["Palimpsest Evidence Wire event-version ledger", "World Bank World Development Indicators", "UCDP annual aggregates", "cited official and multilateral editorial evidence"],
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire event-version ledger",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates",
+        "cited official and multilateral editorial evidence"
+      ],
       "latest": "belt-and-road/gwadar/data/regional-data.json",
       "landing_page": "belt-and-road/gwadar/",
       "method": "protocol/regional-data-dump-v1.schema.json",
-      "count_fields": ["captured_news.counts.event_versions", "captured_news.counts.unique_events", "captured_news.counts.sources", "captured_news.counts.events_with_english_translation", "economic_context.observation_count", "conflict_context.country_year_count", "conflict_context.conflict_year_count"],
-      "distributions": [
-        {"name": "gwadar-captured-index-json", "path": "belt-and-road/gwadar/data/captured-index.json", "format": "json", "mediatype": "application/json"},
-        {"name": "gwadar-captured-index-jsonl", "path": "belt-and-road/gwadar/data/captured-index.jsonl", "format": "jsonl", "mediatype": "application/x-ndjson"},
-        {"name": "gwadar-captured-index-csv", "path": "belt-and-road/gwadar/data/captured-index.csv", "format": "csv", "mediatype": "text/csv"}
+      "count_fields": [
+        "captured_news.counts.event_versions",
+        "captured_news.counts.unique_events",
+        "captured_news.counts.sources",
+        "captured_news.counts.events_with_english_translation",
+        "economic_context.observation_count",
+        "conflict_context.country_year_count",
+        "conflict_context.conflict_year_count"
       ],
-      "license": {"name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "distributions": [
+        {
+          "name": "gwadar-captured-index-json",
+          "path": "belt-and-road/gwadar/data/captured-index.json",
+          "format": "json",
+          "mediatype": "application/json"
+        },
+        {
+          "name": "gwadar-captured-index-jsonl",
+          "path": "belt-and-road/gwadar/data/captured-index.jsonl",
+          "format": "jsonl",
+          "mediatype": "application/x-ndjson"
+        },
+        {
+          "name": "gwadar-captured-index-csv",
+          "path": "belt-and-road/gwadar/data/captured-index.csv",
+          "format": "csv",
+          "mediatype": "text/csv"
+        }
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "balochistan-regional-archive",
@@ -290,18 +598,53 @@
       "collection_mode": "append-only-metadata-ledger-projection",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["PK", "CN"],
-      "sources": ["Palimpsest Evidence Wire event-version ledger", "regional media and documentation sources", "World Bank World Development Indicators", "UCDP annual aggregates", "cited official, civic and multilateral editorial evidence"],
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire event-version ledger",
+        "regional media and documentation sources",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates",
+        "cited official, civic and multilateral editorial evidence"
+      ],
       "latest": "belt-and-road/balochistan/data/regional-data.json",
       "landing_page": "belt-and-road/balochistan/",
       "method": "protocol/regional-data-dump-v1.schema.json",
-      "count_fields": ["captured_news.counts.event_versions", "captured_news.counts.unique_events", "captured_news.counts.sources", "captured_news.counts.events_with_english_translation", "economic_context.observation_count", "conflict_context.country_year_count", "conflict_context.conflict_year_count"],
-      "distributions": [
-        {"name": "balochistan-captured-index-json", "path": "belt-and-road/balochistan/data/captured-index.json", "format": "json", "mediatype": "application/json"},
-        {"name": "balochistan-captured-index-jsonl", "path": "belt-and-road/balochistan/data/captured-index.jsonl", "format": "jsonl", "mediatype": "application/x-ndjson"},
-        {"name": "balochistan-captured-index-csv", "path": "belt-and-road/balochistan/data/captured-index.csv", "format": "csv", "mediatype": "text/csv"}
+      "count_fields": [
+        "captured_news.counts.event_versions",
+        "captured_news.counts.unique_events",
+        "captured_news.counts.sources",
+        "captured_news.counts.events_with_english_translation",
+        "economic_context.observation_count",
+        "conflict_context.country_year_count",
+        "conflict_context.conflict_year_count"
       ],
-      "license": {"name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "distributions": [
+        {
+          "name": "balochistan-captured-index-json",
+          "path": "belt-and-road/balochistan/data/captured-index.json",
+          "format": "json",
+          "mediatype": "application/json"
+        },
+        {
+          "name": "balochistan-captured-index-jsonl",
+          "path": "belt-and-road/balochistan/data/captured-index.jsonl",
+          "format": "jsonl",
+          "mediatype": "application/x-ndjson"
+        },
+        {
+          "name": "balochistan-captured-index-csv",
+          "path": "belt-and-road/balochistan/data/captured-index.csv",
+          "format": "csv",
+          "mediatype": "text/csv"
+        }
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "myanmar-regional-archive",
@@ -312,18 +655,53 @@
       "collection_mode": "append-only-metadata-ledger-projection",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["MM", "CN"],
-      "sources": ["Palimpsest Evidence Wire event-version ledger", "regional Myanmar media", "World Bank World Development Indicators", "UCDP annual aggregates", "cited official, civic and multilateral editorial evidence"],
+      "geography": [
+        "MM",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire event-version ledger",
+        "regional Myanmar media",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates",
+        "cited official, civic and multilateral editorial evidence"
+      ],
       "latest": "belt-and-road/myanmar/data/regional-data.json",
       "landing_page": "belt-and-road/myanmar/",
       "method": "protocol/regional-data-dump-v1.schema.json",
-      "count_fields": ["captured_news.counts.event_versions", "captured_news.counts.unique_events", "captured_news.counts.sources", "captured_news.counts.events_with_english_translation", "economic_context.observation_count", "conflict_context.country_year_count", "conflict_context.conflict_year_count"],
-      "distributions": [
-        {"name": "myanmar-captured-index-json", "path": "belt-and-road/myanmar/data/captured-index.json", "format": "json", "mediatype": "application/json"},
-        {"name": "myanmar-captured-index-jsonl", "path": "belt-and-road/myanmar/data/captured-index.jsonl", "format": "jsonl", "mediatype": "application/x-ndjson"},
-        {"name": "myanmar-captured-index-csv", "path": "belt-and-road/myanmar/data/captured-index.csv", "format": "csv", "mediatype": "text/csv"}
+      "count_fields": [
+        "captured_news.counts.event_versions",
+        "captured_news.counts.unique_events",
+        "captured_news.counts.sources",
+        "captured_news.counts.events_with_english_translation",
+        "economic_context.observation_count",
+        "conflict_context.country_year_count",
+        "conflict_context.conflict_year_count"
       ],
-      "license": {"name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "distributions": [
+        {
+          "name": "myanmar-captured-index-json",
+          "path": "belt-and-road/myanmar/data/captured-index.json",
+          "format": "json",
+          "mediatype": "application/json"
+        },
+        {
+          "name": "myanmar-captured-index-jsonl",
+          "path": "belt-and-road/myanmar/data/captured-index.jsonl",
+          "format": "jsonl",
+          "mediatype": "application/x-ndjson"
+        },
+        {
+          "name": "myanmar-captured-index-csv",
+          "path": "belt-and-road/myanmar/data/captured-index.csv",
+          "format": "csv",
+          "mediatype": "text/csv"
+        }
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "chinese-news-english-translations",
@@ -334,18 +712,49 @@
       "collection_mode": "content-addressed-machine-translation-metadata-only",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Chinese-dominant Palimpsest Evidence Wire metadata", "publisher canonical links and source clocks"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Chinese-dominant Palimpsest Evidence Wire metadata",
+        "publisher canonical links and source clocks"
+      ],
       "latest": "readings/chinese-translations-latest.json",
       "landing_page": "news/china/english/",
       "method": "protocol/chinese-translations-v1.schema.json",
-      "count_fields": ["coverage.translated_records", "coverage.unique_content_digests", "coverage.record_kinds", "coverage.eligible_ledger_event_revisions", "coverage.translated_ledger_event_revisions", "coverage.missing_records"],
-      "distributions": [
-        {"name": "chinese-translations-json-feed", "path": "news/china/english/feed.json", "format": "jsonfeed", "mediatype": "application/feed+json"},
-        {"name": "chinese-translations-rss", "path": "news/china/english/feed.xml", "format": "rss", "mediatype": "application/rss+xml"},
-        {"name": "chinese-translations-generated-manifest", "path": "news/china/english/generated-manifest.json", "format": "json", "mediatype": "application/json"}
+      "count_fields": [
+        "coverage.translated_records",
+        "coverage.unique_content_digests",
+        "coverage.record_kinds",
+        "coverage.eligible_ledger_event_revisions",
+        "coverage.translated_ledger_event_revisions",
+        "coverage.missing_records"
       ],
-      "license": {"name": "Metadata-link-only and source-controlled; original publishers retain rights; Palimpsest method, schema and code use the repository license", "url": "https://palimpsest.info/data.html#rights"}
+      "distributions": [
+        {
+          "name": "chinese-translations-json-feed",
+          "path": "news/china/english/feed.json",
+          "format": "jsonfeed",
+          "mediatype": "application/feed+json"
+        },
+        {
+          "name": "chinese-translations-rss",
+          "path": "news/china/english/feed.xml",
+          "format": "rss",
+          "mediatype": "application/rss+xml"
+        },
+        {
+          "name": "chinese-translations-generated-manifest",
+          "path": "news/china/english/generated-manifest.json",
+          "format": "json",
+          "mediatype": "application/json"
+        }
+      ],
+      "license": {
+        "name": "Metadata-link-only and source-controlled; original publishers retain rights; Palimpsest method, schema and code use the repository license",
+        "url": "https://palimpsest.info/data.html#rights"
+      }
     },
     {
       "id": "bri-economic-observations",
@@ -358,13 +767,27 @@
       "cadence": "P7D",
       "freshness_budget": "P120D",
       "freshness_semantics": "Economic period, World Bank dataset-release upper bound and Palimpsest retrieval time are separate. P120D is the economic-data freshness budget and P7D is the collection target. The immutable Pages receipt supplies 24-hour point-in-time deployment proof, not continuous monitoring or a claim that annual values are currently representative.",
-      "geography": ["CN", "PK", "MM"],
-      "sources": ["World Bank World Development Indicators"],
+      "geography": [
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "World Bank World Development Indicators"
+      ],
       "latest": "readings/bri-economic-observations-latest.json",
       "landing_page": "belt-and-road/",
       "method": "docs/BRI-WDI-OBSERVATIONS.md",
-      "count_fields": ["coverage.source_rows", "coverage.observed_rows", "coverage.forecast_rows", "coverage.unavailable_rows"],
-      "license": {"name": "World Bank WDI, CC BY 4.0; attribution required", "url": "https://datacatalog.worldbank.org/public-licenses"}
+      "count_fields": [
+        "coverage.source_rows",
+        "coverage.observed_rows",
+        "coverage.forecast_rows",
+        "coverage.unavailable_rows"
+      ],
+      "license": {
+        "name": "World Bank WDI, CC BY 4.0; attribution required",
+        "url": "https://datacatalog.worldbank.org/public-licenses"
+      }
     },
     {
       "id": "ucdp-annual-aggregate-context",
@@ -375,13 +798,25 @@
       "collection_mode": "private-acquisition-reviewed-lock-public-aggregate",
       "status": "live",
       "cadence": "P12M",
-      "geography": ["PK", "MM"],
-      "sources": ["Uppsala Conflict Data Program version 26.1 annual bulk datasets"],
+      "geography": [
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "Uppsala Conflict Data Program version 26.1 annual bulk datasets"
+      ],
       "latest": "readings/ucdp-aggregate-latest.json",
       "landing_page": "belt-and-road/",
       "method": "docs/UCDP-AGGREGATE-CONTEXT.md",
-      "count_fields": ["coverage.conflict_year_records", "coverage.country_year_records", "coverage.actor_registry_id_count"],
-      "license": {"name": "UCDP version 26.1, CC BY 4.0; attribution and dataset citations required", "url": "https://creativecommons.org/licenses/by/4.0/"}
+      "count_fields": [
+        "coverage.conflict_year_records",
+        "coverage.country_year_records",
+        "coverage.actor_registry_id_count"
+      ],
+      "license": {
+        "name": "UCDP version 26.1, CC BY 4.0; attribution and dataset citations required",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      }
     },
     {
       "id": "ddti",
@@ -392,14 +827,24 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT3H",
-      "geography": ["CN"],
-      "sources": ["China Digital Times"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "China Digital Times"
+      ],
       "latest": "readings/ddti-latest.json",
       "history": "readings/ddti-history.jsonl",
       "landing_page": "dashboards/ddti_observatory.html",
       "method": "docs/METHODOLOGY.md",
-      "count_fields": ["n_observations", "n_terms"],
-      "license": {"name": "MIT for Palimpsest code and derived fields; upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_observations",
+        "n_terms"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest code and derived fields; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "ooni-gfw",
@@ -410,14 +855,24 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT2H",
-      "geography": ["CN"],
-      "sources": ["OONI"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "OONI"
+      ],
       "latest": "readings/ooni-gfw-latest.json",
       "history": "readings/ooni-gfw-history.jsonl",
       "landing_page": "readings/ooni-gfw.html",
       "method": "docs/MEASURING-GFW-DNS-INJECTION.md",
-      "count_fields": ["n_measurements", "n_tests_with_data"],
-      "license": {"name": "CC BY-NC-SA 4.0 source data", "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"}
+      "count_fields": [
+        "n_measurements",
+        "n_tests_with_data"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0 source data",
+        "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+      }
     },
     {
       "id": "ooni-bulk",
@@ -428,14 +883,30 @@
       "collection_mode": "passive-bulk",
       "status": "private-node",
       "cadence": "PT1H",
-      "geography": ["CN", "IR", "MM", "PK", "RU", "TR"],
-      "sources": ["OONI Open Data on AWS"],
+      "geography": [
+        "CN",
+        "IR",
+        "MM",
+        "PK",
+        "RU",
+        "TR"
+      ],
+      "sources": [
+        "OONI Open Data on AWS"
+      ],
       "latest": "readings/ooni-bulk-latest.json",
       "history": "readings/ooni-bulk-history.jsonl",
       "landing_page": "data.html#dataset-ooni-bulk",
       "method": "docs/HETZNER-NODE-ARCHITECTURE.md",
-      "count_fields": ["measurements", "objects", "compressed_bytes"],
-      "license": {"name": "CC BY-NC-SA 4.0", "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"}
+      "count_fields": [
+        "measurements",
+        "objects",
+        "compressed_bytes"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0",
+        "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+      }
     },
     {
       "id": "inside-view",
@@ -446,14 +917,28 @@
       "collection_mode": "active-consented",
       "status": "gated",
       "cadence": "PT2H",
-      "geography": ["CN", "DE", "NL"],
-      "sources": ["Globalping", "Team Cymru"],
+      "geography": [
+        "CN",
+        "DE",
+        "NL"
+      ],
+      "sources": [
+        "Globalping",
+        "Team Cymru"
+      ],
       "latest": "readings/inside-view-latest.json",
       "history": "readings/inside-view-history.jsonl",
       "landing_page": "readings/inside-view.html",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["panel_size", "n_censored_answered", "n_censored_blocked"],
-      "license": {"name": "MIT for Palimpsest output; provider terms apply", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "panel_size",
+        "n_censored_answered",
+        "n_censored_blocked"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest output; provider terms apply",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "bleedthrough",
@@ -464,14 +949,28 @@
       "collection_mode": "active-controlled-external-vantage",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN", "DE"],
-      "sources": ["Palimpsest Hetzner measurement node", "RIPEstat public BGP data"],
+      "geography": [
+        "CN",
+        "DE"
+      ],
+      "sources": [
+        "Palimpsest Hetzner measurement node",
+        "RIPEstat public BGP data"
+      ],
       "latest": "readings/bleedthrough-latest.json",
       "history": "readings/bleedthrough-history.jsonl",
       "landing_page": "readings/bleedthrough.html",
       "method": "docs/BLEEDTHROUGH.md",
-      "count_fields": ["vantages_probed", "vantages_injecting", "distinct_pools", "events"],
-      "license": {"name": "MIT for sanitized Palimpsest method and aggregates; upstream RIPE terms apply", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "vantages_probed",
+        "vantages_injecting",
+        "distinct_pools",
+        "events"
+      ],
+      "license": {
+        "name": "MIT for sanitized Palimpsest method and aggregates; upstream RIPE terms apply",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "cloudflare-radar-tcp",
@@ -482,14 +981,28 @@
       "collection_mode": "passive-upstream",
       "status": "gated",
       "cadence": "PT1H",
-      "geography": ["CN", "IR", "MM", "PK", "RU", "TR"],
-      "sources": ["Cloudflare Radar"],
+      "geography": [
+        "CN",
+        "IR",
+        "MM",
+        "PK",
+        "RU",
+        "TR"
+      ],
+      "sources": [
+        "Cloudflare Radar"
+      ],
       "latest": "readings/cloudflare-radar-tcp-latest.json",
       "history": "readings/cloudflare-radar-tcp-history.jsonl",
       "landing_page": "data.html#dataset-cloudflare-radar-tcp",
       "method": "docs/CLOUDFLARE-RADAR-TCP.md",
-      "count_fields": ["geographies"],
-      "license": {"name": "CC BY-NC 4.0", "url": "https://creativecommons.org/licenses/by-nc/4.0/"}
+      "count_fields": [
+        "geographies"
+      ],
+      "license": {
+        "name": "CC BY-NC 4.0",
+        "url": "https://creativecommons.org/licenses/by-nc/4.0/"
+      }
     },
     {
       "id": "in-path-interference",
@@ -500,14 +1013,21 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT2H",
-      "geography": ["CN"],
-      "sources": ["OONI"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "OONI"
+      ],
       "latest": "readings/in-path-interference-latest.json",
       "history": "readings/in-path-interference-history.jsonl",
       "landing_page": "readings/in-path-interference.html",
       "method": "docs/NEW-METHODS.md",
       "count_fields": [],
-      "license": {"name": "CC BY-NC-SA 4.0 source data", "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"}
+      "license": {
+        "name": "CC BY-NC-SA 4.0 source data",
+        "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+      }
     },
     {
       "id": "censored-planet",
@@ -518,14 +1038,24 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "P1D",
-      "geography": ["CN"],
-      "sources": ["Censored Planet"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Censored Planet"
+      ],
       "latest": "readings/censored-planet-latest.json",
       "history": "readings/censored-planet-history.jsonl",
       "landing_page": "readings/ooni-gfw.html",
       "method": "docs/CENSORED-PLANET-INGEST.md",
-      "count_fields": ["series_points", "n_events"],
-      "license": {"name": "Upstream terms; Palimpsest publishes attribution and provenance", "url": "https://censoredplanet.org/data/raw"}
+      "count_fields": [
+        "series_points",
+        "n_events"
+      ],
+      "license": {
+        "name": "Upstream terms; Palimpsest publishes attribution and provenance",
+        "url": "https://censoredplanet.org/data/raw"
+      }
     },
     {
       "id": "ioda-outages",
@@ -536,14 +1066,21 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT2H",
-      "geography": ["CN"],
-      "sources": ["Georgia Tech IODA"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Georgia Tech IODA"
+      ],
       "latest": "readings/ioda-outages-latest.json",
       "history": "readings/ioda-outages-history.jsonl",
       "landing_page": "readings/index.html#network",
       "method": "docs/NEW-METHODS.md",
       "count_fields": [],
-      "license": {"name": "Upstream terms; Palimpsest derived output MIT", "url": "https://ioda.inetintel.cc.gatech.edu/"}
+      "license": {
+        "name": "Upstream terms; Palimpsest derived output MIT",
+        "url": "https://ioda.inetintel.cc.gatech.edu/"
+      }
     },
     {
       "id": "net4people",
@@ -554,14 +1091,25 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["GLOBAL"],
-      "sources": ["net4people/bbs"],
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "net4people/bbs"
+      ],
       "latest": "readings/net4people-latest.json",
       "history": "readings/net4people-history.jsonl",
       "landing_page": "readings/index.html#network",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_recent", "n_blocking", "n_circumvention"],
-      "license": {"name": "Repository and contributor terms apply", "url": "https://github.com/net4people/bbs"}
+      "count_fields": [
+        "n_recent",
+        "n_blocking",
+        "n_circumvention"
+      ],
+      "license": {
+        "name": "Repository and contributor terms apply",
+        "url": "https://github.com/net4people/bbs"
+      }
     },
     {
       "id": "circumvention-demand",
@@ -572,14 +1120,23 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "P1D",
-      "geography": ["CN"],
-      "sources": ["Tor Metrics"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Tor Metrics"
+      ],
       "latest": "readings/circumvention-demand-latest.json",
       "history": "readings/circumvention-demand-history.jsonl",
       "landing_page": "readings/index.html#network",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["history_days"],
-      "license": {"name": "CC0 source data", "url": "https://metrics.torproject.org/collector.html"}
+      "count_fields": [
+        "history_days"
+      ],
+      "license": {
+        "name": "CC0 source data",
+        "url": "https://metrics.torproject.org/collector.html"
+      }
     },
     {
       "id": "vantage-fusion",
@@ -590,14 +1147,21 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN"],
-      "sources": ["Palimpsest derived from OONI, Censored Planet, net4people"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest derived from OONI, Censored Planet, net4people"
+      ],
       "latest": "readings/vantage-fusion-latest.json",
       "history": "readings/vantage-fusion-history.jsonl",
       "landing_page": "data.html#dataset-vantage-fusion",
       "method": "docs/NEW-METHODS.md",
       "count_fields": [],
-      "license": {"name": "Mixed upstream licenses; see component datasets", "url": "https://palimpsest.info/for-researchers.html"}
+      "license": {
+        "name": "Mixed upstream licenses; see component datasets",
+        "url": "https://palimpsest.info/for-researchers.html"
+      }
     },
     {
       "id": "weibo-hotsearch",
@@ -608,14 +1172,24 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN"],
-      "sources": ["Public Weibo hot-search archive"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Public Weibo hot-search archive"
+      ],
       "latest": "readings/weibo-hotsearch-latest.json",
       "history": "readings/weibo-hotsearch-history.jsonl",
       "landing_page": "readings/index.html#content",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["board_entries", "ddti_terms_joined"],
-      "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "board_entries",
+        "ddti_terms_joined"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "gdelt",
@@ -626,14 +1200,27 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT3H",
-      "geography": ["GLOBAL", "CN"],
-      "sources": ["GDELT"],
+      "geography": [
+        "GLOBAL",
+        "CN"
+      ],
+      "sources": [
+        "GDELT"
+      ],
       "latest": "readings/gdelt-latest.json",
       "history": "readings/gdelt-history.jsonl",
       "landing_page": "readings/index.html#content",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_terms", "n_with_global_data", "n_blackout", "n_containment"],
-      "license": {"name": "GDELT source terms; Palimpsest derived output MIT", "url": "https://www.gdeltproject.org/"}
+      "count_fields": [
+        "n_terms",
+        "n_with_global_data",
+        "n_blackout",
+        "n_containment"
+      ],
+      "license": {
+        "name": "GDELT source terms; Palimpsest derived output MIT",
+        "url": "https://www.gdeltproject.org/"
+      }
     },
     {
       "id": "github-refuge",
@@ -644,14 +1231,26 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["GitHub public repositories"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GitHub public repositories"
+      ],
       "latest": "readings/github-refuge-latest.json",
       "history": "readings/github-refuge-history.jsonl",
       "landing_page": "readings/index.html#content",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_watched", "n_present", "n_pressure_events"],
-      "license": {"name": "Repository-specific upstream licenses", "url": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service"}
+      "count_fields": [
+        "n_watched",
+        "n_present",
+        "n_pressure_events"
+      ],
+      "license": {
+        "name": "Repository-specific upstream licenses",
+        "url": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service"
+      }
     },
     {
       "id": "research-corpus",
@@ -662,14 +1261,30 @@
       "collection_mode": "passive-upstream",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["github/gov-takedowns", "github/dmca", "citizenlab/test-lists", "citizenlab/chat-censorship", "gfwlist/gfwlist"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "github/gov-takedowns",
+        "github/dmca",
+        "citizenlab/test-lists",
+        "citizenlab/chat-censorship",
+        "gfwlist/gfwlist"
+      ],
       "latest": "readings/research-corpus-latest.json",
       "history": "readings/research-corpus-history.jsonl",
       "landing_page": "data.html#dataset-research-corpus",
       "method": "docs/RESEARCH-CORPUS-INGEST.md",
-      "count_fields": ["n_sources", "n_changed", "n_unchanged"],
-      "license": {"name": "Metadata-only aggregate; repository-specific upstream licenses", "url": "https://github.com/beepboop2025/palimpsest/blob/main/docs/RESEARCH-CORPUS-INGEST.md"}
+      "count_fields": [
+        "n_sources",
+        "n_changed",
+        "n_unchanged"
+      ],
+      "license": {
+        "name": "Metadata-only aggregate; repository-specific upstream licenses",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/docs/RESEARCH-CORPUS-INGEST.md"
+      }
     },
     {
       "id": "wayback",
@@ -680,14 +1295,27 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Internet Archive CDX"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Internet Archive CDX"
+      ],
       "latest": "readings/wayback-latest.json",
       "history": "readings/wayback-history.jsonl",
       "landing_page": "readings/index.html#content",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_watched", "n_deletions", "n_mutations", "n_reachable"],
-      "license": {"name": "Internet Archive terms; Palimpsest metadata MIT", "url": "https://archive.org/about/terms.php"}
+      "count_fields": [
+        "n_watched",
+        "n_deletions",
+        "n_mutations",
+        "n_reachable"
+      ],
+      "license": {
+        "name": "Internet Archive terms; Palimpsest metadata MIT",
+        "url": "https://archive.org/about/terms.php"
+      }
     },
     {
       "id": "undertext",
@@ -698,14 +1326,26 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Internet Archive CDX", "Weibo hot-search archive", "China Digital Times public RSS"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Internet Archive CDX",
+        "Weibo hot-search archive",
+        "China Digital Times public RSS"
+      ],
       "latest": "readings/undertext-latest.json",
       "history": "readings/undertext-history.jsonl",
       "landing_page": "news/china/erasure/",
       "method": "docs/CHINA-CAPTURE.md",
-      "count_fields": ["n_observations"],
-      "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_observations"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "erasure-trail",
@@ -716,14 +1356,27 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["UNDERTEXT fusion", "Internet Archive CDX", "Weibo hot-search archive", "China Digital Times"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "UNDERTEXT fusion",
+        "Internet Archive CDX",
+        "Weibo hot-search archive",
+        "China Digital Times"
+      ],
       "latest": "readings/erasure-trail-latest.json",
       "history": "readings/erasure-trail-history.jsonl",
       "landing_page": "news/china/erasure/",
       "method": "docs/FOR-JOURNALISTS.md",
-      "count_fields": ["n_rows"],
-      "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_rows"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "censorship-practice-dossiers",
@@ -734,13 +1387,34 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Public deletion-ledger feeds", "Bounded social observations", "Weibo hot-search archive", "DDTI", "UNDERTEXT", "Internet Archive CDX"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Public deletion-ledger feeds",
+        "Bounded social observations",
+        "Weibo hot-search archive",
+        "DDTI",
+        "UNDERTEXT",
+        "Internet Archive CDX"
+      ],
       "latest": "readings/censorship-practice-dossiers-latest.json",
       "landing_page": "news/china/erasure/",
       "method": "docs/CENSORSHIP-PRACTICE-DOSSIERS.md",
-      "count_fields": ["counts.captured_items_reviewed", "counts.dossiers", "counts.observed_disappearances", "counts.peer_reported", "counts.pattern_signals", "counts.review_required", "counts.excluded_items"],
-      "license": {"name": "Upstream rights retained; bounded excerpts and Palimpsest derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "counts.captured_items_reviewed",
+        "counts.dossiers",
+        "counts.observed_disappearances",
+        "counts.peer_reported",
+        "counts.pattern_signals",
+        "counts.review_required",
+        "counts.excluded_items"
+      ],
+      "license": {
+        "name": "Upstream rights retained; bounded excerpts and Palimpsest derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "public-deletion-ledgers",
@@ -751,14 +1425,27 @@
       "collection_mode": "passive",
       "status": "warming",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["China Digital Times RSS", "GreatFire public RSS", "FreeWeibo-style public feed"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "China Digital Times RSS",
+        "GreatFire public RSS",
+        "FreeWeibo-style public feed"
+      ],
       "latest": "readings/public-deletion-ledgers-latest.json",
       "history": "readings/public-deletion-ledgers-history.jsonl",
       "landing_page": "osint-china.html",
       "method": "docs/CHINA-CAPTURE.md",
-      "count_fields": ["n_observations", "n_feeds_ok"],
-      "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_observations",
+        "n_feeds_ok"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "archive-news-context",
@@ -769,7 +1456,10 @@
       "collection_mode": "derived",
       "status": "warming",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
       "sources": [
         "Common Crawl derived host features",
         "News-wire-live observations",
@@ -780,8 +1470,14 @@
       "history": "readings/archive-news-context-history.jsonl",
       "landing_page": "osint-china.html",
       "method": "docs/CHINA-CAPTURE.md",
-      "count_fields": ["n_events_contextualized", "n_observations_joined"],
-      "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_events_contextualized",
+        "n_observations_joined"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "greatfire-context",
@@ -792,14 +1488,25 @@
       "collection_mode": "passive",
       "status": "warming",
       "cadence": "PT12H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["GreatFire Analyzer open API"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire Analyzer open API"
+      ],
       "latest": "readings/greatfire-context-latest.json",
       "history": "readings/greatfire-context-history.jsonl",
       "landing_page": "osint-china.html",
       "method": "docs/CHINA-CAPTURE.md",
-      "count_fields": ["n_verdicts", "n_urls_queried"],
-      "license": {"name": "GreatFire Analyzer CC BY 4.0; Palimpsest derived metadata MIT", "url": "https://creativecommons.org/licenses/by/4.0/"}
+      "count_fields": [
+        "n_verdicts",
+        "n_urls_queried"
+      ],
+      "license": {
+        "name": "GreatFire Analyzer CC BY 4.0; Palimpsest derived metadata MIT",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      }
     },
     {
       "id": "peer-context",
@@ -810,14 +1517,30 @@
       "collection_mode": "passive",
       "status": "warming",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["GreatFire Analyzer", "OONI", "China Digital Times", "Weiboscope citation"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire Analyzer",
+        "OONI",
+        "China Digital Times",
+        "Weiboscope citation"
+      ],
       "latest": "readings/peer-context-latest.json",
       "history": "readings/peer-context-history.jsonl",
       "landing_page": "news/china/situation/",
       "method": "docs/CHINA-CAPTURE.md",
-      "count_fields": ["n_hosts", "n_greatfire", "n_ooni", "n_cdt"],
-      "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_hosts",
+        "n_greatfire",
+        "n_ooni",
+        "n_cdt"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "peer-context-rank",
@@ -828,14 +1551,28 @@
       "collection_mode": "derived",
       "status": "warming",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["GreatFire cache", "OONI host/ASN series", "China Digital Times titles"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire cache",
+        "OONI host/ASN series",
+        "China Digital Times titles"
+      ],
       "latest": "readings/peer-context-rank-latest.json",
       "history": "readings/peer-context-rank-history.jsonl",
       "landing_page": "osint-china.html",
       "method": "docs/CHINA-CAPTURE.md",
-      "count_fields": ["n_peer_series", "n_peer_series_scored", "n_joins"],
-      "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_peer_series",
+        "n_peer_series_scored",
+        "n_joins"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "ooni-peer-context",
@@ -846,14 +1583,24 @@
       "collection_mode": "passive",
       "status": "warming",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["OONI Probe / OONI data"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "OONI Probe / OONI data"
+      ],
       "latest": "readings/ooni-peer-context-latest.json",
       "history": "readings/ooni-peer-context-history.jsonl",
       "landing_page": "news/china/situation/",
       "method": "docs/CHINA-CAPTURE.md",
-      "count_fields": ["n_hits"],
-      "license": {"name": "OONI data license; Palimpsest derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_hits"
+      ],
+      "license": {
+        "name": "OONI data license; Palimpsest derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "cdt-context",
@@ -864,14 +1611,24 @@
       "collection_mode": "passive",
       "status": "warming",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["China Digital Times RSS"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "China Digital Times RSS"
+      ],
       "latest": "readings/cdt-context-latest.json",
       "history": "readings/cdt-context-history.jsonl",
       "landing_page": "news/china/situation/",
       "method": "docs/CHINA-CAPTURE.md",
-      "count_fields": ["n_items"],
-      "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_items"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "weiboscope-context",
@@ -882,13 +1639,20 @@
       "collection_mode": "passive",
       "status": "warming",
       "cadence": "PT6H",
-      "geography": ["CN"],
-      "sources": ["Weiboscope / HKU JMSC citation"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Weiboscope / HKU JMSC citation"
+      ],
       "latest": "readings/weiboscope-context-latest.json",
       "landing_page": "news/china/situation/",
       "method": "docs/CHINA-CAPTURE.md",
       "count_fields": [],
-      "license": {"name": "Citation only; no dump retained", "url": "https://doi.org/10.25442/hku.16674565"}
+      "license": {
+        "name": "Citation only; no dump retained",
+        "url": "https://doi.org/10.25442/hku.16674565"
+      }
     },
     {
       "id": "app-storefront",
@@ -899,14 +1663,26 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "PT2H",
-      "geography": ["CN", "US"],
-      "sources": ["Apple iTunes Search API"],
+      "geography": [
+        "CN",
+        "US"
+      ],
+      "sources": [
+        "Apple iTunes Search API"
+      ],
       "latest": "readings/app-storefront-latest.json",
       "history": "readings/app-storefront-history.jsonl",
       "landing_page": "readings/app-store.html",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["panel_size", "n_tracked", "n_delisted"],
-      "license": {"name": "Apple service terms; Palimpsest derived output MIT", "url": "https://www.apple.com/legal/internet-services/itunes/"}
+      "count_fields": [
+        "panel_size",
+        "n_tracked",
+        "n_delisted"
+      ],
+      "license": {
+        "name": "Apple service terms; Palimpsest derived output MIT",
+        "url": "https://www.apple.com/legal/internet-services/itunes/"
+      }
     },
     {
       "id": "apple-censorship",
@@ -917,14 +1693,24 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "P1D",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["GreatFire AppleCensorship"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire AppleCensorship"
+      ],
       "latest": "readings/apple-censorship-latest.json",
       "history": "readings/apple-censorship-history.jsonl",
       "landing_page": "readings/app-store.html",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["country.total_tested"],
-      "license": {"name": "Upstream terms; Palimpsest attribution required", "url": "https://applecensorship.com/"}
+      "count_fields": [
+        "country.total_tested"
+      ],
+      "license": {
+        "name": "Upstream terms; Palimpsest attribution required",
+        "url": "https://applecensorship.com/"
+      }
     },
     {
       "id": "blocklist",
@@ -935,14 +1721,24 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "P1W",
-      "geography": ["CN"],
-      "sources": ["Citizen Lab chat-censorship"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Citizen Lab chat-censorship"
+      ],
       "latest": "readings/blocklist-latest.json",
       "history": "readings/blocklist-history.jsonl",
       "landing_page": "readings/blocklist.html",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_additions", "n_gazetteer_proposals"],
-      "license": {"name": "CC BY-NC-SA 4.0 source data", "url": "https://github.com/citizenlab/chat-censorship"}
+      "count_fields": [
+        "n_additions",
+        "n_gazetteer_proposals"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0 source data",
+        "url": "https://github.com/citizenlab/chat-censorship"
+      }
     },
     {
       "id": "baike-redaction",
@@ -953,14 +1749,25 @@
       "collection_mode": "authorized-access",
       "status": "disabled",
       "cadence": "P1D",
-      "geography": ["CN"],
-      "sources": ["Baidu Baike"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Baidu Baike"
+      ],
       "latest": "readings/baike-redaction-latest.json",
       "history": "readings/baike-redaction-history.jsonl",
       "landing_page": "readings/index.html#content",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_entities", "n_comparable", "n_forked"],
-      "license": {"name": "Upstream rights retained", "url": "https://baike.baidu.com/"}
+      "count_fields": [
+        "n_entities",
+        "n_comparable",
+        "n_forked"
+      ],
+      "license": {
+        "name": "Upstream rights retained",
+        "url": "https://baike.baidu.com/"
+      }
     },
     {
       "id": "data-darkness",
@@ -972,14 +1779,27 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "PT12H",
-      "geography": ["CN"],
-      "sources": ["PBOC", "SAFE", "NBS", "NRA"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "PBOC",
+        "SAFE",
+        "NBS",
+        "NRA"
+      ],
       "latest": "readings/data-darkness-latest.json",
       "history": "readings/data-darkness-history.jsonl",
       "landing_page": "readings/index.html#state",
       "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
-      "count_fields": ["n_series_watched", "n_series_reporting"],
-      "license": {"name": "Official-source rights retained; Palimpsest metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_series_watched",
+        "n_series_reporting"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "china-econ",
@@ -991,14 +1811,24 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "PT6H",
-      "geography": ["CN"],
-      "sources": ["CFETS", "official statistical publications"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "CFETS",
+        "official statistical publications"
+      ],
       "latest": "readings/china-econ-latest.json",
       "history": "readings/china-econ-history.jsonl",
       "landing_page": "readings/index.html#state",
       "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
-      "count_fields": ["history_days"],
-      "license": {"name": "Official-source rights retained; Palimpsest metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "history_days"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "china-economic-observations",
@@ -1012,14 +1842,25 @@
       "cadence": "P1D",
       "freshness_budget": "P10D",
       "freshness_semantics": "Event-time freshness advances only when a new or revised observation is appended. It does not claim that the scheduled collector was healthy on every poll.",
-      "geography": ["CN"],
-      "sources": ["CFETS/ChinaMoney"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "CFETS/ChinaMoney"
+      ],
       "latest": "readings/china-econ-observations-latest.json",
       "history": "readings/china-econ-observations.jsonl",
       "landing_page": "china/",
       "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
-      "count_fields": ["artifact.records", "coverage.series_count", "coverage.source_count"],
-      "license": {"name": "Mixed rights: official-source data rights retained; Palimpsest code, schema and metadata MIT", "url": "https://palimpsest.info/data.html#rights"}
+      "count_fields": [
+        "artifact.records",
+        "coverage.series_count",
+        "coverage.source_count"
+      ],
+      "license": {
+        "name": "Mixed rights: official-source data rights retained; Palimpsest code, schema and metadata MIT",
+        "url": "https://palimpsest.info/data.html#rights"
+      }
     },
     {
       "id": "china-economic-wdi-history",
@@ -1032,14 +1873,25 @@
       "cadence": "P7D",
       "freshness_budget": "P120D",
       "freshness_semantics": "The dataset_last_updated clock describes the upstream WDI release. Weekly collection receipts do not make annual source values economically current, and null availability can withdraw a current-coverage claim without deleting an older vintage.",
-      "geography": ["CN"],
-      "sources": ["World Bank World Development Indicators"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "World Bank World Development Indicators"
+      ],
       "latest": "readings/china-econ-wdi-latest.json",
       "history": "readings/china-econ-wdi-observations.jsonl",
       "landing_page": "china/sources/world_bank_wdi/",
       "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
-      "count_fields": ["ledger_after.records", "response_coverage.populated_indicators", "response_coverage.null_rows"],
-      "license": {"name": "World Bank WDI, CC BY 4.0; attribution required", "url": "https://datacatalog.worldbank.org/public-licenses"}
+      "count_fields": [
+        "ledger_after.records",
+        "response_coverage.populated_indicators",
+        "response_coverage.null_rows"
+      ],
+      "license": {
+        "name": "World Bank WDI, CC BY 4.0; attribution required",
+        "url": "https://datacatalog.worldbank.org/public-licenses"
+      }
     },
     {
       "id": "china-economic-forecast",
@@ -1053,13 +1905,24 @@
       "cadence": "P1D",
       "freshness_budget": "P10D",
       "freshness_semantics": "Derived event time follows the newest checksum-validated ledger collection clock; it is not a collector-health heartbeat.",
-      "geography": ["CN"],
-      "sources": ["Palimpsest bitemporal China economic observation ledger"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest bitemporal China economic observation ledger"
+      ],
       "latest": "readings/china-econ-forecast-latest.json",
       "landing_page": "china/",
       "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
-      "count_fields": ["n_targets", "summary.ready_targets", "summary.abstaining_targets"],
-      "license": {"name": "Mixed rights: upstream observations retained; Palimpsest forecast code, schema and metadata MIT", "url": "https://palimpsest.info/data.html#rights"}
+      "count_fields": [
+        "n_targets",
+        "summary.ready_targets",
+        "summary.abstaining_targets"
+      ],
+      "license": {
+        "name": "Mixed rights: upstream observations retained; Palimpsest forecast code, schema and metadata MIT",
+        "url": "https://palimpsest.info/data.html#rights"
+      }
     },
     {
       "id": "cny-fix-gap",
@@ -1071,14 +1934,27 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "P1D",
-      "geography": ["CN", "EU", "CA"],
-      "sources": ["CFETS", "ECB", "Bank of Canada"],
+      "geography": [
+        "CN",
+        "EU",
+        "CA"
+      ],
+      "sources": [
+        "CFETS",
+        "ECB",
+        "Bank of Canada"
+      ],
       "latest": "readings/cny-fix-gap-latest.json",
       "history": "readings/cny-fix-gap-history.jsonl",
       "landing_page": "readings/index.html#state",
       "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
-      "count_fields": ["history_days"],
-      "license": {"name": "Official-source rights retained; Palimpsest derived output MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "history_days"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest derived output MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "believability",
@@ -1089,14 +1965,27 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "P1M",
-      "geography": ["CN"],
-      "sources": ["NBS", "PBOC", "NRA"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "NBS",
+        "PBOC",
+        "NRA"
+      ],
       "latest": "readings/believability-latest.json",
       "history": "readings/believability-history.jsonl",
       "landing_page": "readings/index.html#state",
       "method": "docs/BELIEVABILITY.md",
-      "count_fields": ["n_components_present", "n_components_required", "n_history"],
-      "license": {"name": "Official-source rights retained; Palimpsest derived output MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_components_present",
+        "n_components_required",
+        "n_history"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest derived output MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "stock-connect",
@@ -1107,14 +1996,24 @@
       "collection_mode": "passive",
       "status": "live",
       "cadence": "P1D",
-      "geography": ["CN", "HK"],
-      "sources": ["HKEX"],
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "HKEX"
+      ],
       "latest": "readings/stock-connect-latest.json",
       "history": "readings/stock-connect-history.jsonl",
       "landing_page": "readings/index.html#state",
       "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
-      "count_fields": ["history_days"],
-      "license": {"name": "HKEX source terms; Palimpsest metadata MIT", "url": "https://www.hkex.com.hk/"}
+      "count_fields": [
+        "history_days"
+      ],
+      "license": {
+        "name": "HKEX source terms; Palimpsest metadata MIT",
+        "url": "https://www.hkex.com.hk/"
+      }
     },
     {
       "id": "silence-index",
@@ -1125,14 +2024,26 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest derived from DDTI, Weibo, GDELT"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest derived from DDTI, Weibo, GDELT"
+      ],
       "latest": "readings/silence-index-latest.json",
       "history": "readings/silence-index-history.jsonl",
       "landing_page": "readings/index.html#content",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_topics_considered", "n_scored", "n_abstained"],
-      "license": {"name": "Mixed upstream licenses; see component datasets", "url": "https://palimpsest.info/for-researchers.html"}
+      "count_fields": [
+        "n_topics_considered",
+        "n_scored",
+        "n_abstained"
+      ],
+      "license": {
+        "name": "Mixed upstream licenses; see component datasets",
+        "url": "https://palimpsest.info/for-researchers.html"
+      }
     },
     {
       "id": "event-flags",
@@ -1143,14 +2054,26 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest signal histories"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
       "latest": "readings/event-flags-latest.json",
       "history": "readings/event-flags-history.jsonl",
       "landing_page": "readings/index.html#stats",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_signals", "n_reporting", "n_open"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_signals",
+        "n_reporting",
+        "n_open"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "board-alarm",
@@ -1161,14 +2084,22 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest signal histories"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
       "latest": "readings/board-alarm-latest.json",
       "history": "readings/board-alarm-history.jsonl",
       "landing_page": "readings/index.html#stats",
       "method": "docs/NEW-METHODS.md",
       "count_fields": [],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "coverage-guard",
@@ -1179,14 +2110,22 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest signal histories"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
       "latest": "readings/coverage-guard-latest.json",
       "history": "readings/coverage-guard-history.jsonl",
       "landing_page": "readings/index.html#stats",
       "method": "docs/NEW-METHODS.md",
       "count_fields": [],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "cross-layer",
@@ -1197,14 +2136,25 @@
       "collection_mode": "derived",
       "status": "warming",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest signal histories"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
       "latest": "readings/cross-layer-latest.json",
       "history": "readings/cross-layer-history.jsonl",
       "landing_page": "readings/index.html#stats",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_pairs_tested", "n_confirmed"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_pairs_tested",
+        "n_confirmed"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "forecast-ledger",
@@ -1215,14 +2165,26 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest event histories"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest event histories"
+      ],
       "latest": "readings/forecast-ledger-latest.json",
       "history": "readings/forecast-ledger-history.jsonl",
       "landing_page": "for-researchers.html#forecast",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_forecasts", "n_signals_scored", "n_beating_baseline"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_forecasts",
+        "n_signals_scored",
+        "n_beating_baseline"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "erasure-observatory",
@@ -1233,14 +2195,23 @@
       "collection_mode": "derived-sealed",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN"],
-      "sources": ["Palimpsest layer readings"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest layer readings"
+      ],
       "latest": "readings/erasure-observatory-latest.json",
       "history": "readings/erasure-observatory-history.jsonl",
       "landing_page": "readings/erasure-observatory.html",
       "method": "docs/ERASURE-OBSERVATORY.md",
-      "count_fields": ["layers_contributing"],
-      "license": {"name": "Mixed upstream licenses; composite method MIT", "url": "https://palimpsest.info/for-researchers.html"}
+      "count_fields": [
+        "layers_contributing"
+      ],
+      "license": {
+        "name": "Mixed upstream licenses; composite method MIT",
+        "url": "https://palimpsest.info/for-researchers.html"
+      }
     },
     {
       "id": "newsroom",
@@ -1251,13 +2222,23 @@
       "collection_mode": "deterministic",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest OSINT China roll-up"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest OSINT China roll-up"
+      ],
       "latest": "readings/newsroom-latest.json",
       "landing_page": "news/",
       "method": "docs/NEWSROOM.md",
-      "count_fields": ["n_stories"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_stories"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "newswire",
@@ -1268,14 +2249,29 @@
       "collection_mode": "passive-metadata",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "PK", "MM", "GLOBAL"],
-      "sources": ["Closed allowlist in config/news_sources.json"],
+      "geography": [
+        "CN",
+        "PK",
+        "MM",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Closed allowlist in config/news_sources.json"
+      ],
       "latest": "readings/newswire-latest.json",
       "history": "readings/newswire-versions.jsonl",
       "landing_page": "news/wire/",
       "method": "docs/EVIDENCE-WIRE.md",
-      "count_fields": ["n_items", "n_events", "coverage.registry_sources", "coverage.successful_sources"],
-      "license": {"name": "MIT for Palimpsest metadata and derived fields; upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_items",
+        "n_events",
+        "coverage.registry_sources",
+        "coverage.successful_sources"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata and derived fields; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "china-article-stream",
@@ -1287,13 +2283,28 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "PT1H",
-      "geography": ["CN", "HK"],
-      "sources": ["Palimpsest Evidence Wire", "Palimpsest per-event analysis", "Optional human-reviewed ScamShield aggregate"],
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "Palimpsest per-event analysis",
+        "Optional human-reviewed ScamShield aggregate"
+      ],
       "latest": "readings/china-article-stream-latest.json",
       "landing_page": "news/china/",
       "method": "docs/EVIDENCE-WIRE.md",
-      "count_fields": ["n_entries", "coverage.registered_sources", "coverage.successful_sources", "coverage.excluded_global_feed_items"],
-      "license": {"name": "MIT for Palimpsest metadata and analysis; upstream publisher rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_entries",
+        "coverage.registered_sources",
+        "coverage.successful_sources",
+        "coverage.excluded_global_feed_items"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata and analysis; upstream publisher rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "social-observations",
@@ -1304,14 +2315,30 @@
       "collection_mode": "official-api-bounded-metadata",
       "status": "gated",
       "cadence": "PT1H",
-      "geography": ["CN", "HK", "GLOBAL"],
-      "sources": ["Closed allowlist in config/social_sources.json", "Instagram Graph API", "Authenticated ScamShield Telegram export"],
+      "geography": [
+        "CN",
+        "HK",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Closed allowlist in config/social_sources.json",
+        "Instagram Graph API",
+        "Authenticated ScamShield Telegram export"
+      ],
       "latest": "readings/social-observations-latest.json",
       "history": "readings/social-observations-versions.jsonl",
       "landing_page": "news/china/situation/",
       "method": "docs/SOCIAL-OBSERVATION-PIPELINE.md",
-      "count_fields": ["n_observations", "coverage.configured", "coverage.successful", "coverage.failed"],
-      "license": {"name": "MIT for Palimpsest metadata and derived fields; publisher and platform rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_observations",
+        "coverage.configured",
+        "coverage.successful",
+        "coverage.failed"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata and derived fields; publisher and platform rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "dragon-whispers",
@@ -1322,13 +2349,24 @@
       "collection_mode": "human-reviewed-privacy-minimized",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Verified ScamShield evidence capsules", "Human review receipts"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Verified ScamShield evidence capsules",
+        "Human review receipts"
+      ],
       "latest": "readings/dragon-whispers-latest.json",
       "landing_page": "news/china/whispers/",
       "method": "docs/SOCIAL-OBSERVATION-PIPELINE.md",
-      "count_fields": ["n_entries"],
-      "license": {"name": "MIT for sanitized Palimpsest structure and analysis; upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_entries"
+      ],
+      "license": {
+        "name": "MIT for sanitized Palimpsest structure and analysis; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "live-watch",
@@ -1339,13 +2377,23 @@
       "collection_mode": "metadata-only-node-lane",
       "status": "warming",
       "cadence": "PT1H",
-      "geography": ["CN"],
-      "sources": ["Reviewed live-tap registry"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Reviewed live-tap registry"
+      ],
       "latest": "readings/live-watch-latest.json",
       "landing_page": "news/china/rumour/",
       "method": "docs/LIVE-EVENT-INGEST.md",
-      "count_fields": ["n_events", "n_taps"],
-      "license": {"name": "MIT for Palimpsest summaries; upstream board rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_events",
+        "n_taps"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest summaries; upstream board rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "rumour-board",
@@ -1356,13 +2404,23 @@
       "collection_mode": "metadata-only-rumour-context",
       "status": "warming",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Reviewed rumour-board taps"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Reviewed rumour-board taps"
+      ],
       "latest": "readings/rumour-board-latest.json",
       "landing_page": "news/china/rumour/",
       "method": "docs/LIVE-EVENT-INGEST.md",
-      "count_fields": ["n_entries"],
-      "license": {"name": "MIT for Palimpsest structure; upstream board rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_entries"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest structure; upstream board rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "china-situation",
@@ -1374,13 +2432,30 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "PT1H",
-      "geography": ["CN", "HK"],
-      "sources": ["Palimpsest Evidence Wire", "Bounded Social Observation Ledger", "Dragon Whispers", "Palimpsest Observatory event analysis"],
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "Bounded Social Observation Ledger",
+        "Dragon Whispers",
+        "Palimpsest Observatory event analysis"
+      ],
       "latest": "readings/china-situation-latest.json",
       "landing_page": "news/china/situation/",
       "method": "docs/SOCIAL-OBSERVATION-PIPELINE.md",
-      "count_fields": ["coverage.in_scope_events", "coverage.publisher_reports", "coverage.measurement_context_rows", "coverage.social_observations_linked", "coverage.reviewed_telegram_signals"],
-      "license": {"name": "MIT for Palimpsest synthesis and metadata; upstream publisher rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "coverage.in_scope_events",
+        "coverage.publisher_reports",
+        "coverage.measurement_context_rows",
+        "coverage.social_observations_linked",
+        "coverage.reviewed_telegram_signals"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest synthesis and metadata; upstream publisher rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "china-censorship-analysis",
@@ -1392,13 +2467,24 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "PT1H",
-      "geography": ["CN", "HK"],
-      "sources": ["Palimpsest aggregate newsroom feed"],
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "Palimpsest aggregate newsroom feed"
+      ],
       "latest": "readings/china-censorship-analysis-latest.json",
       "landing_page": "news/china/analysis/",
       "method": "docs/CHINA-CENSORSHIP-ANALYSIS.md",
-      "count_fields": ["publication_receipt.required_signal_count", "publication_receipt.live_signal_count"],
-      "license": {"name": "MIT for Palimpsest structure and analysis; upstream rights retained per cited reading", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "publication_receipt.required_signal_count",
+        "publication_receipt.live_signal_count"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest structure and analysis; upstream rights retained per cited reading",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "china-economic-pulse",
@@ -1410,13 +2496,26 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "PT1H",
-      "geography": ["CN", "HK"],
-      "sources": ["Palimpsest aggregate economic readings", "config/china_econ_sources.json"],
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "Palimpsest aggregate economic readings",
+        "config/china_econ_sources.json"
+      ],
       "latest": "readings/china-economic-pulse-latest.json",
       "landing_page": "news/economy/",
       "method": "docs/EVIDENCE-WIRE.md",
-      "count_fields": ["n_metrics", "coverage.registered_sources", "coverage.observed_source_ids"],
-      "license": {"name": "MIT for Palimpsest synthesis; mixed upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_metrics",
+        "coverage.registered_sources",
+        "coverage.observed_source_ids"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest synthesis; mixed upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "investigations",
@@ -1427,13 +2526,25 @@
       "collection_mode": "deterministic-review-gated",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest OSINT China roll-up", "Palimpsest China Economic Pulse", "Hash-bound public source receipts"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest OSINT China roll-up",
+        "Palimpsest China Economic Pulse",
+        "Hash-bound public source receipts"
+      ],
       "latest": "readings/investigations-latest.json",
       "landing_page": "news/investigations/",
       "method": "docs/INVESTIGATIONS.md",
-      "count_fields": ["n_cases"],
-      "license": {"name": "MIT for Palimpsest structure and analysis; upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_cases"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest structure and analysis; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "evidence-mesh",
@@ -1445,13 +2556,27 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest public readings and catalog", "Pinned aggregate Intelligence Commons partner artifacts"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest public readings and catalog",
+        "Pinned aggregate Intelligence Commons partner artifacts"
+      ],
       "latest": "readings/evidence-mesh-latest.json",
       "landing_page": "news/analysis/",
       "method": "docs/EVIDENCE-MESH.md",
-      "count_fields": ["inputs", "resources", "dependency_groups", "projects"],
-      "license": {"name": "MIT for Palimpsest metadata; upstream rights and restrictions retained per resource", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "inputs",
+        "resources",
+        "dependency_groups",
+        "projects"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata; upstream rights and restrictions retained per resource",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "machine-investigations",
@@ -1463,13 +2588,25 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest Evidence Mesh", "Palimpsest OSINT-China roll-up", "Economic pulse and primary-document receipts"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest Evidence Mesh",
+        "Palimpsest OSINT-China roll-up",
+        "Economic pulse and primary-document receipts"
+      ],
       "latest": "readings/machine-investigations-latest.json",
       "landing_page": "news/analysis/",
       "method": "docs/MACHINE-INVESTIGATIONS.md",
-      "count_fields": ["n_cases"],
-      "license": {"name": "MIT for Palimpsest structure and analysis; upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_cases"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest structure and analysis; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "primary-documents",
@@ -1480,13 +2617,39 @@
       "collection_mode": "passive-primary-document",
       "status": "live",
       "cadence": "P1D",
-      "geography": ["CN", "HK", "GLOBAL"],
-      "sources": ["NBS", "PBOC", "GACC", "MOT", "State Post Bureau", "NEA", "IMF PortWatch", "Copernicus", "NASA", "HKEX", "SSE", "SZSE", "World Bank"],
+      "geography": [
+        "CN",
+        "HK",
+        "GLOBAL"
+      ],
+      "sources": [
+        "NBS",
+        "PBOC",
+        "GACC",
+        "MOT",
+        "State Post Bureau",
+        "NEA",
+        "IMF PortWatch",
+        "Copernicus",
+        "NASA",
+        "HKEX",
+        "SSE",
+        "SZSE",
+        "World Bank"
+      ],
       "latest": "readings/primary-documents-latest.json",
       "landing_page": "news/standards/",
       "method": "docs/REPORTING-NEWSROOM-V2.md",
-      "count_fields": ["n_documents", "n_vintages", "coverage.registered_sources", "coverage.successful_sources"],
-      "license": {"name": "MIT for Palimpsest receipts; publisher rights and terms apply to retained source bytes", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_documents",
+        "n_vintages",
+        "coverage.registered_sources",
+        "coverage.successful_sources"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest receipts; publisher rights and terms apply to retained source bytes",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "corroboration",
@@ -1497,13 +2660,30 @@
       "collection_mode": "deterministic-human-reviewed",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "HK", "GLOBAL"],
-      "sources": ["Palimpsest Evidence Wire", "Palimpsest Primary Document Archive", "config/corroboration_decisions.json"],
+      "geography": [
+        "CN",
+        "HK",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "Palimpsest Primary Document Archive",
+        "config/corroboration_decisions.json"
+      ],
       "latest": "readings/corroboration-latest.json",
       "landing_page": "news/standards/",
       "method": "docs/REPORTING-NEWSROOM-V2.md",
-      "count_fields": ["n_events", "n_candidate_edges", "n_reviewed_edges", "n_accepted_edges", "n_corroborated_events"],
-      "license": {"name": "MIT for Palimpsest linkage metadata; upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_events",
+        "n_candidate_edges",
+        "n_reviewed_edges",
+        "n_accepted_edges",
+        "n_corroborated_events"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest linkage metadata; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "network-rounds",
@@ -1514,13 +2694,29 @@
       "collection_mode": "active-consented-derived",
       "status": "warming",
       "cadence": "PT2H",
-      "geography": ["CN", "DE", "NL"],
-      "sources": ["Palimpsest Inside View", "IODA", "Internet Archive", "App Storefront"],
+      "geography": [
+        "CN",
+        "DE",
+        "NL"
+      ],
+      "sources": [
+        "Palimpsest Inside View",
+        "IODA",
+        "Internet Archive",
+        "App Storefront"
+      ],
       "latest": "readings/network-rounds-latest.json",
       "landing_page": "news/standards/",
       "method": "docs/REPORTING-NEWSROOM-V2.md",
-      "count_fields": ["n_rounds", "n_comparable_rounds", "panel.target_count"],
-      "license": {"name": "MIT for Palimpsest aggregate receipts; provider and upstream terms apply", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_rounds",
+        "n_comparable_rounds",
+        "panel.target_count"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest aggregate receipts; provider and upstream terms apply",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "source-workflow",
@@ -1531,13 +2727,24 @@
       "collection_mode": "private-encrypted-editorial",
       "status": "gated",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Protected reporter-managed source records"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Protected reporter-managed source records"
+      ],
       "latest": "readings/source-workflow-latest.json",
       "landing_page": "news/standards/",
       "method": "docs/REPORTING-NEWSROOM-V2.md",
-      "count_fields": ["n_packages", "n_records"],
-      "license": {"name": "MIT for aggregate workflow metadata; protected records are not public", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_packages",
+        "n_records"
+      ],
+      "license": {
+        "name": "MIT for aggregate workflow metadata; protected records are not public",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "editorial-readiness",
@@ -1548,13 +2755,32 @@
       "collection_mode": "deterministic-review-gated",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Evidence Wire", "Primary Document Archive", "Corroboration Ledger", "Investigations Desk", "Protected Human-Source Workflow"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Evidence Wire",
+        "Primary Document Archive",
+        "Corroboration Ledger",
+        "Investigations Desk",
+        "Protected Human-Source Workflow"
+      ],
       "latest": "readings/editorial-readiness-latest.json",
       "landing_page": "news/standards/",
       "method": "docs/REPORTING-NEWSROOM-V2.md",
-      "count_fields": ["summary.wire_events", "summary.wire_eligible", "summary.explainers", "summary.explainers_publishable", "summary.investigations", "summary.investigations_publishable"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "summary.wire_events",
+        "summary.wire_eligible",
+        "summary.explainers",
+        "summary.explainers_publishable",
+        "summary.investigations",
+        "summary.investigations_publishable"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "generative-firewall",
@@ -1565,14 +2791,22 @@
       "collection_mode": "model-api",
       "status": "gated",
       "cadence": "P1D",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Hosted model APIs and sealed Palimpsest probe bank"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Hosted model APIs and sealed Palimpsest probe bank"
+      ],
       "latest": "readings/latest.json",
       "history": "readings/history.jsonl",
       "landing_page": "readings/generative-firewall-index.html",
       "method": "docs/METHODOLOGY.md",
       "count_fields": [],
-      "license": {"name": "MIT for method and derived scores; provider terms for outputs", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "license": {
+        "name": "MIT for method and derived scores; provider terms for outputs",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "refusal-drift",
@@ -1583,14 +2817,24 @@
       "collection_mode": "model-api",
       "status": "gated",
       "cadence": "PT6H",
-      "geography": ["GLOBAL"],
-      "sources": ["Hosted model APIs and sealed Palimpsest probe bank"],
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Hosted model APIs and sealed Palimpsest probe bank"
+      ],
       "latest": "readings/refusal-drift-latest.json",
       "history": "readings/refusal-drift-history.jsonl",
       "landing_page": "readings/eval-registry.html#drift",
       "method": "docs/FRONTIER-DRIFT.md",
-      "count_fields": ["n_prompts", "n_models"],
-      "license": {"name": "MIT for method and derived scores; provider terms for outputs", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_prompts",
+        "n_models"
+      ],
+      "license": {
+        "name": "MIT for method and derived scores; provider terms for outputs",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "gfi-transcripts",
@@ -1601,13 +2845,27 @@
       "collection_mode": "model-api-sealed",
       "status": "live",
       "cadence": "P1D",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Hosted model APIs, preregistered GFI v2 protocol and Palimpsest eval registry"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Hosted model APIs, preregistered GFI v2 protocol and Palimpsest eval registry"
+      ],
       "latest": "readings/gfi-transcripts-latest.json",
       "landing_page": "readings/generative-firewall-index.html",
       "method": "readings/gfi-evaluation-protocol-v2.json",
-      "count_fields": ["n_models", "n_prompt_arms", "samples_per_cell", "n_cells", "n_samples"],
-      "license": {"name": "MIT for Palimpsest metadata and method; model-output provider terms remain applicable", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_models",
+        "n_prompt_arms",
+        "samples_per_cell",
+        "n_cells",
+        "n_samples"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata and method; model-output provider terms remain applicable",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "eval-registry",
@@ -1618,14 +2876,25 @@
       "collection_mode": "derived-sealed",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["GLOBAL"],
-      "sources": ["Palimpsest sealed evaluation runs"],
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest sealed evaluation runs"
+      ],
       "latest": "readings/eval-registry-latest.json",
       "history": "readings/eval-registry.jsonl",
       "landing_page": "readings/eval-registry.html",
       "method": "docs/EVAL-REGISTRY.md",
-      "count_fields": ["runs", "models", "problems"],
-      "license": {"name": "MIT for registry code and metadata; provider terms for model outputs", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "runs",
+        "models",
+        "problems"
+      ],
+      "license": {
+        "name": "MIT for registry code and metadata; provider terms for model outputs",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "eval-assurance",
@@ -1636,13 +2905,27 @@
       "collection_mode": "deterministic-published-evidence",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["GLOBAL"],
-      "sources": ["Palimpsest public eval registry, protocols, readings and transcripts"],
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest public eval registry, protocols, readings and transcripts"
+      ],
       "latest": "readings/eval-assurance-latest.json",
       "landing_page": "readings/eval-registry.html#assurance",
       "method": "docs/EVAL-ASSURANCE.md",
-      "count_fields": ["summary.checks", "summary.pass", "summary.partial", "summary.pending", "summary.open", "summary.fail"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "summary.checks",
+        "summary.pass",
+        "summary.partial",
+        "summary.pending",
+        "summary.open",
+        "summary.fail"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "eval-journal",
@@ -1653,13 +2936,23 @@
       "collection_mode": "deterministic-evidence-bound-editorial",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Closed Palimpsest article records and explicitly cited public eval artifacts"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Closed Palimpsest article records and explicitly cited public eval artifacts"
+      ],
       "latest": "readings/eval-journal-latest.json",
       "landing_page": "evals/",
       "method": "protocol/eval-journal-v1.schema.json",
-      "count_fields": ["n_articles"],
-      "license": {"name": "MIT for Palimpsest text, method and structured records; cited upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_articles"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest text, method and structured records; cited upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "eval-articles",
@@ -1670,13 +2963,22 @@
       "collection_mode": "deterministic-evidence-bound-analysis",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["GLOBAL"],
-      "sources": ["Palimpsest refusal-drift reading, transcripts and verified eval registry"],
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest refusal-drift reading, transcripts and verified eval registry"
+      ],
       "latest": "readings/eval-articles-latest.json",
       "landing_page": "journal/",
       "method": "docs/EVAL-FINDINGS.md",
-      "count_fields": ["n_articles"],
-      "license": {"name": "MIT for Palimpsest text, method and structured records; model-output provider terms remain applicable to cited transcripts", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_articles"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest text, method and structured records; model-output provider terms remain applicable to cited transcripts",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "reading-analysis",
@@ -1688,14 +2990,28 @@
       "status": "gated",
       "publication_allowed": false,
       "cadence": "PT6H",
-      "geography": ["CN", "GLOBAL"],
-      "sources": ["Palimpsest signal histories", "Palimpsest newswire", "Palimpsest newsroom"],
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories",
+        "Palimpsest newswire",
+        "Palimpsest newsroom"
+      ],
       "latest": "readings/reading-analysis-latest.json",
       "history": "readings/reading-analysis-history.jsonl",
       "landing_page": "osint-china.html",
       "method": "docs/NEW-METHODS.md",
-      "count_fields": ["n_instruments_scored", "n_instruments_warming_up", "n_story_ranks"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_instruments_scored",
+        "n_instruments_warming_up",
+        "n_story_ranks"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "weekly-situation",
@@ -1706,14 +3022,25 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN"],
-      "sources": ["Palimpsest sealed readings"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest sealed readings"
+      ],
       "latest": "readings/weekly-situation-latest.json",
       "history": "readings/weekly-situation-history.jsonl",
       "landing_page": "weekly-situation.html",
       "method": "docs/WEEKLY-SITUATION.md",
-      "count_fields": ["n_layers_present", "working_hardest", "abstentions"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_layers_present",
+        "working_hardest",
+        "abstentions"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "collector-health",
@@ -1724,14 +3051,23 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["GLOBAL"],
-      "sources": ["Palimpsest Evidence Atlas"],
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest Evidence Atlas"
+      ],
       "latest": "readings/collector-health-latest.json",
       "history": "readings/collector-health-history.jsonl",
       "landing_page": "status.html",
       "method": "docs/WEEKLY-SITUATION.md",
-      "count_fields": ["summary.n_datasets"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "summary.n_datasets"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "gazetteer-phylogeny",
@@ -1742,13 +3078,23 @@
       "collection_mode": "derived",
       "status": "live",
       "cadence": "PT1H",
-      "geography": ["CN"],
-      "sources": ["Palimpsest human gazetteer"],
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest human gazetteer"
+      ],
       "latest": "readings/gazetteer-phylogeny-latest.json",
       "landing_page": "for-researchers.html",
       "method": "docs/WEEKLY-SITUATION.md",
-      "count_fields": ["n_nodes", "n_edges"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "n_nodes",
+        "n_edges"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     },
     {
       "id": "anchors",
@@ -1759,14 +3105,25 @@
       "collection_mode": "derived-sealed",
       "status": "live",
       "cadence": "PT6H",
-      "geography": ["GLOBAL"],
-      "sources": ["Internet Archive", "OpenTimestamps"],
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Internet Archive",
+        "OpenTimestamps"
+      ],
       "latest": "readings/anchors-latest.json",
       "history": "readings/anchors.jsonl",
       "landing_page": "readings/eval-registry.html#anchors",
       "method": "docs/INTEGRITY.md",
-      "count_fields": ["wayback_snapshots", "readings_problems"],
-      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+      "count_fields": [
+        "wayback_snapshots",
+        "readings_problems"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      }
     }
   ]
 }
