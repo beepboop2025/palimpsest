@@ -41,7 +41,7 @@ from core import china_situation as china_situation_model
 from core import instrument_analysis as instrument_analysis_model
 from core import newswire as newswire_model
 from core.china_econ_export import SourcePolicy, load_source_policy
-from scripts import share_cards
+from scripts import share_cards, site_nav
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -3644,6 +3644,22 @@ def _status_for_artifact(
 def _restricted_html(status: Mapping[str, Any]) -> bytes:
     artifact_path = str(status["artifact"]["path"])
     counts = status["counts"]
+    served_path = (
+        "/" + artifact_path.removesuffix("index.html")
+        if artifact_path.endswith("/index.html")
+        else "/" + artifact_path
+    )
+    navigation = site_nav.render(served_path)
+    shared_style = """<style>
+.ps-restricted main { overflow-wrap: anywhere; }
+.ps-restricted .hero { padding: 2rem; border: 1px solid var(--research-line); border-radius: 12px; background: var(--research-surface); }
+.ps-restricted .stats, .ps-restricted .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(220px,100%),1fr)); gap: 1rem; margin: 1.5rem 0; }
+.ps-restricted .stats div, .ps-restricted .card { min-width: 0; padding: 1rem; border: 1px solid var(--research-line); border-radius: 8px; background: var(--research-raised); }
+.ps-restricted .stats strong { display: block; font-size: 1.8rem; }
+.ps-restricted .card h2 { font-size: 1.05rem; margin: .2rem 0; }
+.ps-restricted .notice { border-left: 4px solid var(--research-amber); padding: .75rem 1rem; background: var(--research-surface); }
+.ps-restricted dd { margin-inline-start: 0; }
+</style>"""
     if artifact_path == "china/index.html":
         quarantined_count = len(status["quarantined_paths"])
         return f"""<!doctype html>
@@ -3651,8 +3667,9 @@ def _restricted_html(status: Mapping[str, Any]) -> bytes:
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="index,follow,max-snippet:-1"><title>China evidence hub · Palimpsest</title>
 <link rel="canonical" href="https://palimpsest.info/china/"><link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
-<style>body{{margin:0;background:#edf2ec;color:#17221c;font:16px/1.55 ui-sans-serif,system-ui,sans-serif}}main{{max-width:1120px;margin:auto;padding:3rem 1.25rem 5rem}}a{{color:#075c45}}.hero{{padding:2rem;border:1px solid #9fb3a7;border-radius:1rem;background:#f8fbf8}}h1{{font:700 clamp(2.2rem,6vw,5rem)/.95 ui-serif,Georgia,serif;max-width:15ch}}.stats,.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin:1.5rem 0}}.stats div,.card{{padding:1rem;border:1px solid #bdcbc2;border-radius:.75rem;background:white}}.stats strong{{display:block;font-size:1.8rem}}.card h2{{font-size:1.05rem;margin:.2rem 0}}.notice{{border-left:4px solid #9b5c18;padding:.75rem 1rem;background:#fff8ec}}code{{overflow-wrap:anywhere}}</style></head>
-<body><main>
+{site_nav.HEAD}
+{shared_style}</head>
+<body class="ps ps-restricted">{navigation}<main id="main">
 <section class="hero"><p>Palimpsest China evidence</p><h1>Public evidence remains online.</h1>
 <p>One upstream economic value family is publication-restricted. That restriction does not close the public newsroom, measurement surfaces, briefs, research dossiers, or machine catalog.</p>
 <div class="stats"><div><strong>{counts["input_records"]}</strong><span>restricted input records evaluated</span></div><div><strong>{counts["published_records"]}</strong><span>restricted records published</span></div><div><strong>{quarantined_count}</strong><span>mixed or derivative paths replaced safely</span></div></div></section>
@@ -3672,13 +3689,15 @@ def _restricted_html(status: Mapping[str, Any]) -> bytes:
 <article class="card"><p>Corrections</p><h2><a href="/challenge.html">Challenge evidence or method</a></h2><p>Report a source, rights, freshness, interpretation, or methodology problem.</p></article>
 </div></section>
 <section class="notice"><h2>Restricted family status</h2><p>Values unavailable: publication restricted. This endpoint does not convert missing or restricted evidence into zero, calm, healthy, or a directional signal.</p><p><b>Endpoint:</b> <code>{html.escape(artifact_path)}</code> · <b>Input records:</b> {counts["input_records"]} · <b>Restricted:</b> {counts["restricted_records"]} · <b>Published:</b> 0</p><p><a href="/readings/china-publication-rights-latest.json">Machine-readable export status</a> · <a href="/config/china_econ_source_policy.json">Source policy</a></p></section>
-</main></body></html>
+</main>{site_nav.FOOT}</body></html>
 """.encode("utf-8")
     return f"""<!doctype html>
 <html lang="en" data-palimpsest-publication-status="restricted">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>Restricted evidence · Palimpsest</title></head>
-<body><main><p>Palimpsest China evidence</p><h1>Values unavailable: publication restricted</h1>
+<meta name="robots" content="noindex,nofollow"><title>Restricted evidence · Palimpsest</title>
+{site_nav.HEAD}
+{shared_style}</head>
+<body class="ps ps-restricted">{navigation}<main id="main"><p>Palimpsest China evidence</p><h1>Values unavailable: publication restricted</h1>
 <p>This same-path endpoint is metadata-only because the current source policy denies publication of an upstream value family.</p>
 <dl><dt>Endpoint</dt><dd><code>{html.escape(artifact_path)}</code></dd>
 <dt>Input records evaluated</dt><dd>{counts["input_records"]}</dd>
@@ -3686,7 +3705,7 @@ def _restricted_html(status: Mapping[str, Any]) -> bytes:
 <dt>Published records</dt><dd>0</dd></dl>
 <p>Unavailable or restricted evidence is not zero, calm, healthy, or a directional signal.</p>
 <p><a href="/readings/china-publication-rights-latest.json">Machine-readable export status</a> · <a href="/config/china_econ_source_policy.json">Source policy</a></p>
-</main></body></html>
+</main>{site_nav.FOOT}</body></html>
 """.encode("utf-8")
 
 
