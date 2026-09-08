@@ -43,6 +43,7 @@ REQUIRED_TOOLS = {
     "gfw_reading",
     "list_signals",
     "query_economic_observations",
+    "research_catalog",
     "whats_happening",
 }
 REQUIRED_PROMPTS = {
