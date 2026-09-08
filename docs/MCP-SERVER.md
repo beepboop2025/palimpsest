@@ -50,11 +50,11 @@ uses this endpoint directly from the browser. CORS is deliberately limited to
 `https://palimpsest.info`; normal MCP clients send no browser `Origin` header,
 and a request carrying any other web origin is rejected before JSON-RPC dispatch.
 
-## The seven tools
+## Six hosted tools and one prepared addition
 
 | Tool | What it answers |
 | --- | --- |
-| `research_catalog` | Page through the complete metadata-only dataset registry and continue in Seiche funding, LiquiLens institution, Undertow liquidity and NarcoScope global-data research. `offset` 0..1000; `limit` 1..25. |
+| `research_catalog` | Prepared in source; hosted deployment awaits approval. The [complete JSON registry](https://www.palimpsest.info/readings/research-catalog-latest.json) and [Seiche research workspace](https://seiche.info/#RESEARCH) are available now. The prepared tool pages metadata with `offset` 0..1000 and `limit` 1..25. |
 | `list_signals` | What is measured at all — every signal's name, one-line description, and source URL. Call this first. |
 | `get_signal(name, max_rows=25)` | One signal's latest reading, with its `generated_at`, denominators and upstream sources. This is also the door to the model-evaluation side: `eval-registry`, `eval-assurance`, `eval-journal`, `eval-findings`, `gfi-transcripts` and `refusal-drift`. Long arrays and the keyed GFI transcript matrix are bounded by `max_rows`, with true totals and the complete source URL returned whenever a cap applies. Read assurance before promoting chain integrity into a validity claim. |
 | `get_newsroom(view="newsroom", limit=10)` | The evidence newsroom, wire, economic pulse, deterministic machine-analysis desk, investigations desk, editorial-readiness gate, or `interconnection` view over the public China-situation joins. Analysis, abstention and draft states remain distinct; citations, counterevidence, limitations and right-to-reply metadata stay attached. |
