@@ -116,6 +116,9 @@ def build_history(snapshot: dict, raw: bytes) -> dict:
             if 0 <= row["value"] <= 100:
                 candidates[key].append(_point(row, reference))
         elif family == "industrial_profits" and reference and label == "total":
+            # NBS uses both English headings for the same finished-goods formula.
+            column = column.replace("turnover days for inventory of finished goods",
+                                    "turnover days of finished goods inventory")
             for token, key, name, unit, window in (
                 ("average collection period", "receivable-days", "Accounts receivable collection period", "days", "period-end"),
                 ("turnover days of finished", "inventory-days", "Finished-goods inventory turnover", "days", "period-end"),
