@@ -11,6 +11,164 @@
   },
   "datasets": [
     {
+      "id": "china-economic-health",
+      "name": "Detailed China economic release tables",
+      "description": "Official NBS table cells across activity, profits, ownership, prices, investment, trade-related activity and 70-city housing. Source headings, missing values and release/collection clocks are preserved. Coverage counts are cells and vintages, not independent respondents; two release families remain unavailable.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "National Bureau of Statistics of China"
+      ],
+      "latest": "readings/china-economic-health-latest.json",
+      "landing_page": "china/economy/",
+      "method": "docs/CONNECTED-ECONOMIC-RESEARCH.md",
+      "count_fields": [
+        "coverage.families_available",
+        "coverage.latest_numeric_cells",
+        "coverage.latest_missing_cells",
+        "coverage.retained_vintages"
+      ],
+      "license": {
+        "name": "NBS statistical data with source attribution; no downstream sublicense",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      },
+      "distributions": [
+        {
+          "name": "china-economic-health-csv",
+          "path": "china/economy/data.csv",
+          "format": "csv",
+          "mediatype": "text/csv"
+        },
+        {"name":"china-economic-health-history-csv","path":"readings/china-economic-history.csv","format":"csv","mediatype":"text/csv"}
+      ]
+    },
+    {
+      "id": "china-economic-analysis",
+      "name": "China economic findings and cross-sections",
+      "description": "Deterministic industrial profit breadth, working-capital, manufacturing PMI and unweighted housing-city comparisons, with original source-cell citations. Official aggregates do not replicate China Beige Book's private firm panel.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "deterministic-derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "National Bureau of Statistics of China"
+      ],
+      "latest": "readings/china-economic-analysis-latest.json",
+      "landing_page": "china/economy/",
+      "method": "docs/CONNECTED-ECONOMIC-RESEARCH.md",
+      "count_fields": [
+        "findings"
+      ],
+      "license": {
+        "name": "NBS statistical data with source attribution; no downstream sublicense",
+        "url": "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
+      }
+    },
+    {
+      "id": "regional-economic-context",
+      "name": "Regional external debt and household conditions",
+      "description": "24 annual World Bank indicators for China, Pakistan and Myanmar. Preserves the full requested annual grid and separates latest available values from missing final years. These are country observations, not bilateral Chinese lending, district statistics or project accounts.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "P7D",
+      "geography": [
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "World Bank World Development Indicators"
+      ],
+      "latest": "readings/regional-economic-context-latest.json",
+      "landing_page": "research/connected/",
+      "method": "docs/CONNECTED-ECONOMIC-RESEARCH.md",
+      "count_fields": [
+        "coverage.observed_rows",
+        "coverage.unavailable_rows",
+        "coverage.indicators",
+        "coverage.countries"
+      ],
+      "license": {
+        "name": "World Bank data, CC BY 4.0, with source attribution",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      }
+    },
+    {
+      "id": "regional-research-wire",
+      "name": "Expanded China and regional reporting capture",
+      "description": "Twenty publisher and research feeds organized for China, CPEC/Gwadar, Balochistan, BRI and Myanmar. Keeps attributed title/link/time metadata; no publisher article bodies. Deduplicates shared publisher feeds and shows source failures. Reporting volume is not incident frequency.",
+      "layer": "cross-layer",
+      "stage": "observation",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "PT3H",
+      "geography": [
+        "CN",
+        "PK",
+        "MM",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Attributed publisher and research feeds listed in the artifact"
+      ],
+      "latest": "readings/regional-research-wire-latest.json",
+      "landing_page": "research/connected/",
+      "method": "docs/CONNECTED-ECONOMIC-RESEARCH.md",
+      "count_fields": [
+        "items",
+        "sources"
+      ],
+      "license": {
+        "name": "Publisher metadata and links only; underlying publisher rights retained",
+        "url": "https://palimpsest.info/research/connected/#sources"
+      }
+    },
+    {
+      "id": "connected-research",
+      "name": "Shared Palimpsest and NarcoScope regional research",
+      "description": "Five regional desks and 18 research questions with dated national comparisons, China economic findings, reporting metadata, source clocks and missing primary evidence. Country/theme/time navigation only; no actor relationship, culpability or causal inference.",
+      "layer": "cross-layer",
+      "stage": "observation",
+      "collection_mode": "deterministic-derived",
+      "status": "live",
+      "cadence": "PT3H",
+      "geography": [
+        "CN",
+        "PK",
+        "MM",
+        "GLOBAL"
+      ],
+      "sources": [
+        "NBS",
+        "World Bank WDI",
+        "Attributed regional publishers",
+        "NarcoScope pinned official aggregate"
+      ],
+      "latest": "readings/connected-research-latest.json",
+      "landing_page": "research/connected/",
+      "method": "docs/CONNECTED-ECONOMIC-RESEARCH.md",
+      "count_fields": [
+        "regions",
+        "china_findings"
+      ],
+      "license": {
+        "name": "NBS statistical attribution, World Bank CC BY 4.0 and publisher metadata terms remain source-specific",
+        "url": "https://palimpsest.info/research/connected/#sources"
+      }
+    },
+    {
       "id": "belt-and-road-observatory",
       "name": "Belt and Road Observatory coverage contract",
       "description": "Global BRI project, finance, debt, trade, infrastructure and local-impact source ledger, with first deep dossiers for Pakistan/CPEC/Gwadar, Myanmar/CMEC/Kyaukpyu and a plural Balochistan political-economy record. This live coverage and source contract includes production-verified national economic context; it does not claim every registered source has been ingested, and project-finance adapters remain pending.",

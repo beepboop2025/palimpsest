@@ -122,6 +122,11 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "anchors-latest.json",
     }
     assert mod.EXCLUDED_LATEST_FILES == {
+        "china-economic-health-latest.json",
+        "china-economic-analysis-latest.json",
+        "connected-research-latest.json",
+        "regional-economic-context-latest.json",
+        "regional-research-wire-latest.json",
         "bri-economic-observations-latest.json",
         "belt-and-road-observatory-latest.json",
         "china-article-stream-latest.json",

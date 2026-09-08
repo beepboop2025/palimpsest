@@ -4245,6 +4245,10 @@ publish_clock="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 "$PYTHON_BIN" -m scripts.build_china_econ_manifest
 "$PYTHON_BIN" -m scripts.build_china_econ_forecast
 "$PYTHON_BIN" -m scripts.build_china_site
+"$PYTHON_BIN" -m scripts.build_china_economic_health
+"$PYTHON_BIN" -m scripts.build_china_economic_health --check
+"$PYTHON_BIN" -m scripts.build_connected_research
+"$PYTHON_BIN" -m scripts.build_connected_research --check
 "$PYTHON_BIN" -m scripts.undertext_pull
 "$PYTHON_BIN" -m scripts.build_erasure_trail
 "$PYTHON_BIN" -m scripts.build_erasure_trail --check
@@ -4337,8 +4341,7 @@ situation_build_log="$work_root/china-situation-build.log"
 (
   set -Eeuo pipefail
   "$PYTHON_BIN" -m scripts.build_bri_observatory "${bri_translation_args[@]}"
-  "$PYTHON_BIN" -m scripts.build_bri_observatory --check \
-    "${bri_translation_args[@]}"
+  "$PYTHON_BIN" -m scripts.build_bri_observatory --check "${bri_translation_args[@]}"
 ) >"$bri_build_log" 2>&1 &
 bri_build_pid=$!
 (
