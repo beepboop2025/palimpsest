@@ -449,6 +449,7 @@ def build_research_catalog(*, now: datetime | None = None) -> dict[str, Any]:
         "schema": "palimpsest-research-catalog/v1",
         "generated_at": _iso(now or _utc_now()),
         "metadata_only": True,
+        "source_registry": {"path": "config/public_data_catalog.json", "kind": "Palimpsest editorial dataset metadata"},
         "availability_semantics": "Editorial registry only. Unknown means public observation availability and freshness have not been established by this index. Inspect the linked public resource and its publication-rights status.",
         "datasets": rows,
         "seiche": {"api": "https://api.seiche.info/api/v2/research-network", "site": "https://seiche.info/#RESEARCH", "tool": "research_network"},
