@@ -3,7 +3,7 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v24";
+const CACHE = "palimpsest-v25";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_FRESHNESS = new Set(["/freshness", "/freshnessz"]);
@@ -85,6 +85,8 @@ const SHELL = [
      degraded experience so much as a misleading one. */
   "/dashboards/assets/tikto.css",
   "/assets/shell.css",
+  "/assets/research-theme.css",
+  "/assets/workspace.css",
   "/assets/shell.js",
   "/assets/home.css",
   "/assets/home.js",

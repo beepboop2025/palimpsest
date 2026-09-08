@@ -1,3 +1,4 @@
+@import url('/assets/research-theme.css');
 :root {
   --cd-ink: #152229;
   --cd-muted: #53656d;
@@ -140,3 +141,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+
+/* Standalone finance discovery pages share the common palette. */
+body.cd-page { --cd-ink:var(--research-text);--cd-muted:var(--research-secondary);--cd-line:var(--research-line);--cd-paper:var(--research-bg);--cd-card:var(--research-surface);--cd-accent:var(--research-blue);--cd-warn:var(--research-amber);--cd-warn-bg:var(--research-raised);--cd-code:var(--research-raised);background:var(--research-bg);color:var(--research-text);font-family:var(--research-font);color-scheme:dark; }
+.cd-page h1,.cd-page h2,.cd-page h3 {font-family:var(--research-font)}

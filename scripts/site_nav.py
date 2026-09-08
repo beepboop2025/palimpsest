@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """The site's navigation, defined once.
 
-Palimpsest is an evidence workbench, not a menu of internal project names. The
-navigation therefore starts with things a visitor can do: read a finding,
-inspect a source index, open a measurement, use a tool, or review the method.
+Palimpsest shares a research workspace with NarcoScope. The navigation opens
+the data library, China research and regional desks directly, with the complete
+existing reporting and methods catalog retained in searchable groups.
 
 Before this module there were five different hand-maintained navs across twelve
 pages and four pages with no nav at all, because every page carried its own copy.
@@ -201,78 +201,92 @@ def _within(item: dict, current: str) -> bool:
     return False
 
 
+WORKSPACE_SECTIONS = (
+    ("Data library", (
+        ("/research/markets/", "All datasets"),
+        ("/research/markets/?market=drugs", "Drugs"),
+        ("/research/markets/?market=arms", "Arms"),
+        ("/research/markets/?market=economy", "Informal economy"),
+    )),
+    ("China research", (
+        ("/china/evidence/", "Evidence observatory"),
+        ("/china/economy/", "Economic health"),
+        ("/news/china/situation/", "Situation desk"),
+        ("/china/", "Source observatory"),
+    )),
+    ("Connected regional desks", (
+        ("/research/connected/", "Connected research"),
+        ("/belt-and-road/", "Belt and Road"),
+        ("/belt-and-road/gwadar/", "CPEC / Gwadar"),
+        ("/belt-and-road/balochistan/", "Balochistan"),
+        ("/belt-and-road/myanmar/", "Myanmar"),
+    )),
+)
+
+
 def render(current: str = "") -> str:
-    """Return the full <nav> element for a page at path `current`.
+    """Render the shared research workspace with real links and native details.
 
-    `current` is a site-absolute path, e.g. "/readings/eval-registry.html".
+    Existing routes remain searchable in the sidebar. Query-based market views
+    receive their exact current state from progressive enhancement in shell.js.
     """
-    out = [
-        f"{BEGIN}",
-        '<a class="ps-skip" href="#main">Skip to content</a>',
-        '<nav class="ps-nav" aria-label="Primary">',
-        '  <a class="ps-nav__brand" href="/">'
-        '<img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>',
-        '  <div class="ps-nav__spacer"></div>',
-        '  <div class="ps-nav__items">',
-    ]
+    seen: set[str] = set()
 
-    for i, item in enumerate(NAV):
-        if "href" in item:
-            cur = ' aria-current="page"' if _is_current(item["href"], current) else ""
-            out.append(
-                f'    <div class="ps-nav__item">'
-                f'<a class="ps-nav__link" href="{_esc(item["href"])}"{cur}>'
-                f'{_esc(item["label"])}</a></div>'
-            )
-            continue
+    def link(href: str, label: str) -> str:
+        seen.add(href)
+        active = ' aria-current="page"' if _is_current(href, current) else ""
+        return (f'<a class="ps-workspace-link" href="{_esc(href)}"{active}>'
+                f'{_esc(label)}</a>')
 
-        pid = f"ps-fly-{i}"
-        within = ' data-within=""' if _within(item, current) else ""
-        wide = " ps-flyout--wide" if len(item["columns"]) > 1 else ""
-        out.append('    <div class="ps-nav__item">')
-        out.append(
-            f'      <button class="ps-nav__link" type="button" aria-expanded="false" '
-            f'aria-controls="{pid}"{within}>{_esc(item["label"])}'
-            f'<i class="ps-nav__chev" aria-hidden="true"></i></button>'
-        )
-        out.append(f'      <div class="ps-flyout{wide}" id="{pid}">')
-        if item.get("lede"):
-            out.append(f'        <p class="ps-flyout__lede">{_esc(item["lede"])}</p>')
-        out.append('        <div class="ps-flyout__cols">')
-        for col in item["columns"]:
-            out.append('          <div class="ps-flyout__col">')
-            if col.get("head"):
-                out.append(f'            <p class="ps-flyout__head">{_esc(col["head"])}</p>')
-            for entry in col["links"]:
-                out.append("            " + _link(entry, current))
-            out.append("          </div>")
-        out.append("        </div>")
-        out.append("      </div>")
-        out.append("    </div>")
+    sections = []
+    for label, links in WORKSPACE_SECTIONS:
+        sections.append('<section class="ps-workspace-section">'
+                        f'<h2>{_esc(label)}</h2>'
+                        + "".join(link(href, title) for href, title in links)
+                        + '</section>')
 
-    out += [
-        "  </div>",
-        '  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu">'
-        "<i></i><i></i><i></i></button>",
-        '  <div class="ps-nav__scrim" aria-hidden="true"></div>',
-    ]
-    out += [
-        '  <div class="ps-region-rail">',
-        '    <p class="ps-region-rail__label" aria-hidden="true">Regional evidence</p>',
-        '    <ul class="ps-region-rail__list" aria-label="Regional evidence">',
-    ]
+    reporting, tools = [], []
+    for item in NAV:
+        entries = [(item["href"], item["label"])] if "href" in item else [
+            (entry[0], entry[1]) for column in item.get("columns", [])
+            for entry in column["links"]
+        ]
+        target = reporting if item["label"] in {"Findings", "Live news", "Observatory"} else tools
+        for href, label in entries:
+            if href not in seen:
+                target.append((href, label))
+                seen.add(href)
     for href, label in REGIONAL_EVIDENCE:
-        out.append(
-            '      <li><a class="ps-region-rail__link" '
-            f'href="{_esc(href)}">{_esc(label)}</a></li>'
-        )
-    out += [
-        "    </ul>",
-        "  </div>",
-        "</nav>",
-        f"{END}",
-    ]
-    return "\n".join(out)
+        if href not in seen:
+            reporting.append((href, label))
+            seen.add(href)
+    for label, links in (("Reporting & records", reporting), ("Methods & tools", tools)):
+        opened = " open" if any(_is_current(href, current) for href, _ in links) else ""
+        sections.append(f'<details class="ps-workspace-section ps-workspace-group"{opened}>'
+                        f'<summary>{_esc(label)}</summary>'
+                        + "".join(link(href, title) for href, title in links)
+                        + '</details>')
+    return "\n".join([
+        BEGIN,
+        '<a class="ps-skip" href="#main">Skip to content</a>',
+        '<nav class="ps-nav ps-workspace" aria-label="Primary">',
+        '<div class="ps-workspace-masthead">',
+        '<a class="ps-workspace-brand" href="/"><img src="/brand/palimpsest-icon.svg" width="28" height="28" alt="">'
+        '<span><b>Palimpsest</b><small>China, economics and the public record</small></span></a>',
+        '<div class="ps-workspace-projects"><span>Shared research desk</span>'
+        '<a class="research-project-link" href="https://www.narcoscope.com/">NarcoScope <span aria-hidden="true">↗</span></a></div>',
+        '</div>',
+        '<button class="ps-workspace-toggle" type="button" aria-expanded="false" aria-controls="ps-workspace-navigation">'
+        '<span>Browse research</span><span data-workspace-current>Palimpsest <b aria-hidden="true">⌄</b></span></button>',
+        '<div class="ps-workspace-panel" id="ps-workspace-navigation">',
+        '<label class="ps-workspace-search"><span>Find a view</span>'
+        '<input type="search" placeholder="China, maps, records…" aria-label="Find a research view"></label>',
+        *sections,
+        '<p class="ps-workspace-empty" hidden>No matching views. Try another topic.</p>',
+        '<a class="ps-workspace-partner" href="https://www.narcoscope.com/">NarcoScope'
+        '<span>Drugs, arms and informal economies</span></a>',
+        '</div></nav>', END,
+    ])
 
 
 # The <head> block every page needs for the shell to work. Kept here so a page
