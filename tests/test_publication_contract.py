@@ -44,6 +44,21 @@ def _d(timestamp, provenance, denominator=None, *, reason=None):
 
 # signal -> what it declares. `denominator=None` REQUIRES a written reason.
 CONTRACT = {
+    "china-economic-health": _d(
+        "generated_at", ["source", "collection", "coverage", "interpretation"],
+        reason="Source table cells and release vintages have separate coverage counts; they are not independent respondents or one sampled population."),
+    "china-economic-analysis": _d(
+        "generated_at", ["input_sha256", "coverage_comparison"],
+        reason="Each finding retains its source-cell evidence and its own industry or city denominator; different statistical families cannot share one denominator."),
+    "regional-economic-context": _d(
+        "generated_at", ["source", "request_receipts", "context_policy", "coverage"],
+        reason="A complete requested country-indicator-year grid with observed and unavailable counts, not one surveyed population."),
+    "regional-research-wire": _d(
+        "generated_at", ["sources", "rights", "limits"],
+        reason="Captured publisher metadata with per-feed item counts and retained revision counts; reporting volume is not real-world incidence."),
+    "connected-research": _d(
+        "generated_at", ["input_sha256", "source_clocks", "use_policy", "limitations"],
+        reason="A shared research document with region-specific reporting counts and individually sourced economic findings, not a pooled statistical population."),
     # ── measurements with a population ────────────────────────────────────────
     "app-storefront":       _d("generated_at", ["source", "scope"], "n_tracked"),
     "baike-redaction":      _d("generated_at", ["source", "method"], "n_comparable"),
@@ -630,7 +645,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v22"' in worker
+    assert 'const CACHE = "palimpsest-v23"' in worker
     assert 'const LIVE_FRESHNESS = new Set(["/freshness", "/freshnessz"]);' in worker
     assert "LIVE_FRESHNESS.has(url.pathname)" in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
