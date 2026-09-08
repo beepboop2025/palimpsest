@@ -44,6 +44,8 @@ def _d(timestamp, provenance, denominator=None, *, reason=None):
 
 # signal -> what it declares. `denominator=None` REQUIRES a written reason.
 CONTRACT = {
+    "research-catalog": _d("generated_at", ["source_registry", "availability_semantics"],
+        reason="An editorial inventory of named datasets, rights and links, with no observation values, derived counts or pooled rates. The clock dates registry publication, not measurement."),
     "china-evidence-observatory": _d("generated_at", ["input_sha256", "datasets", "use_policy"],
         reason="Independently dated dataset coverage and cited investigations; no pooled score or claim that missing data establish concealment."),
     "china-economic-history-analysis": _d("generated_at", ["input_sha256", "coverage", "limitations"],

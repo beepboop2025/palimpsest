@@ -692,7 +692,7 @@ def test_economic_query_is_discoverable_bounded_and_has_no_url_argument():
     query = tools["query_economic_observations"]
     schema = query["inputSchema"]
 
-    assert len(tools) == 6
+    assert len(tools) == 7
     assert "url" not in schema["properties"]
     assert schema["additionalProperties"] is False
     assert schema["properties"]["revision_view"]["enum"] == [
@@ -1785,7 +1785,7 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
             "economic-observation-manifest-v1.schema.json"
         )
     }
-    assert "All six hosted MCP tools" in card["access"]["authentication"]
+    assert "All seven hosted MCP tools" in card["access"]["authentication"]
     assert card["access"]["mcp_version"] == live_version
     assert card["evidence"]["china_observatory_index_schema"] == (
         "https://palimpsest.info/protocol/china-index-v1.schema.json"
@@ -1800,8 +1800,8 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
         assert "1.9.0" not in text, label
         assert "query_economic_observations" in text, label
         assert "china-econ-forecast-latest.json" in text, label
-    assert "The six tools" in developers
-    assert "The six tools" in docs
+    assert "The seven tools" in developers
+    assert "The seven tools" in docs
 
 
 # --------------------------------------------------------- request-size cap --

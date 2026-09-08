@@ -122,6 +122,7 @@ def test_current_candidate_satisfies_release_contract() -> None:
             "gfw_reading",
             "list_signals",
             "query_economic_observations",
+            "research_catalog",
             "whats_happening",
         ],
         "prompts": [
@@ -352,7 +353,7 @@ def test_live_smoke_covers_native_rights_closure(
         httpd.server_close()
 
     assert result["version"] == contract["version"]
-    assert result["tool_count"] == 6
+    assert result["tool_count"] == 7
     assert result["prompt_count"] == 4
     assert result["resource_count"] == 1
     assert result["calls"] == [

@@ -202,6 +202,12 @@ def _within(item: dict, current: str) -> bool:
 
 
 WORKSPACE_SECTIONS = (
+    ("Funding and financial research", (
+        ("https://seiche.info/#RESEARCH/china/0", "China evidence → funding context"),
+        ("https://seiche.info/#RESEARCH/regions/0", "Regional evidence → market research"),
+        ("https://liquilens.in/start/", "Institution filings · LiquiLens"),
+        ("https://liquilens-undertow.com/app/#crypto", "Exit liquidity · Undertow"),
+    )),
     ("Data library", (
         ("/research/markets/", "All datasets"),
         ("/research/markets/?market=drugs", "Drugs"),

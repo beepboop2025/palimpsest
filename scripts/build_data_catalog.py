@@ -418,6 +418,44 @@ def _validate(config: dict[str, Any]) -> None:
             raise ValueError(f"dataset {slug} license URL must use HTTPS")
 
 
+def build_research_catalog(*, now: datetime | None = None) -> dict[str, Any]:
+    """Publish editorial discovery without reading source observations.
+
+    The mixed value catalog can be quarantined in its entirety. This separate
+    projection deliberately has no counts, file sizes, value hashes, source
+    timestamps, or derivatives. A registry entry cannot prove live availability.
+    It remains subject to the normal recursive publication-rights gate.
+    """
+    config = json.loads(CONFIG.read_text(encoding="utf-8"))
+    _validate(config)
+    rows = []
+    for source in config["datasets"]:
+        row = {key: source[key] for key in (
+            "id", "name", "description", "layer", "cadence", "geography", "sources",
+        )}
+        row["license"] = {key: source["license"][key] for key in ("name", "url")}
+        row["urls"] = {
+            key: urljoin(SITE, source[key])
+            for key in ("landing_page", "method", "latest")
+            if source.get(key) and (key != "latest" or source.get("publication_allowed") is not False)
+        }
+        row["artifacts"] = {
+            "evidence_state": "gated" if source.get("publication_allowed") is False else "unknown",
+            "observed_at": None,
+        }
+        row["values_included"] = False
+        rows.append(row)
+    return {
+        "schema": "palimpsest-research-catalog/v1",
+        "generated_at": _iso(now or _utc_now()),
+        "metadata_only": True,
+        "source_registry": {"path": "config/public_data_catalog.json", "kind": "Palimpsest editorial dataset metadata"},
+        "availability_semantics": "Editorial registry only. Unknown means public observation availability and freshness have not been established by this index. Inspect the linked public resource and its publication-rights status.",
+        "datasets": rows,
+        "seiche": {"api": "https://api.seiche.info/api/v2/research-network", "site": "https://seiche.info/#RESEARCH", "tool": "research_network"},
+    }
+
+
 def build_catalog(
     *, now: datetime | None = None
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -633,11 +671,14 @@ def main(argv: list[str] | None = None) -> int:
         if build_time.tzinfo is None or build_time.utcoffset() is None:
             parser.error("--now must include a timezone")
         build_time = build_time.astimezone(timezone.utc)
+    build_time = build_time or _utc_now()
     catalog, jsonld, datapackage = build_catalog(now=build_time)
+    research_catalog = build_research_catalog(now=build_time)
     if not args.check:
         _atomic_json(ROOT / "readings" / "catalog.json", catalog)
         _atomic_json(ROOT / "readings" / "catalog.jsonld", jsonld)
         _atomic_json(ROOT / "datapackage.json", datapackage)
+        _atomic_json(ROOT / "readings" / "research-catalog-latest.json", research_catalog)
     print(
         json.dumps(
             {

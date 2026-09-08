@@ -14,7 +14,7 @@ The controller enforces all of these before replacing runtime bytes:
   pinned maintainer/GitHub committer, and verifies locally against the pinned
   GitHub `web-flow` public key;
 - `mcp/palimpsest_mcp.py` and `server.json` are exact blobs from the commit;
-- server/manifest versions match, all six tools, four prompts, and the native
+- server/manifest versions match, all seven tools, four prompts, and the native
   publication-rights resource discover; every tool is declared
   read-only/closed-world, and `get_newsroom` advertises `interconnection`;
 - after an atomic replacement and service restart, loopback MCP initialize,

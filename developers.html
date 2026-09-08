@@ -115,6 +115,7 @@
 <button class="ps-workspace-toggle" type="button" aria-expanded="false" aria-controls="ps-workspace-navigation"><span>Browse research</span><span data-workspace-current>Palimpsest <b aria-hidden="true">⌄</b></span></button>
 <div class="ps-workspace-panel" id="ps-workspace-navigation">
 <label class="ps-workspace-search"><span>Find a view</span><input type="search" placeholder="China, maps, records…" aria-label="Find a research view"></label>
+<section class="ps-workspace-section"><h2>Funding and financial research</h2><a class="ps-workspace-link" href="https://seiche.info/#RESEARCH/china/0">China evidence → funding context</a><a class="ps-workspace-link" href="https://seiche.info/#RESEARCH/regions/0">Regional evidence → market research</a><a class="ps-workspace-link" href="https://liquilens.in/start/">Institution filings · LiquiLens</a><a class="ps-workspace-link" href="https://liquilens-undertow.com/app/#crypto">Exit liquidity · Undertow</a></section>
 <section class="ps-workspace-section"><h2>Data library</h2><a class="ps-workspace-link" href="/research/markets/">All datasets</a><a class="ps-workspace-link" href="/research/markets/?market=drugs">Drugs</a><a class="ps-workspace-link" href="/research/markets/?market=arms">Arms</a><a class="ps-workspace-link" href="/research/markets/?market=economy">Informal economy</a></section>
 <section class="ps-workspace-section"><h2>China research</h2><a class="ps-workspace-link" href="/china/evidence/">Evidence observatory</a><a class="ps-workspace-link" href="/china/economy/">Economic health</a><a class="ps-workspace-link" href="/news/china/situation/">Situation desk</a><a class="ps-workspace-link" href="/china/">Source observatory</a></section>
 <section class="ps-workspace-section"><h2>Connected regional desks</h2><a class="ps-workspace-link" href="/research/connected/">Connected research</a><a class="ps-workspace-link" href="/belt-and-road/">Belt and Road</a><a class="ps-workspace-link" href="/belt-and-road/gwadar/">CPEC / Gwadar</a><a class="ps-workspace-link" href="/belt-and-road/balochistan/">Balochistan</a><a class="ps-workspace-link" href="/belt-and-road/myanmar/">Myanmar</a></section>
@@ -170,7 +171,7 @@
 
   <section id="connect" class="ps-defer">
     <h2 class="ps-section-head">Connect in under a minute</h2>
-    <p class="dev-copy">Use the remote streamable-HTTP endpoint. Clients discover all six tools
+    <p class="dev-copy">Use the remote streamable-HTTP endpoint. Clients discover all seven tools
     from the server, so no schema needs to be copied by hand.</p>
     <div class="connect-grid">
       <article class="connect ps-p2 ps-reveal">
@@ -200,8 +201,9 @@
   </section>
 
   <section class="ps-defer">
-    <h2 class="ps-section-head">The six tools</h2>
+    <h2 class="ps-section-head">The seven tools</h2>
     <div class="tool-grid ps-stagger">
+      <article class="tool ps-p1 ps-reveal"><h3><code>research_catalog</code></h3><p>Page through the complete editorial dataset registry, then continue into Seiche funding context and related institution, liquidity and global-data research. The index does not establish observation freshness or reuse permission.</p><p class="args">arguments: offset · limit (optional)</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>list_signals</code></h3><p>Discover every published instrument, its scope, current source URL and independent status.</p><p class="args">arguments: none · call this first</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>get_signal</code></h3><p>Fetch one full reading, with timestamp, provenance, caps and any untrusted third-party text labelled.</p><p class="args">arguments: name · max_rows (optional)</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>get_newsroom</code></h3><p>Read the evidence newsroom, wire, economic pulse, machine analysis and abstentions, investigations, or editorial gates without losing publication state or citations.</p><p class="args">arguments: view · limit · status/priority (optional)</p></article>
@@ -333,7 +335,7 @@
 
   <section class="ps-defer">
     <h2 class="ps-section-head">OpenAI Responses API</h2>
-    <p class="dev-copy">Pass the hosted endpoint as an MCP tool. Because all six tools are
+    <p class="dev-copy">Pass the hosted endpoint as an MCP tool. Because all seven tools are
     read-only, the example runs without per-call approval.</p>
     <div class="codebox ps-p2" style="padding:18px">
       <pre id="openai-example"><code>curl https://api.openai.com/v1/responses \
@@ -359,7 +361,7 @@
       <li class="ps-p1 ps-reveal"><b>Enable Developer mode</b> in an eligible ChatGPT workspace.</li>
       <li class="ps-p1 ps-reveal">Open <b>Settings → Apps → Create</b> and name the app “Palimpsest”.</li>
       <li class="ps-p1 ps-reveal">Paste <b>https://api.seiche.info/palimpsest/mcp</b> as the MCP endpoint. No OAuth details are required.</li>
-      <li class="ps-p1 ps-reveal"><b>Review the six discovered read-only tools</b>, create the app, then enable it in a conversation.</li>
+      <li class="ps-p1 ps-reveal"><b>Review the seven discovered read-only tools</b>, create the app, then enable it in a conversation.</li>
     </ol>
   </section>
 
