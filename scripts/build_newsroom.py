@@ -1905,7 +1905,7 @@ def _head(
 <meta name="twitter:description" content="{_h(description)}">
 {article_meta}<script type="application/ld+json">{_json_script(json_ld)}</script>
 {site_nav.HEAD}
-<link rel="stylesheet" href="/assets/newsroom.css">
+<link rel="stylesheet" href="/assets/newsroom.css?v=20260909-readability">
 {style_links}
 </head>"""
 
