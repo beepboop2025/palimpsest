@@ -1785,7 +1785,7 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
             "economic-observation-manifest-v1.schema.json"
         )
     }
-    assert "All six hosted MCP tools" in card["access"]["authentication"]
+    assert "All seven hosted MCP tools" in card["access"]["authentication"]
     assert card["access"]["mcp_version"] == live_version
     assert card["evidence"]["china_observatory_index_schema"] == (
         "https://palimpsest.info/protocol/china-index-v1.schema.json"
@@ -1800,8 +1800,15 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
         assert "1.9.0" not in text, label
         assert "query_economic_observations" in text, label
         assert "china-econ-forecast-latest.json" in text, label
-    assert "Six hosted tools and one prepared addition" in developers
-    assert "Six hosted tools and one prepared addition" in docs
+    assert "Seven hosted tools" in developers
+    assert "Seven hosted tools" in docs
+    with open(os.path.join(root, ".well-known", "ai-catalog.json"), encoding="utf-8") as fh:
+        catalog = json.load(fh)["entries"][0]
+    tools = mcp.dispatch(_rpc("tools/list"))["result"]["tools"]
+    assert catalog["capabilities"] == [tool["name"] for tool in tools]
+    assert catalog["metadata"]["publicToolCount"] == len(tools) == 7
+    assert not any(key.startswith("pendingTool") for key in catalog["metadata"])
+    assert catalog["metadata"]["nativeDeploymentCommit"] != catalog["metadata"]["deploymentCommit"]
 
 
 # --------------------------------------------------------- request-size cap --

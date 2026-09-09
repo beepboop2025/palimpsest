@@ -28,7 +28,7 @@
           }
         ]
       },
-      "description": "Six hosted read-only tools for censorship, China-economic status and model-evaluation evidence. The complete editorial registry is available through the linked JSON index and Seiche research API; the additional research_catalog MCP tool is prepared and awaits deployment approval. Source-specific publication rights remain in force. Native fail-closed China publication-rights behavior keeps denied evidence explicitly unavailable; no denied observations or derivatives are returned.",
+      "description": "Seven hosted read-only tools for censorship, China-economic status, model-evaluation evidence and the complete editorial research registry. The research_catalog tool pages dataset metadata and connects to Seiche funding context and related products. Source-specific publication rights remain in force. Native fail-closed China publication-rights behavior keeps denied evidence explicitly unavailable; no denied observations or derivatives are returned.",
       "tags": [
         "China economy evidence",
         "China money markets",
@@ -38,6 +38,7 @@
         "AI evaluation"
       ],
       "capabilities": [
+        "research_catalog",
         "list_signals",
         "get_signal",
         "get_newsroom",
@@ -64,18 +65,15 @@
       ],
       "resourceTemplates": [],
       "version": "1.9.3",
-      "updatedAt": "2026-09-08T23:33:20Z",
+      "updatedAt": "2026-09-09T05:06:33Z",
       "metadata": {
         "authentication": "none",
         "access": "public-read-only",
-        "publicToolCount": 6,
+        "publicToolCount": 7,
         "researchCatalog": "https://www.palimpsest.info/readings/research-catalog-latest.json",
         "researchNetworkApi": "https://api.seiche.info/api/v2/research-network",
-        "pendingTool": "research_catalog",
-        "pendingToolsState": "owner-approval-required",
-        "pendingToolsSourceCommit": "b488092a45bf831fc2b2a4111eacc9e562c7f574",
         "deploymentBoundary": "production-verified",
-        "deploymentNote": "This card describes the exact deployed and independently re-probed MCP 1.9.3 boundary, including native fail-closed publication-rights handling.",
+        "deploymentNote": "The signed native deployment receipt verifies the current seven-tool MCP runtime. The earlier GitHub Actions deployment receipt preserves the historical six-tool release; the unchanged 1.9.3 manifest remains published in the Registry.",
         "deploymentCommit": "1b71dd2bb2dcdec0b99691f7d4caaa13c4857574",
         "deploymentReceipt": "https://palimpsest.info/.well-known/receipts/mcp-deployment-1.9.3.json",
         "deploymentReceiptSha256": "sha256:db370a46897b58d32e31561f1e664d68ea053ac38454caa58b52dd4c9ba5e834",
@@ -89,7 +87,15 @@
         "registryPublishedAt": "2026-08-29T14:47:02.39659Z",
         "liveVersionAuthority": "Initialize the linked MCP remote and compare serverInfo.version before treating a release as deployed.",
         "quickstart": "https://palimpsest.info/developers.html",
-        "productCard": "https://palimpsest.info/product-card.json"
+        "productCard": "https://palimpsest.info/product-card.json",
+        "nativeDeploymentCommit": "8288940062498d5e3fd60cb232cb589b3cb3b97e",
+        "nativeDeploymentReceipt": "https://liquilens.in/protocol/release-evidence/palimpsest/8288940062498d5e3fd60cb232cb589b3cb3b97e/host-receipt.json",
+        "nativeDeploymentReceiptSha256": "sha256:baa8532e6c788e543fe276af909c481222ddb8ea60d48eef8dd303a0592b82c8",
+        "nativeDeploymentSignature": "https://liquilens.in/protocol/release-evidence/palimpsest/8288940062498d5e3fd60cb232cb589b3cb3b97e/host-receipt.json.sig",
+        "nativeDeploymentSignatureSha256": "sha256:5976efbdff72fd061ee25022b09e337717a62c0dfcc8af29e65e1034282d1449",
+        "nativeRuntimeSha256": "sha256:275fc2b8f6a411a7be486467bfb8fd40ff7a455740343569271a8723a3a2c8a1",
+        "nativeManifestSha256": "sha256:be115e404655aaf00b2b935881296d59809093fb5aa526317ca3aa1c7a8a8820",
+        "nativeRuntimeProvenance": "Host-attested deployed source and module digest; public MCP inventory and behavior are independently checked. Publication-rights source clocks describe data, not the runtime."
       }
     },
     {
