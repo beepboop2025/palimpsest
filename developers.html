@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
 <meta property="og:title" content="Palimpsest API + MCP — current evidence for agents">
-<meta property="og:description" content="Six read-only tools, a machine-readable Evidence Atlas, no key, and timestamps and limitations attached.">
+<meta property="og:description" content="Seven read-only tools, a machine-readable Evidence Atlas, no key, and timestamps and limitations attached.">
 <meta property="og:url" content="https://palimpsest.info/developers.html">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -144,7 +144,7 @@
       <a class="ps-btn ps-btn--ghost" href="/.well-known/ai-catalog.json">AI catalog</a>
     </div>
     <div class="proof ps-stagger" aria-label="Service facts">
-      <div class="ps-p1 ps-reveal"><b>6 tools</b><span>measurements + newsroom evidence</span></div>
+      <div class="ps-p1 ps-reveal"><b>7 tools</b><span>measurements + newsroom evidence</span></div>
       <div class="ps-p1 ps-reveal"><b>No auth</b><span>public data, no account or token</span></div>
       <div class="ps-p1 ps-reveal"><b>Read-only</b><span>timestamps and gaps stay visible</span></div>
     </div>
@@ -171,7 +171,7 @@
 
   <section id="connect" class="ps-defer">
     <h2 class="ps-section-head">Connect in under a minute</h2>
-    <p class="dev-copy">Use the remote streamable-HTTP endpoint. Clients discover all six hosted tools
+    <p class="dev-copy">Use the remote streamable-HTTP endpoint. Clients discover all seven hosted tools
     from the server, so no schema needs to be copied by hand.</p>
     <div class="connect-grid">
       <article class="connect ps-p2 ps-reveal">
@@ -201,9 +201,9 @@
   </section>
 
   <section class="ps-defer">
-    <h2 class="ps-section-head">Six hosted tools and one prepared addition</h2>
+    <h2 class="ps-section-head">Seven hosted tools</h2>
     <div class="tool-grid ps-stagger">
-      <article class="tool ps-p1 ps-reveal"><h3><code>research_catalog</code> · prepared</h3><p>Hosted deployment awaits approval. Use the <a href="https://www.palimpsest.info/readings/research-catalog-latest.json">complete JSON registry</a> or <a href="https://seiche.info/#RESEARCH">Seiche research workspace</a> to continue into funding context and related institution, liquidity and global-data research. The index does not establish observation freshness or reuse permission.</p><p class="args">prepared tool arguments: offset · limit (optional)</p></article>
+      <article class="tool ps-p1 ps-reveal"><h3><code>research_catalog</code></h3><p>Page the complete editorial registry with this live tool. Use the <a href="https://www.palimpsest.info/readings/research-catalog-latest.json">complete JSON registry</a> or <a href="https://seiche.info/#RESEARCH">Seiche research workspace</a> to continue into funding context and related institution, liquidity and global-data research. The index does not establish observation freshness or reuse permission.</p><p class="args">arguments: offset (0–1000) · limit (1–25, optional)</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>list_signals</code></h3><p>Discover every published instrument, its scope, current source URL and independent status.</p><p class="args">arguments: none · call this first</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>get_signal</code></h3><p>Fetch one full reading, with timestamp, provenance, caps and any untrusted third-party text labelled.</p><p class="args">arguments: name · max_rows (optional)</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>get_newsroom</code></h3><p>Read the evidence newsroom, wire, economic pulse, machine analysis and abstentions, investigations, or editorial gates without losing publication state or citations.</p><p class="args">arguments: view · limit · status/priority (optional)</p></article>
@@ -335,7 +335,7 @@
 
   <section class="ps-defer">
     <h2 class="ps-section-head">OpenAI Responses API</h2>
-    <p class="dev-copy">Pass the hosted endpoint as an MCP tool. Because all six hosted tools are
+    <p class="dev-copy">Pass the hosted endpoint as an MCP tool. Because all seven hosted tools are
     read-only, the example runs without per-call approval.</p>
     <div class="codebox ps-p2" style="padding:18px">
       <pre id="openai-example"><code>curl https://api.openai.com/v1/responses \
@@ -361,7 +361,7 @@
       <li class="ps-p1 ps-reveal"><b>Enable Developer mode</b> in an eligible ChatGPT workspace.</li>
       <li class="ps-p1 ps-reveal">Open <b>Settings → Apps → Create</b> and name the app “Palimpsest”.</li>
       <li class="ps-p1 ps-reveal">Paste <b>https://api.seiche.info/palimpsest/mcp</b> as the MCP endpoint. No OAuth details are required.</li>
-      <li class="ps-p1 ps-reveal"><b>Review the six discovered read-only tools</b>, create the app, then enable it in a conversation.</li>
+      <li class="ps-p1 ps-reveal"><b>Review the seven discovered read-only tools</b>, create the app, then enable it in a conversation.</li>
     </ol>
   </section>
 
