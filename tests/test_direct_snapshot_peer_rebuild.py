@@ -255,8 +255,32 @@ def test_no_new_ooni_hits_cannot_retain_an_obsolete_companion(snapshot):
     document = json.loads(peer_context_pull.OONI_GFW.read_bytes())
     document["top_blocked"] = []
     peer_context_pull.OONI_GFW.write_text(json.dumps(document))
-    with pytest.raises(SystemExit, match="obsolete OONI companion"):
+    source_before = peer_context_pull.OONI_GFW.read_bytes()
+    history_before = b'{"retained":"historical observation"}\n'
+    peer_context_pull.OONI_HIST.write_bytes(history_before)
+    _execute()
+    assert not peer_context_pull.OONI_OUT.exists()
+    assert peer_context_pull.OONI_GFW.read_bytes() == source_before
+    assert peer_context_pull.OONI_HIST.read_bytes() == history_before
+    rebuilt = peer_context_pull.load_peer_document(peer_context_pull.OUT)
+    assert ooni_document(rebuilt["ooni"]) is None
+
+
+def test_obsolete_companion_cannot_unlink_an_external_file(snapshot):
+    previous = json.loads(peer_context_pull.OUT.read_bytes())
+    previous["ooni"]["hosts"] = []
+    peer_context_pull.OUT.write_text(json.dumps(previous))
+    document = json.loads(peer_context_pull.OONI_GFW.read_bytes())
+    document["top_blocked"] = []
+    peer_context_pull.OONI_GFW.write_text(json.dumps(document))
+    external = snapshot.parent / "retained-host-evidence.json"
+    external.write_bytes(b"retained host evidence\n")
+    peer_context_pull.OONI_OUT.unlink()
+    peer_context_pull.OONI_OUT.symlink_to(external)
+    with pytest.raises(SystemExit, match="not a regular snapshot file"):
         _execute()
+    assert external.read_bytes() == b"retained host evidence\n"
+    assert peer_context_pull.OONI_OUT.is_symlink()
 
 
 @pytest.mark.parametrize("retain_objects", [False, True])
