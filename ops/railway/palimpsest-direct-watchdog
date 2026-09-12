@@ -2947,11 +2947,57 @@ def validate_data_hold(config: LineageConfig) -> dict[str, Any]:
 ManifestFetcher = Callable[[str], bytes]
 
 
+def _lineage_input_versions(config: LineageConfig) -> tuple[Any, ...]:
+    """Detect concurrent replacement; metadata never grants release authority."""
+    versions = []
+    for path in (
+        config.publication_receipt,
+        config.base_pin,
+        config.deployed_commit,
+        config.pending_candidate,
+        config.data_hold,
+    ):
+        try:
+            item = path.lstat()
+        except FileNotFoundError:
+            versions.append(None)
+        else:
+            versions.append((
+                item.st_dev, item.st_ino, item.st_mode, item.st_uid, item.st_gid,
+                item.st_nlink, item.st_size, item.st_mtime_ns, item.st_ctime_ns,
+            ))
+    return tuple(versions)
+
+
 def validate_lineage(
     config: LineageConfig,
     *,
     fetch_manifest: ManifestFetcher,
     chain_checkpoint: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Validate one stable publication observation, retrying a replaced input once."""
+    for attempt in range(2):
+        before = _lineage_input_versions(config)
+        try:
+            result = _validate_lineage_once(
+                config,
+                fetch_manifest=fetch_manifest,
+                chain_checkpoint=chain_checkpoint,
+            )
+        except (OSError, ValueError, WatchdogError):
+            if attempt == 0 and _lineage_input_versions(config) != before:
+                continue
+            raise
+        if _lineage_input_versions(config) == before:
+            return result
+    raise WatchdogError("publication inputs changed during both validation attempts")
+
+
+def _validate_lineage_once(
+    config: LineageConfig,
+    *,
+    fetch_manifest: ManifestFetcher,
+    chain_checkpoint: dict[str, Any] | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Validate the complete direct-publication lineage and live byte proof."""
 
@@ -3420,6 +3466,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         lineage["candidate"] = candidate
         checks["publication"] = lineage
+        # A consumed journal may disappear during validation. Only a complete,
+        # stable lineage proof can replace the conservative entry-time flag.
+        data_hold_active = (
+            candidate["status"] != "none"
+            or lineage_config.data_hold.exists()
+            or lineage_config.data_hold.is_symlink()
+        )
         if lineage.get("base_rotation_bridge") is True:
             add_problem(
                 problems,
