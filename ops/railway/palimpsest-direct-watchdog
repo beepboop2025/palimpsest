@@ -3055,8 +3055,10 @@ def validate_lineage(
     candidate = _candidate_status(
         config,
         receipt,
-        pin=receipt_pin or pin,
-        pin_sha256=receipt_pin_sha256 or pin_sha256,
+        # A pending publication uses the active pin even while the last success
+        # is authenticated against its archived predecessor during rotation.
+        pin=pin,
+        pin_sha256=pin_sha256,
     )
     return (
         {
