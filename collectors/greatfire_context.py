@@ -14,7 +14,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable, Mapping
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlencode, urlsplit
 
 from core.china_observation import iso_z, public_text
 from core.governance import KillSwitch, RateCeiling
@@ -54,7 +54,10 @@ def greatfire_path(url: str) -> str | None:
     parsed = urlsplit(text)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         return None
-    host = parsed.hostname.lower()
+    try:
+        host = parsed.hostname.lower().encode("idna").decode("ascii")
+    except UnicodeError:
+        return None
     path = parsed.path.rstrip("/")
     encoded = f"{parsed.scheme}/{host}"
     if path:
@@ -65,7 +68,7 @@ def greatfire_path(url: str) -> str | None:
 def credit_url(path: str) -> str:
     """GreatFire's public page for one tested path."""
 
-    return f"{BASE}/{path.lstrip('/')}"
+    return f"{BASE}/{quote(path.lstrip('/'), safe='/%')}"
 
 
 def _as_of(value: Any) -> str | None:
@@ -144,7 +147,8 @@ def parse_json_body(body: str) -> dict[str, Any] | None:
 def lookup_url(path: str, fetch: Fetch) -> dict[str, Any] | None:
     """``/api/url/`` — compact 90-day stats. None means the API was silent."""
 
-    status, body = fetch(f"{BASE}/api/url/{path}")
+    # Keep already-escaped source paths intact while encoding Unicode for HTTP.
+    status, body = fetch(f"{BASE}/api/url/{quote(path, safe='/%')}")
     if status != 200:
         return None
     return parse_json_body(body)
@@ -153,7 +157,7 @@ def lookup_url(path: str, fetch: Fetch) -> dict[str, Any] | None:
 def lookup_verdict(path: str, fetch: Fetch) -> dict[str, Any] | None:
     """``/api/verdict?path=`` — headline only; history is discarded immediately."""
 
-    status, body = fetch(f"{BASE}/api/verdict?path={path}")
+    status, body = fetch(f"{BASE}/api/verdict?{urlencode({'path': path})}")
     if status != 200:
         return None
     payload = parse_json_body(body)
