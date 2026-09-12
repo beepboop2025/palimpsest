@@ -451,6 +451,35 @@ def test_greatfire_silent_api_abstains():
     assert "invent a verdict" in sentence
 
 
+def test_greatfire_unicode_url_survives_both_http_lookup_routes():
+    from urllib.parse import parse_qs, unquote, urlsplit
+
+    source = "https://example.com/中国/报告%20一&scope=all"
+    calls = []
+
+    def fetch(url):
+        url.encode("ascii")  # http.client's request-line requirement.
+        calls.append(url)
+        if len(calls) == 1:
+            assert "%2520" not in url
+            return 404, ""
+        assert parse_qs(urlsplit(url).query) == {"path": [greatfire_path(source)]}
+        return 200, json.dumps({"found": True, "verdict": "blocked", "as_of": NOW.isoformat()})
+
+    result = collect_greatfire_context(
+        [source], fetch=fetch, kill_switch=_Live(), now=NOW, include_ledgers=False,
+    )
+    assert len(calls) == 2 and result["n_verdicts"] == 1 and result["n_silent"] == 0
+    assert unquote(urlsplit(calls[0]).path) == "/api/url/https/example.com/中国/报告 一&scope=all"
+    row = result["verdicts"][0]
+    assert row["query_url"] == source
+    row["source_url"].encode("ascii")
+
+
+def test_greatfire_international_domain_uses_idna():
+    assert greatfire_path("https://例子.中国/报告") == "https/xn--fsqu00a.xn--fiqs8s/报告"
+
+
 def test_greatfire_pull_does_not_publish_a_hollow_board(monkeypatch, tmp_path):
     import scripts.greatfire_context_pull as pull
 
