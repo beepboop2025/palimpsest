@@ -1743,9 +1743,11 @@ def test_main_reports_valid_root_hold_as_explicit_data_hold(
     )
 
 
+@pytest.mark.parametrize("consumed_pending_cleanup", [False, True])
 def test_main_ages_publication_from_live_manifest_not_late_receipt(
     lineage: Fixture,
     monkeypatch: pytest.MonkeyPatch,
+    consumed_pending_cleanup: bool,
 ) -> None:
     manifest_at = datetime(2026, 8, 30, 12, 0, 0, tzinfo=UTC)
     receipt_at = manifest_at + timedelta(minutes=20)
@@ -1770,18 +1772,22 @@ def test_main_ages_publication_from_live_manifest_not_late_receipt(
             "promoted_files": [],
         },
     )
-    monkeypatch.setattr(
-        watchdog,
-        "validate_lineage",
-        lambda *_args, **_kwargs: (
+    if consumed_pending_cleanup:
+        _write(lineage.config.pending_candidate, b"consumed journal\n", 0o600)
+
+    def validated_lineage(*_args, **_kwargs):
+        if consumed_pending_cleanup:
+            lineage.config.pending_candidate.unlink()
+        return (
             {
                 "chain_checkpoint": None,
                 "live": {"built_at": stamp(manifest_at)},
                 "recorded_at": stamp(receipt_at),
             },
             {"status": "none"},
-        ),
-    )
+        )
+
+    monkeypatch.setattr(watchdog, "validate_lineage", validated_lineage)
     monkeypatch.setattr(
         watchdog,
         "command",
@@ -1806,6 +1812,7 @@ def test_main_ages_publication_from_live_manifest_not_late_receipt(
 
     assert watchdog.main([]) == 2
     assert captured["status"] == "degraded"
+    assert captured["data_hold"] is False
     assert captured["problem_count"] == 1
     assert captured["problems"] == [
         {
@@ -1879,6 +1886,90 @@ def test_live_manifest_and_receipt_clocks_are_causally_ordered(
             receipt,
             pin=None,
         )
+
+
+@pytest.mark.parametrize("first_clock_invalid", [False, True])
+def test_lineage_revalidates_receipt_replaced_while_fetching_live_manifest(
+    lineage: Fixture, first_clock_invalid: bool,
+) -> None:
+    if first_clock_invalid:
+        lineage.receipt["recorded_at"] = "2026-08-30T11:57:59Z"
+        lineage.rewrite_receipt()
+    calls = []
+
+    def fetch(origin: str) -> bytes:
+        calls.append(origin)
+        if len(calls) == 1:
+            lineage.receipt["recorded_at"] = "2026-08-30T12:06:00Z"
+            lineage.rewrite_receipt()
+        return lineage.manifest_raw
+
+    proof, candidate = watchdog.validate_lineage(lineage.config, fetch_manifest=fetch)
+    assert len(calls) == 4
+    assert proof["recorded_at"] == "2026-08-30T12:06:00Z"
+    assert proof["receipt_sha256"] == _sha(lineage.receipt_path.read_bytes())
+    assert candidate["status"] == "none"
+
+
+def test_lineage_does_not_retry_stable_clock_failure(lineage: Fixture) -> None:
+    lineage.receipt["recorded_at"] = "2026-08-30T11:57:59Z"
+    lineage.rewrite_receipt()
+    calls = []
+
+    def fetch(origin: str) -> bytes:
+        calls.append(origin)
+        return lineage.manifest_raw
+
+    with pytest.raises(watchdog.WatchdogError, match="120s clock skew"):
+        watchdog.validate_lineage(lineage.config, fetch_manifest=fetch)
+    assert len(calls) == 2
+
+
+def test_lineage_repeated_replacements_fail_after_two_attempts(lineage: Fixture) -> None:
+    calls = []
+
+    def fetch(origin: str) -> bytes:
+        calls.append(origin)
+        if len(calls) % 2:
+            lineage.receipt["recorded_at"] = f"2026-08-30T12:06:0{len(calls)}Z"
+            lineage.rewrite_receipt()
+        return lineage.manifest_raw
+
+    with pytest.raises(watchdog.WatchdogError, match="changed during both"):
+        watchdog.validate_lineage(lineage.config, fetch_manifest=fetch)
+    assert len(calls) == 4
+
+
+@pytest.mark.parametrize("field", ["base_pin", "pending_candidate", "data_hold"])
+def test_lineage_rechecks_other_inputs_replaced_during_a_valid_read(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch, field: str,
+) -> None:
+    calls = []
+    original = watchdog._validate_lineage_once
+
+    def validate(*args, **kwargs):
+        calls.append(field)
+        result = original(*args, **kwargs)
+        if len(calls) == 1:
+            path = getattr(lineage.config, field)
+            # A real replacement with unchanged valid bytes still needs a new
+            # complete observation. Creating an absent marker also invalidates
+            # the earlier observation; its normal validator remains responsible.
+            if path.exists():
+                replacement = path.with_name(path.name + ".replacement")
+                _write(replacement, path.read_bytes(), path.stat().st_mode & 0o777)
+                replacement.replace(path)
+            else:
+                _write(path, b"{}\n", 0o600)
+        return result
+
+    monkeypatch.setattr(watchdog, "_validate_lineage_once", validate)
+    if field == "pending_candidate":
+        with pytest.raises(watchdog.WatchdogError):
+            lineage.validate()
+    else:
+        lineage.validate()
+    assert len(calls) == 2
 
 
 def _predecessor(
