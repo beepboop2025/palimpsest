@@ -13,6 +13,7 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 from scripts import build_china_site
+from core.econ_ledger import MAX_LEDGER_BYTES
 from core.econ_observation import EconomicObservation
 
 
@@ -514,6 +515,42 @@ def test_site_ledger_reader_reuses_fail_closed_identity_and_record_boundary(tmp_
     rows, snapshot = build_china_site._read_ledger(valid_null)
     assert rows[0].raw_sha256 is None
     assert snapshot.records == 1
+
+
+def test_site_accepts_complete_history_above_old_32_mib_limit(tmp_path: Path):
+    base = EconomicObservation.from_dict(_ledger()[0])
+    ledger = tmp_path / "growing-history.jsonl"
+    digest = hashlib.sha256()
+    with ledger.open("wb") as handle:
+        for index in range(257):
+            row = replace(base, raw_sha256=f"{index:064x}")
+            # Valid JSON whitespace keeps this capacity regression small in row
+            # count while exercising the real bounded reader and identity checks.
+            line = json.dumps(row.to_dict()).encode().ljust(128 * 1024, b" ") + b"\n"
+            handle.write(line)
+            digest.update(line)
+    assert 32 * 1024 * 1024 < ledger.stat().st_size < MAX_LEDGER_BYTES
+    rows, snapshot = build_china_site._read_ledger(ledger)
+    assert len(rows) == snapshot.records == 257
+    assert snapshot.byte_size == ledger.stat().st_size
+    assert snapshot.byte_sha256 == digest.hexdigest()
+
+
+def test_site_retains_shared_total_capacity_and_stricter_record_limits(tmp_path: Path):
+    oversized = tmp_path / "too-large.jsonl"
+    with oversized.open("wb") as handle:
+        handle.truncate(MAX_LEDGER_BYTES + 1)
+    with pytest.raises(build_china_site.ChinaSiteError, match="ledger is .* limit is"):
+        build_china_site._read_ledger(oversized)
+
+    oversized_record = tmp_path / "too-large-record.jsonl"
+    oversized_record.write_bytes(
+        json.dumps(_ledger()[0]).encode().ljust(
+            build_china_site.MAX_LEDGER_LINE_BYTES + 1, b" "
+        ) + b"\n"
+    )
+    with pytest.raises(build_china_site.ChinaSiteError, match="record exceeds"):
+        build_china_site._read_ledger(oversized_record)
 
 
 def test_latest_source_slice_uses_instants_and_preserves_dimensions():
