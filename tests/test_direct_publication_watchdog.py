@@ -1031,6 +1031,100 @@ def test_unresolved_candidate_journal_is_reported(lineage: Fixture) -> None:
     assert candidate_status["release_sha"] == lineage.release_sha
 
 
+def test_rotation_bridge_uses_active_pin_for_pending_candidate(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_pin = json.loads(lineage.pin_path.read_bytes())
+    old_digest = _sha(lineage.pin_path.read_bytes())
+    receipt_raw = lineage.receipt_path.read_bytes()
+    active = {
+        "schema_version": watchdog.SUCCESSOR_PIN_SCHEMA,
+        "target": {"base_sha": lineage.release_sha},
+        "predecessor": {"publication_receipt": {
+            "publication_base_sha256": old_digest,
+            "sha256": _sha(receipt_raw),
+        }},
+    }
+    active_raw = _json_bytes(active)
+    active_digest = _sha(active_raw)
+    # Pin-chain authentication has its own functional tests. Keep all receipt,
+    # candidate, bundle, manifest and rollback validation real in this bridge.
+    monkeypatch.setattr(watchdog, "_validate_pin", lambda _config: (
+        active, active_raw, {old_digest: old_pin, active_digest: active},
+    ))
+
+    repository = lineage.config.source_repository
+    (repository / "next.txt").write_text("next edition\n")
+    _git(repository, "add", "next.txt")
+    _git(repository, "commit", "--quiet", "-m", "next edition")
+    release = _git(repository, "rev-parse", "HEAD")
+    ref = f"refs/palimpsest/releases/{release}"
+    _git(repository, "update-ref", ref, release)
+    bundle_path = lineage.bundle_path.with_name(f"{release}.bundle")
+    _git(repository, "bundle", "create", str(bundle_path), ref, f"^{lineage.release_sha}")
+    bundle_path.chmod(0o600)
+    metadata = json.loads(lineage.metadata_path.read_bytes())
+    metadata.update(path=str(bundle_path), sha256=_sha(bundle_path.read_bytes()),
+                    bytes=bundle_path.stat().st_size, base_sha=lineage.release_sha,
+                    release_sha=release)
+    metadata_path = lineage.metadata_path.with_name(f"{release}.json")
+    _write(metadata_path, _json_bytes(metadata), 0o600)
+    archived_path = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived_path.read_bytes())
+    candidate.update(base_sha=lineage.release_sha, release_sha=release)
+    candidate["message"] = (
+        f"palimpsest-hetzner-{release[:12]}-{candidate['input_sha256'][:12]}-"
+        f"{candidate['submission_id']}"
+    )
+    candidate["publication_base"] = {
+        "kind": "verified_successor", "path": str(lineage.pin_path),
+        "sha256": active_digest,
+    }
+    candidate["release_bundle"] = {
+        key: metadata[key] for key in ("path", "sha256", "bytes")
+    } | {"metadata_path": str(metadata_path),
+         "metadata_sha256": _sha(metadata_path.read_bytes())}
+    manifest = json.loads(lineage.manifest_raw)
+    manifest["source_commit"] = release
+    manifest_path = lineage.manifest_path.with_name(f"{release}.json")
+    _write(manifest_path, _json_bytes(manifest), 0o600)
+    candidate["release_manifest"].update(
+        path=str(manifest_path), bytes=manifest_path.stat().st_size,
+        sha256=_sha(manifest_path.read_bytes()),
+    )
+    receipt_archive = lineage.config.state_root / "receipts" / f"{_sha(receipt_raw)}.json"
+    _write(receipt_archive, receipt_raw, 0o600)
+    candidate["predecessor"] = _predecessor(lineage, receipt_raw, lineage.receipt, receipt_archive)
+    rollback = candidate["rollback_evidence"]
+    destination = lineage.config.state_root / "predecessors" / release
+    destination.mkdir(mode=0o700)
+    for key in ("provider_manifest", "public_manifest", "topology"):
+        prior = Path(rollback[key]["path"])
+        body = lineage.manifest_raw
+        if key == "topology":
+            topology = json.loads(prior.read_bytes())
+            instance = topology["environments"]["edges"][0]["node"]["serviceInstances"]["edges"][0]["node"]
+            instance["latestDeployment"]["id"] = lineage.receipt["railway"]["deployment_id"]
+            rollback[key]["deployment_id"] = lineage.receipt["railway"]["deployment_id"]
+            body = _json_bytes(topology)
+        path = destination / prior.name
+        _write(path, body, 0o600)
+        rollback[key].update(path=str(path), sha256=_sha(body), bytes=len(body))
+    _write(lineage.config.pending_candidate, _json_bytes(candidate), 0o600)
+
+    proof, pending = lineage.validate()
+    assert proof["base_rotation_bridge"] is True
+    assert proof["receipt_publication_base_pin_sha256"] == old_digest
+    assert proof["publication_base_pin_sha256"] == active_digest
+    assert pending["status"] == "mutation_unresolved" and pending["data_hold"] is True
+    assert pending["release_sha"] == release
+
+    # A pending journal bound to the previous pin must now fail closed.
+    _write(lineage.config.pending_candidate, archived_path.read_bytes(), 0o600)
+    with pytest.raises(watchdog.WatchdogError, match="candidate publication base is not transition-pinned"):
+        lineage.validate()
+
+
 def test_consumed_pending_candidate_remains_data_hold_until_cleanup(
     lineage: Fixture,
 ) -> None:
