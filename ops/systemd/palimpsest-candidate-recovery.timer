@@ -1,0 +1,12 @@
+[Unit]
+Description=Recover interrupted Palimpsest publications after failure or reboot
+
+[Timer]
+OnCalendar=*:0/5
+RandomizedDelaySec=20s
+AccuracySec=10s
+Persistent=true
+Unit=palimpsest-candidate-recovery.service
+
+[Install]
+WantedBy=timers.target

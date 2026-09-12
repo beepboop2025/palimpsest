@@ -2514,24 +2514,47 @@ validate_manifest_bound_pair() {
 fetch_live_artifact_pair() {
   local url_path="$1" provider_path="$2" public_path="$3" nonce="$4"
   local maximum="$5" reserve="$6" accept="${7:-application/octet-stream}"
-  local provider_http public_http
-  provider_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
-    "$reserve" -sS --proto '=https' --max-redirs 0 \
-    --header "Accept: $accept" --max-filesize "$maximum" \
-    -o "$provider_path" -w '%{http_code}' \
-    "$PROVIDER_ORIGIN/$url_path?receipt=$nonce")" || return 1
-  public_http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
-    "$reserve" -sS --proto '=https' --max-redirs 0 \
-    --header "Accept: $accept" --max-filesize "$maximum" \
-    -o "$public_path" -w '%{http_code}' \
-    "$PUBLIC_ORIGIN/$url_path?receipt=$nonce")" || return 1
-  [[ "$provider_http" == 200 && "$public_http" == 200 \
-    && -s "$provider_path" && -s "$public_path" \
-    && "$(stat -c '%s' "$provider_path")" -le "$maximum" \
-    && "$(stat -c '%s' "$public_path")" -le "$maximum" ]] || {
-    log "provider and public $url_path did not return bounded HTTP 200 artifacts" >&2
-    return 1
-  }
+  local role origin destination attempt http status complete
+  # Retry only transient reads of this exact URL. The original transaction
+  # deadline, byte ceiling and subsequent manifest comparison remain binding.
+  for role in provider public; do
+    if [[ "$role" == provider ]]; then
+      origin="$PROVIDER_ORIGIN"
+      destination="$provider_path"
+    else
+      origin="$PUBLIC_ORIGIN"
+      destination="$public_path"
+    fi
+    complete=false
+    for attempt in 1 2 3; do
+      status=0
+      http="$(curl_with_deadline "$ORIGIN_REQUEST_TIMEOUT_SECONDS" \
+        "$reserve" -sS --proto '=https' --max-redirs 0 \
+        --header "Accept: $accept" --max-filesize "$maximum" \
+        -o "$destination" -w '%{http_code}' \
+        "$origin/$url_path?receipt=$nonce")" || status=$?
+      if [[ "$status" == 0 && "$http" == 200 ]]; then
+        [[ -s "$destination" \
+          && "$(stat -c '%s' "$destination")" -le "$maximum" ]] || {
+          log "$role $url_path returned an empty or oversized artifact" >&2
+          return 1
+        }
+        complete=true
+        break
+      fi
+      case "$status:$http" in
+        0:408|0:429|0:500|0:502|0:503|0:504|5:*|6:*|7:*|18:*|28:*|52:*|55:*|56:*|92:*) ;;
+        *)
+          log "$role $url_path failed verification read (curl $status, HTTP $http)" >&2
+          return 1
+          ;;
+      esac
+      log "$role $url_path transient verification read failure (curl $status, HTTP $http, attempt $attempt/3)" >&2
+      [[ "$attempt" -lt 3 ]] || break
+      bounded_deadline_sleep "$POST_MUTATION_POLL_SECONDS" "$reserve" || return 1
+    done
+    [[ "$complete" == true ]] || return 1
+  done
 }
 
 validate_durable_release_manifest() {
@@ -4207,8 +4230,16 @@ for host, row in retained_live.items():
         raise SystemExit("snapshot peer rebuild would change retained OONI bulk evidence")
 expected_ooni = ooni_document(rebuilt["ooni"])
 if expected_ooni is None:
-    if peer_context_pull.OONI_OUT.exists():
-        raise SystemExit("snapshot peer rebuild left an obsolete OONI companion")
+    # The host retains last-good outputs, but this disposable edition must not
+    # carry an old companion beside a current join with no OONI evidence. Keep
+    # source readings and history; retire only this exact copied latest file.
+    companion = peer_context_pull.OONI_OUT
+    if companion != root / "readings/ooni-peer-context-latest.json":
+        raise SystemExit("obsolete OONI companion is outside the publication snapshot")
+    if companion.is_symlink() or (companion.exists() and not companion.is_file()):
+        raise SystemExit("obsolete OONI companion is not a regular snapshot file")
+    if companion.exists():
+        companion.unlink()
 elif peer_context_pull.load_peer_document(peer_context_pull.OONI_OUT) != expected_ooni:
     raise SystemExit("snapshot peer rebuild did not publish its exact OONI companion")
 PYPEER

@@ -109,6 +109,29 @@ restoration is re-proved. Immutable recovery receipts make this idempotent even
 if the helper dies after writing the recovery receipt but before journal
 consumption.
 
+`palimpsest-candidate-recovery.service` invokes this same root reconciler when
+the publisher fails with a pending candidate. Its five-minute persistent timer
+also covers a missed failure trigger or reboot. It abstains during continuity
+maintenance and base rotation, requires a failed publisher, and retains the
+reconciler's shared lock, absolute adoption deadline, exact topology proof and
+durable no-second-rollback guard. An ambiguous candidate remains in DATA HOLD;
+the service never deletes a journal to permit a new upload. Install the service
+and timer from the reviewed source before rotating to a publisher that names
+the recovery service in `OnFailure`, then enable the timer. The ordinary
+publication timer resumes fresh editions after verified recovery.
+
+Live artifact verification retries transient transport errors and HTTP
+408/429/500/502/503/504 responses at most three times per origin, always at the
+same URL and within the original receipt deadline. Permanent errors, empty or
+oversized responses and manifest mismatches still fail publication. A transient
+read cannot trigger a second upload or extend a candidate's freshness window.
+
+When an offline peer rebuild has no OONI evidence and no retained live coverage,
+the disposable publication snapshot removes its copied OONI latest companion.
+Source readings and OONI history remain intact. Symlinks, unexpected paths and
+loss of previously live coverage still stop the build. This keeps an old host
+cache from appearing beside a current empty join or blocking unrelated news.
+
 The incident-specific base transition is
 [`advance-direct-publication-base`](../ops/railway/advance-direct-publication-base).
 It can run only as root and only while the exact recorded `b22d809b…` host base,

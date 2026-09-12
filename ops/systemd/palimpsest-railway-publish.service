@@ -1,5 +1,6 @@
 [Unit]
 Description=Publish the newest Palimpsest Hetzner edition directly to Railway
+OnFailure=palimpsest-candidate-recovery.service
 Documentation=https://www.palimpsest.info/news/
 Wants=network-online.target
 After=network-online.target

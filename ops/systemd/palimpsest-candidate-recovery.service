@@ -1,0 +1,50 @@
+[Unit]
+Description=Reconcile an interrupted Palimpsest publication using its exact candidate
+Wants=network-online.target
+After=network-online.target palimpsest-railway-publish.service
+ConditionPathExists=/var/lib/palimpsest/railway-publication/pending-candidate.json
+ConditionPathExists=!/var/lib/palimpsest-continuity/maintenance-hold.json
+ConditionPathExists=!/var/lib/palimpsest/railway-control/rotation-intent.json
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=/etc/palimpsest/railway-publication.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+# A live publisher owns the same nonblocking lock inside the reconciler.
+# Restrict scheduled recovery to a failed publisher, including after reboot.
+ExecCondition=/usr/bin/systemctl is-failed --quiet palimpsest-railway-publish.service
+ExecStart=/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate
+TimeoutStartSec=15min
+UMask=0077
+Nice=10
+MemoryMax=512M
+TasksMax=64
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindReadOnlyPaths=/home/palimpsest/palimpsest
+ReadWritePaths=/var/lib/palimpsest/railway-publication /etc/palimpsest
+# Recovery appends a root-owned binding for the proven rollback deployment.
+ReadWritePaths=/var/lib/palimpsest/railway-control
+ReadOnlyPaths=/var/lib/palimpsest/railway-control/publish.lock
+ReadOnlyPaths=/var/lib/palimpsest/railway-control/base-rotation-history
+ReadOnlyPaths=/etc/palimpsest/deployed-commit /etc/palimpsest/railway-publication-base.json
+ReadOnlyPaths=/etc/palimpsest/railway-publication.env
+InaccessiblePaths=-/var/lib/palimpsest/common-crawl/common-crawl.sqlite3 -/run/docker.sock
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
