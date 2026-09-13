@@ -284,6 +284,12 @@ def promote(root: Path, host: Path, state: Path, data_lock: Path) -> None:
         selected = captured_ledger
         if old_ledger is not None:
             selected = extension(captured_ledger, valid_ledger(host / LEDGER))
+        if old_sidecar == builder._render(artifact).encode() and selected == old_ledger:
+            builder._validate_admitted_sidecar(
+                host / SIDECAR, schema_path=builder.DEFAULT_SCHEMA,
+                seal_ledger_path=host / LEDGER,
+            )
+            return
         pending = state / "pending"
         staging = Path(tempfile.mkdtemp(prefix="pair-", dir=state))
         try:

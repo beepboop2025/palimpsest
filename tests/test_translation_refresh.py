@@ -144,6 +144,20 @@ def test_first_host_translation_preserves_the_existing_ledger(layout):
     assert (host / refresh.SIDECAR).stat().st_mode & 0o777 == 0o644
 
 
+def test_repeated_identical_capture_is_a_noop(layout):
+    root, host, wire, state, data_lock = layout
+    refresh.capture(root, host, wire, state, data_lock)
+    advance(root)
+    shutil.copyfile(root / "readings/newswire-latest.json", wire / "newswire-latest.json")
+    refresh.promote(root, host, state, data_lock)
+    before = {name: (host / name).read_bytes() for name in refresh.PAIR}
+    for _ in range(3):
+        refresh.capture(root, host, wire, state, data_lock)
+        refresh.promote(root, host, state, data_lock)
+    assert {name: (host / name).read_bytes() for name in refresh.PAIR} == before
+    assert len(list((state / "completed").iterdir())) == 1
+
+
 @pytest.mark.skipif(not shutil.which("setfacl") or not hasattr(os, "getxattr"), reason="Linux POSIX ACL integration")
 def test_promotion_preserves_existing_access_acl_exactly(layout):
     root, host, wire, state, data_lock = layout
