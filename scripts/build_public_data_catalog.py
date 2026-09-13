@@ -151,8 +151,11 @@ def main(argv: list[str] | None = None) -> int:
         atlas._atomic_json(atlas.ROOT / "readings/collector-health-latest.json", health)
         catalog = build_public_catalog(now=now)
         health = build_health(catalog, root=atlas.ROOT, now=now)
-        atlas._atomic_json(atlas.ROOT / OUTPUT, catalog)
         atlas._atomic_json(atlas.ROOT / "readings/collector-health-latest.json", health)
+        # The final report has different bytes from the provisional report.
+        # Re-inspect its size after its self-referential freshness has settled.
+        catalog = build_public_catalog(now=now)
+        atlas._atomic_json(atlas.ROOT / OUTPUT, catalog)
     print(json.dumps({"states": catalog["summary"]["states"], "written": not args.check}))
     return 0
 

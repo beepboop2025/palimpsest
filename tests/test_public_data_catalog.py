@@ -124,5 +124,6 @@ def test_new_health_report_does_not_inherit_its_own_old_clock(snapshot):
     row = next(row for row in catalog["datasets"] if row["id"] == "collector-health")
     assert row["artifacts"]["evidence_state"] == "fresh"
     assert row["artifacts"]["age_seconds"] == 0
+    assert row["artifacts"]["latest_bytes"] == (snapshot / "readings/collector-health-latest.json").stat().st_size
     assert row["artifacts"]["observed_at"] == report["generated_at"] == catalog["generated_at"]
     assert catalog["summary"]["states"] == report["summary"]["by_state"]
