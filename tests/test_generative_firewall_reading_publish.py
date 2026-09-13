@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.join(REPO, "scripts"))
 import generative_firewall_reading as gfr
 from scripts import verify_gfi_transcripts as verify_gfi
 from scripts import preregister_gfi_v2 as preregister
+from scripts import verify_gfi_promotion as promotion
 
 REFUSAL_ZH = "对不起，我无法回答这个问题。让我们聊聊别的话题吧。"
 ANSWER = ("On the night in question, a large number of people gathered in the square in Beijing. "
@@ -265,6 +266,136 @@ def _verify_temp(tmp_path):
         transcripts_path=tmp_path / "gfi-transcripts-latest.json",
         registry_path=tmp_path / "eval-registry.jsonl",
     )
+
+
+def _promotion_fixture(publish):
+    run, temporary = publish
+    assert run() == 0
+    source = temporary / "candidate"
+    readings = source / "readings"
+    readings.mkdir(parents=True)
+    for path in temporary.iterdir():
+        if path.is_file():
+            (readings / path.name).write_bytes(path.read_bytes())
+    host = temporary / "host"
+    host.mkdir()
+    (temporary / "gfi-history-before.jsonl").write_bytes(b"")
+    (temporary / "data.lock").write_bytes(b"")
+    (host / ".eval-registry.jsonl.lock").write_bytes(b"")
+    # Retain the already-public preregistration as an exact registry prefix.
+    registry = (readings / "eval-registry.jsonl").read_bytes()
+    (host / "eval-registry.jsonl").write_bytes(registry.splitlines(keepends=True)[0])
+    (host / "latest.json").write_text(json.dumps({"summary":{"generated_at":"2020-01-01T00:00:00Z"}}))
+    return source, host
+
+
+def test_complete_gfi_promotion_verifies_all_matrices_without_writing(publish):
+    source, host = _promotion_fixture(publish)
+    before = {str(path):path.read_bytes() for folder in (source / "readings", host) for path in folder.iterdir() if path.is_file()}
+    facts = promotion.verify_promotion(source, host)
+    assert facts["sealed_models"] == 3
+    assert facts["samples_checked"] == 660 and facts["cells_checked"] == 132
+    assert all(Path(path).read_bytes() == raw for path,raw in before.items())
+
+
+@pytest.mark.parametrize("damage", ["response", "clock", "equal-clock-bytes", "protocol"])
+def test_gfi_promotion_rejects_tampered_matrix_regressing_clock_and_old_protocol(publish, damage):
+    source, host = _promotion_fixture(publish)
+    readings = source / "readings"
+    if damage == "response":
+        path = readings / "gfi-transcripts-latest.json"
+        payload = json.loads(path.read_bytes())
+        next(iter(next(iter(payload["responses"].values())).values()))[0] = "different-response"
+        path.write_text(json.dumps(payload))
+    elif damage == "clock":
+        (host / "latest.json").write_text(json.dumps({"summary":{"generated_at":"2999-01-01T00:00:00Z"}}))
+    elif damage == "equal-clock-bytes":
+        payload = json.loads((readings / "latest.json").read_bytes())
+        payload["unreviewed_change"] = True
+        (host / "latest.json").write_text(json.dumps(payload))
+    else:
+        path = readings / "latest.json"
+        payload = json.loads(path.read_bytes())
+        payload["summary"]["probe_commitment"] = "0" * 64
+        path.write_text(json.dumps(payload))
+    before = {path.name:path.read_bytes() for path in host.iterdir()}
+    with pytest.raises(ValueError):
+        promotion.verify_promotion(source, host)
+    assert {path.name:path.read_bytes() for path in host.iterdir()} == before
+
+
+def test_exact_reading_replay_can_finish_a_partial_promotion_without_new_clock(publish):
+    source, host = _promotion_fixture(publish)
+    reading = (source / "readings/latest.json").read_bytes()
+    # Simulate latest.json having moved before another public copy failed.
+    (host / "latest.json").write_bytes(reading)
+    assert promotion.verify_promotion(source, host)["samples_checked"] == 660
+    assert (host / "latest.json").read_bytes() == reading
+
+
+def test_promotion_holds_data_and_registry_locks_and_preserves_modes(publish, monkeypatch):
+    import fcntl
+    import stat
+    source, host = _promotion_fixture(publish)
+    for name in ("latest.json", "eval-registry.jsonl"):
+        (host / name).chmod(0o664)
+    original = promotion.write_public
+    held = []
+    def inspect_write(path, payload):
+        for lock in (source.parent / "data.lock", host / ".eval-registry.jsonl.lock"):
+            with lock.open("rb") as stream:
+                with pytest.raises(BlockingIOError):
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        held.append(path.name)
+        original(path, payload)
+    monkeypatch.setattr(promotion, "write_public", inspect_write)
+    assert promotion.promote(source, host, source.parent / "data.lock")["samples_checked"] == 660
+    assert set(held) == set(promotion.OUTPUTS)
+    assert all(stat.S_IMODE((host / name).stat().st_mode) == 0o664 for name in ("latest.json", "eval-registry.jsonl"))
+
+
+@pytest.mark.parametrize("missing", ["data", "registry"])
+def test_missing_production_locks_refuse_without_public_mutation(publish, missing):
+    source, host = _promotion_fixture(publish)
+    (source.parent / "data.lock" if missing == "data" else host / ".eval-registry.jsonl.lock").unlink()
+    before = {path.name:path.read_bytes() for path in host.iterdir()}
+    with pytest.raises((ValueError, FileNotFoundError)):
+        promotion.promote(source, host, source.parent / "data.lock")
+    assert {path.name:path.read_bytes() for path in host.iterdir()} == before
+
+
+def test_partial_write_failure_replays_without_model_calls_or_new_clock(publish, monkeypatch):
+    source, host = _promotion_fixture(publish)
+    original = promotion.write_public
+    def fail_after_latest(path, payload):
+        if path.name == "generative-firewall-index.html":
+            raise OSError("injected copy failure")
+        original(path, payload)
+    monkeypatch.setattr(promotion, "write_public", fail_after_latest)
+    with pytest.raises(OSError, match="injected"):
+        promotion.promote(source, host, source.parent / "data.lock")
+    assert (host / "latest.json").read_bytes() == (source / "readings/latest.json").read_bytes()
+    def no_models(*_args, **_kwargs):
+        raise AssertionError("offline recovery attempted a model call")
+    monkeypatch.setattr(promotion.gfr, "run_panel", no_models)
+    monkeypatch.setattr(promotion, "write_public", original)
+    assert promotion.promote(source, host, source.parent / "data.lock")["samples_checked"] == 660
+    assert all((host / name).read_bytes() == (source / "readings" / name).read_bytes() for name in promotion.OUTPUTS)
+
+
+def test_offline_reseal_keeps_concurrent_registry_append_and_original_response_clock(publish, monkeypatch):
+    source, host = _promotion_fixture(publish)
+    promotion.eval_registry.preregister(host / "eval-registry.jsonl", ["unrelated"], suite="concurrent-fixture")
+    before = (host / "eval-registry.jsonl").read_bytes()
+    reading = (source / "readings/latest.json").read_bytes()
+    transcripts = (source / "readings/gfi-transcripts-latest.json").read_bytes()
+    def no_models(*_args, **_kwargs):
+        raise AssertionError("offline recovery attempted a model call")
+    monkeypatch.setattr(promotion.gfr, "run_panel", no_models)
+    assert promotion.promote(source, host, source.parent / "data.lock", reseal=True)["sealed_models"] == 3
+    assert (host / "eval-registry.jsonl").read_bytes().startswith(before)
+    assert (host / "latest.json").read_bytes() == reading
+    assert (host / "gfi-transcripts-latest.json").read_bytes() == transcripts
 
 
 def test_new_preregistration_preserves_old_result_then_accepts_new_result(publish, monkeypatch):

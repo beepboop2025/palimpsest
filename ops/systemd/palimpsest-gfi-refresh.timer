@@ -1,0 +1,11 @@
+[Unit]
+Description=Run one complete preregistered GFI panel daily
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+Unit=palimpsest-gfi-refresh.service
+
+[Install]
+WantedBy=timers.target

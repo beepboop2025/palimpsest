@@ -15,11 +15,21 @@ readonly DEPLOYED_COMMIT_FILE="${PALIMPSEST_DEPLOYED_COMMIT_FILE:-/etc/palimpses
 readonly PYTHON_BIN="${PALIMPSEST_PYTHON_BIN:-/usr/bin/python3}"
 readonly JOB_TIMEOUT="${PALIMPSEST_COLLECTOR_TIMEOUT:-12m}"
 readonly SILENCE_INDEX_TIMEOUT="${PALIMPSEST_SILENCE_INDEX_TIMEOUT:-18m}"
+readonly GFI_TIMEOUT=100m
 readonly MEASUREMENT_SCOPE="${PALIMPSEST_MEASUREMENT_SCOPE:-core}"
 case "$MEASUREMENT_SCOPE" in
-  core|regional-research) ;;
+  core|regional-research|generative-firewall) ;;
   *) printf 'invalid measurement scope\n' >&2; exit 1 ;;
 esac
+if [[ "$MEASUREMENT_SCOPE" == generative-firewall ]]; then
+  # Install this stable shared lock once; never create a second lock domain
+  # after paid work has begun or replace a lock that has waiters.
+  registry_lock="$HOST_READINGS/.eval-registry.jsonl.lock"
+  [[ -f "$registry_lock" && ! -L "$registry_lock" && -w "$registry_lock" ]] || {
+    printf 'GFI registry lock must be installed and writable before model calls\n' >&2
+    exit 1
+  }
+fi
 
 work_root=""
 checkout=""
@@ -27,6 +37,7 @@ base_sha=""
 succeeded=0
 failed=0
 changed=0
+retain_gfi_work=0
 
 declare -ar PUBLIC_COMPANION_PATHS=(
   "readings/public-deletion-ledgers-history.jsonl"
@@ -47,6 +58,10 @@ log() {
 cleanup() {
   local status=$?
   trap - EXIT HUP INT TERM
+  if [[ "$retain_gfi_work" == 1 && -n "$work_root" && -d "$work_root" ]]; then
+    log "retained completed GFI candidate for offline recovery: $work_root" >&2
+    exit "$status"
+  fi
   if [[ -n "$work_root" && "$work_root" == "$STATE_ROOT"/work.* && -d "$work_root" ]]; then
     chmod -R u+w "$work_root" 2>/dev/null || true
     rm -rf --one-file-system -- "$work_root"
@@ -73,6 +88,10 @@ base_sha="$(tr -d '[:space:]' < "$DEPLOYED_COMMIT_FILE")"
   log "canonical checkout does not match deployed commit" >&2
   exit 1
 }
+if [[ "$MEASUREMENT_SCOPE" == generative-firewall ]]; then
+  (cd "$SOURCE_REPOSITORY"; "$PYTHON_BIN" -m scripts.verify_gfi_promotion --check-host \
+    --host-readings "$HOST_READINGS" --data-lock "$DATA_LOCK_FILE")
+fi
 
 work_root="$(mktemp -d "$STATE_ROOT/work.XXXXXX")"
 checkout="$work_root/source"
@@ -146,6 +165,11 @@ overlay_last_good() {
   while IFS= read -r -d '' tracked_path; do
     relative="${tracked_path#readings/}"
     if [[ "$relative" != */* ]]; then
+      # The host may lag the reviewed source history. GFI selects the longer
+      # exact prefix after this overlay and before issuing any model request.
+      if [[ "$MEASUREMENT_SCOPE" == generative-firewall && "$relative" == history.jsonl ]]; then
+        continue
+      fi
       copy_last_good_public_file "$tracked_path"
     fi
   done < <(git -C "$checkout" ls-files -z 'readings/*')
@@ -255,19 +279,30 @@ promote_public_file() {
   destination="$HOST_READINGS/${relative#readings/}"
   mkdir -p "${destination%/*}"
   temporary="${destination%/*}/.${destination##*/}.measurement-refresh.$$"
-  cp "$source_file" "$temporary"
-  chmod 0640 "$temporary"
-  mv -f "$temporary" "$destination"
+  cp "$source_file" "$temporary" || return 1
+  chmod 0640 "$temporary" || return 1
+  mv -f "$temporary" "$destination" || return 1
 }
 
 promote_changed_readings() {
   local marker="$1" name="$2" promoted=0 relative source_file filename
-  exec 8>"$DATA_LOCK_FILE"
-  flock -x 8
+  if [[ "$name" == generative-firewall ]]; then
+    # This dedicated entrypoint retains data -> registry locks through every
+    # replacement and is also the offline completed-candidate recovery path.
+    (cd "$checkout"; "$PYTHON_BIN" -m scripts.verify_gfi_promotion --promote \
+      --host-readings "$HOST_READINGS" --data-lock "$DATA_LOCK_FILE" \
+      --history-baseline "$work_root/gfi-history-before.jsonl")
+    return "$?"
+  fi
+  exec 8>"$DATA_LOCK_FILE" || return 1
+  flock -x 8 || return 1
   while IFS= read -r relative; do
     source_file="$checkout/$relative"
     [[ -f "$source_file" && "$source_file" -nt "$marker" ]] || continue
-    promote_public_file "$relative"
+    if ! promote_public_file "$relative"; then
+      flock -u 8
+      return 1
+    fi
     promoted=$((promoted + 1))
   done < <(public_outputs_for_job "$name")
   if [[ "$name" == anchors && -d "$checkout/readings/anchors" ]]; then
@@ -297,6 +332,8 @@ run_job() {
   local name="$1" interval_minutes="$2" timeout_limit
   shift 2
   case "$name" in
+    generative-firewall)
+      [[ "$MEASUREMENT_SCOPE" == generative-firewall ]] || return 0 ;;
     china-economic-health|china-publication-watch|china-mirror-trade|china-external-accounts|regional-research|regional-economics)
       [[ "$MEASUREMENT_SCOPE" == regional-research ]] || return 0 ;;
     *) [[ "$MEASUREMENT_SCOPE" == core ]] || return 0 ;;
@@ -308,11 +345,18 @@ run_job() {
 
   overlay_last_good
   overlay_private_state "$name"
+  if [[ "$name" == generative-firewall ]]; then
+    (cd "$checkout"; "$PYTHON_BIN" -m scripts.verify_gfi_promotion --prepare-history \
+      --host-readings "$HOST_READINGS" --data-lock "$DATA_LOCK_FILE" \
+      --history-baseline "$work_root/gfi-history-before.jsonl")
+  fi
   marker="$work_root/$name.marker"
   touch "$marker"
   timeout_limit="$JOB_TIMEOUT"
   if [[ "$name" == "silence-index" ]]; then
     timeout_limit="$SILENCE_INDEX_TIMEOUT"
+  elif [[ "$name" == generative-firewall ]]; then
+    timeout_limit="$GFI_TIMEOUT"
   fi
   log "refresh $name"
   if (
@@ -320,12 +364,18 @@ run_job() {
     env PYTHONPATH="$checkout" PYTHONDONTWRITEBYTECODE=1 \
       timeout --signal=TERM --kill-after=10s "$timeout_limit" "$@"
   ); then
+    if [[ "$name" == generative-firewall ]]; then
+      # A completed paid matrix survives a publication/registry race. Partial
+      # model runs still follow the ordinary private scratch cleanup.
+      retain_gfi_work=1
+    fi
     promote_private_state "$name" "$marker"
     promoted="$(promote_changed_readings "$marker" "$name")"
     if (( promoted > 0 )); then
       changed=$((changed + promoted))
       date +%s >"$STATE_ROOT/jobs/$name.success"
       log "refreshed $name; promoted $promoted file(s)"
+      [[ "$name" != generative-firewall ]] || retain_gfi_work=0
     else
       log "$name returned without new public bytes; retrying next cycle"
     fi
@@ -380,7 +430,9 @@ run_job stock-connect 1440 "$PYTHON_BIN" -m scripts.stock_connect_pull
 run_job data-darkness 1440 "$PYTHON_BIN" -m scripts.data_darkness_pull
 run_job believability 720 "$PYTHON_BIN" -m scripts.believability_pull
 run_job blocklist 10080 /bin/bash -c '"$1" -m scripts.fetch_citizenlab_blocklists && "$1" -m scripts.blocklist_pull' _ "$PYTHON_BIN"
-run_job generative-firewall 1440 "$PYTHON_BIN" scripts/generative_firewall_reading.py
+# The dedicated daily timer is the cadence guard. No successful-finish stamp
+# can accidentally skip the next calendar day because the previous run was slow.
+run_job generative-firewall 0 "$PYTHON_BIN" scripts/generative_firewall_reading.py
 run_job anchors 360 "$PYTHON_BIN" -m scripts.anchor_roots
 
 receipt_tmp="$(mktemp "$STATE_ROOT/.latest-run.XXXXXX")"
@@ -396,4 +448,7 @@ chmod 0600 "$receipt_tmp"
 mv -f "$receipt_tmp" "$STATE_ROOT/latest-run.json"
 
 log "measurement refresh complete: $succeeded succeeded, $failed failed, $changed files promoted"
+if [[ "$MEASUREMENT_SCOPE" == generative-firewall ]] && (( failed > 0 || changed == 0 )); then
+  exit 1
+fi
 exit 0

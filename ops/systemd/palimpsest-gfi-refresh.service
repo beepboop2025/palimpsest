@@ -1,0 +1,43 @@
+[Unit]
+Description=Collect the preregistered complete Generative Firewall model panel
+Wants=network-online.target
+After=network-online.target
+OnSuccess=palimpsest-railway-publish.service
+RequiresMountsFor=/opt/palimpsest-gfi/source /var/lib/palimpsest/gfi-refresh
+ConditionPathExists=/opt/palimpsest-gfi/source/.git
+ConditionPathExists=/etc/palimpsest/gfi-commit
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+SupplementaryGroups=palimpsest-analysis
+WorkingDirectory=/opt/palimpsest-gfi/source
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PALIMPSEST_PYTHON_BIN=/opt/palimpsest/collector-venv/bin/python
+Environment=PALIMPSEST_SOURCE_REPOSITORY=/opt/palimpsest-gfi/source
+Environment=PALIMPSEST_DEPLOYED_COMMIT_FILE=/etc/palimpsest/gfi-commit
+Environment=PALIMPSEST_MEASUREMENT_STATE_ROOT=/var/lib/palimpsest/gfi-refresh
+Environment=PALIMPSEST_MEASUREMENT_SCOPE=generative-firewall
+EnvironmentFile=/etc/palimpsest/openrouter.env
+ExecStart=/opt/palimpsest-gfi/source/ops/measurement/palimpsest-measurement-refresh
+TimeoutStartSec=110m
+UMask=0027
+Nice=12
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+MemoryMax=1500M
+TasksMax=64
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/palimpsest/readings /var/lib/palimpsest/gfi-refresh /var/lib/palimpsest/railway-publication
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
