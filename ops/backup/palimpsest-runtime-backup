@@ -34,7 +34,7 @@ fi
 export PALIMPSEST_ROOT="$source_root"
 export PALIMPSEST_STATE_ROOT=/var/lib/palimpsest
 export PALIMPSEST_ANALYSIS_ROOT=/var/lib/palimpsest-analysis
-export PALIMPSEST_NEWSWIRE_ROOT=/var/lib/palimpsest/newswire
+export PALIMPSEST_NEWSWIRE_ROOT="$state_root/wire-snapshot"
 export PALIMPSEST_WITNESS_ROOT=/home/palimpsest/.palimpsest-witness
 export PALIMPSEST_BACKUP_DIR="$backup_root"
 export PALIMPSEST_BACKUP_ARTIFACT_SERVICE=api
@@ -43,6 +43,48 @@ export PALIMPSEST_BACKUP_MIN_FREE_MB=16384
 export PALIMPSEST_COMPOSE_PROJECT=palimpsest
 
 started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+python3 - "$state_root" <<'PY'
+import fcntl, hashlib, json, os, shutil, stat, sys
+from datetime import datetime, timezone
+from pathlib import Path
+state = Path(sys.argv[1])
+live = Path("/var/lib/palimpsest/newswire")
+closed = {"newswire-latest.json", "newswire-status.json", "newswire-versions.jsonl", "newswire.lock"}
+derived = "event-analysis-latest.json"
+with (live / "newswire.lock").open("rb") as lease:
+    fcntl.flock(lease, fcntl.LOCK_SH)
+    inventory = {p.name for p in live.iterdir()}
+    if not closed <= inventory or inventory - closed - {derived}:
+        raise SystemExit("Unknown wire recovery files require an explicit backup contract.")
+    target = state / "wire-snapshot"
+    if target.is_symlink():
+        raise SystemExit("Unsafe frozen wire path")
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir(mode=0o700)
+    for name in sorted(closed):
+        path = live / name
+        metadata = path.lstat()
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise SystemExit("Unsafe live wire recovery file")
+        shutil.copy2(path, target / name)
+    supplement = None
+    if derived in inventory:
+        path = live / derived
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise SystemExit("Unsafe derived wire recovery file")
+        raw = path.read_bytes()
+        identity = hashlib.sha256(raw).hexdigest()
+        supplements = Path("/home/palimpsest/backups/runtime-node/.wire-supplements")
+        supplements.mkdir(mode=0o700, exist_ok=True)
+        destination = supplements / (identity + ".json")
+        if not destination.exists():
+            destination.write_bytes(raw)
+        supplement = {"path": str(destination), "sha256": identity}
+    capture = {"captured_at": datetime.now(timezone.utc).isoformat(),
+               "derived_event_analysis": supplement}
+    (state / "wire-capture.json").write_text(json.dumps(capture) + "\n")
+PY
 "$source_root/ops/backup/palimpsest-backup.sh"
 snapshot="$(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name '20??????T??????Z' -printf '%f\n' | LC_ALL=C sort | tail -1)"
 [[ "$snapshot" =~ ^[0-9]{8}T[0-9]{6}Z$ ]]
@@ -64,6 +106,7 @@ receipt = {
     "schema": "palimpsest-runtime-backup.v1", "status": "verified",
     "verified_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     "snapshot_path": sys.argv[3], "verification": proof,
+    "wire_capture": json.loads(Path(sys.argv[2]).with_name("wire-capture.json").read_text()),
     "storage_scope": "Attached volume; external offsite replication is not configured.",
 }
 output = Path(sys.argv[2])

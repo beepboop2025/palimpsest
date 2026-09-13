@@ -13,6 +13,13 @@ than six hours old; failures are retried the next hour. Retention is seven days,
 with a 16-GiB minimum free-space preflight. This is an attached-volume backup;
 it does not establish external offsite protection.
 
+The current wire directory also contains derived event analysis. Under the
+collector's shared lock, freeze the four-file version-4 wire inventory and retain
+the additional derived artifact separately by hash in the private backup state.
+The success receipt binds that capture. Unknown additional files fail the backup
+instead of being silently omitted. This preserves the existing strict archive
+format and retains the new runtime artifact.
+
 Installation requires root-owned immutable copies of the reviewed backup runner
 and verifier, and the deployed host's Compose file and archive helper, under
 `/usr/local/libexec/palimpsest-runtime-backup/source`:
