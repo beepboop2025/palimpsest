@@ -89,7 +89,7 @@ def test_home_rejects_restricted_success_responses_and_uses_fresh_public_feed():
     assert 'document.availability === "unavailable"' in script
     assert "document.publication_allowed === false" in script
     for schema in (
-        "osint-china.v1",
+        "palimpsest-collector-health.v1",
         "palimpsest-newswire.v1",
         "palimpsest.publication-freshness.v1",
     ):

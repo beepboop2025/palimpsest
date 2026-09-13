@@ -234,7 +234,7 @@
     form.addEventListener("input", applyFilters);
     form.addEventListener("reset", function () { window.setTimeout(applyFilters, 0); });
   }
-  fetch("/readings/catalog.json", { cache: "no-cache", credentials: "omit" })
+  fetch("/readings/public-data-catalog-latest.json", { cache: "no-cache", credentials: "omit" })
     .then(function (response) { if (!response.ok) throw new Error("catalog " + response.status); return response.json(); })
     .then(render)
     .catch(fail);

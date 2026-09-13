@@ -57,6 +57,35 @@ def _load_watchdog() -> ModuleType:
 watchdog = _load_watchdog()
 
 
+def test_public_catalog_watchdog_rejects_stale_counts_and_restricted_downloads():
+    now = datetime(2026, 9, 13, 18, tzinfo=UTC)
+    catalog = {
+        "schema": "palimpsest-data-catalog/v1", "generated_at": "2026-09-13T17:55:00Z",
+        "datasets": [{"id": "sample", "artifacts": {
+            "evidence_state": "fresh", "observed_at": "2026-09-13T17:50:00Z",
+            "age_seconds": 300, "latest_available": True,
+        }}],
+        "summary": {"datasets": 1, "states": {"fresh": 1}},
+    }
+    health = {
+        "schema_version": "palimpsest-collector-health.v1",
+        "generated_at": catalog["generated_at"],
+        "summary": {"n_datasets": 1, "by_state": {"fresh": 1}},
+        "signals": [{"id": "sample", **catalog["datasets"][0]["artifacts"]}],
+    }
+    assert watchdog.validate_public_catalog(catalog, health, now=now)["available_downloads"] == 1
+    health["signals"][0]["age_seconds"] = 99
+    with pytest.raises(watchdog.WatchdogError, match="artifact metadata"):
+        watchdog.validate_public_catalog(catalog, health, now=now)
+    health["signals"][0]["age_seconds"] = 300
+    catalog["datasets"][0]["publication_allowed"] = False
+    with pytest.raises(watchdog.WatchdogError, match="restricted dataset"):
+        watchdog.validate_public_catalog(catalog, health, now=now)
+    catalog["datasets"][0].pop("publication_allowed")
+    with pytest.raises(watchdog.WatchdogError, match="stale"):
+        watchdog.validate_public_catalog(catalog, health, now=now + timedelta(hours=2))
+
+
 def _json_bytes(document: dict[str, Any]) -> bytes:
     return (
         json.dumps(document, ensure_ascii=False, separators=(",", ":"), sort_keys=True)

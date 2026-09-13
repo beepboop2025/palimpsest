@@ -2027,6 +2027,8 @@ def _validate_live_manifest(
         "manifest_sha256": _sha256(raw),
         "file_count": file_count,
         "total_bytes": total_bytes,
+        "public_catalog_expected": "readings/public-data-catalog-latest.json"
+        in manifest.get("critical_files", {}),
     }
 
 
@@ -3361,6 +3363,56 @@ def _lineage_only() -> int:
     return 0
 
 
+def validate_public_catalog(catalog, health, *, now):
+    """Check dataset visibility and health against one current publication."""
+    if (catalog.get("schema") != "palimpsest-data-catalog/v1"
+            or health.get("schema_version") != "palimpsest-collector-health.v1"):
+        raise WatchdogError("public dataset catalog or health schema is missing")
+    if catalog.get("generated_at") != health.get("generated_at"):
+        raise WatchdogError("dataset catalog and health belong to different editions")
+    generated = datetime.fromisoformat(catalog["generated_at"].replace("Z", "+00:00"))
+    age = (now - generated).total_seconds()
+    if age < -120 or age > PUBLICATION_MAX_AGE_SECONDS:
+        raise WatchdogError("public dataset catalog is stale or future-dated")
+    datasets = catalog.get("datasets")
+    signals = health.get("signals")
+    if not isinstance(datasets, list) or not datasets or not isinstance(signals, list):
+        raise WatchdogError("public dataset inventory is empty")
+    rows = {row["id"]: row for row in datasets}
+    health_rows = {row["id"]: row for row in signals}
+    if (len(rows) != len(datasets) or len(health_rows) != len(signals)
+            or set(rows) != set(health_rows)):
+        raise WatchdogError("public dataset and health membership differ")
+    counts = {}
+    stale = []
+    available = 0
+    for identity, row in rows.items():
+        metadata = row["artifacts"]
+        state = metadata["evidence_state"]
+        counts[state] = counts.get(state, 0) + 1
+        projected = health_rows[identity]
+        if any(projected.get(key) != metadata.get(key) for key in (
+            "evidence_state", "observed_at", "age_seconds"
+        )):
+            raise WatchdogError("dataset health differs from its artifact metadata")
+        if row.get("publication_allowed") is False and (
+            metadata.get("latest_available") or metadata.get("history_available")
+            or metadata.get("counts") or row.get("distributions")
+        ):
+            raise WatchdogError("restricted dataset advertises public values")
+        available += int(metadata.get("latest_available") is True)
+        if state == "stale":
+            stale.append(identity)
+    if (counts != catalog["summary"]["states"]
+            or counts != health["summary"]["by_state"]
+            or len(rows) != catalog["summary"]["datasets"]
+            or len(rows) != health["summary"]["n_datasets"]):
+        raise WatchdogError("dataset summary does not match its actual rows")
+    return {"generated_at": catalog["generated_at"], "datasets": len(rows),
+            "available_downloads": available, "by_state": counts,
+            "stale_datasets": sorted(stale)}
+
+
 def main(argv: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else argv
     if arguments == ["--lineage-only"]:
@@ -3466,6 +3518,21 @@ def main(argv: list[str] | None = None) -> int:
         )
         lineage["candidate"] = candidate
         checks["publication"] = lineage
+        if live.get("public_catalog_expected"):
+            # The publisher can switch editions between HTTP reads. Retry a
+            # mismatched pair once; never turn that race into false coverage.
+            for attempt in range(2):
+                try:
+                    catalogs = [fetch_json_url(origin + "/readings/public-data-catalog-latest.json")
+                                for origin in (lineage_config.public_origin, lineage_config.provider_origin)]
+                    health = fetch_json_url(lineage_config.public_origin + "/readings/collector-health-latest.json")
+                    if catalogs[0] != catalogs[1]:
+                        raise WatchdogError("public and provider dataset catalogs differ")
+                    checks["dataset_catalog"] = validate_public_catalog(catalogs[0], health, now=now)
+                    break
+                except (KeyError, TypeError, ValueError, OSError, WatchdogError) as exc:
+                    if attempt:
+                        add_problem(problems, "datasets/publication", str(exc))
         # A consumed journal may disappear during validation. Only a complete,
         # stable lineage proof can replace the conservative entry-time flag.
         data_hold_active = (
