@@ -6,9 +6,7 @@
   <title>Evidence Atlas · Palimpsest data catalog</title>
   <meta name="description" content="Search every Palimpsest dataset by layer, collection mode, freshness, geography, source, cadence, method and license. Download current JSON and append-only histories.">
   <link rel="canonical" href="https://palimpsest.info/data.html">
-  <link rel="alternate" type="application/json" href="https://palimpsest.info/readings/catalog.json" title="Palimpsest data catalog">
-  <link rel="alternate" type="application/ld+json" href="https://palimpsest.info/readings/catalog.jsonld" title="Palimpsest DCAT/schema.org catalog">
-  <link rel="alternate" type="application/json" href="https://palimpsest.info/datapackage.json" title="Palimpsest data package">
+  <link rel="alternate" type="application/json" href="https://palimpsest.info/readings/public-data-catalog-latest.json" title="Palimpsest public data catalog">
   <link rel="alternate" type="application/json" href="https://palimpsest.info/readings/evidence-lake-metrics-latest.json" title="Palimpsest evidence-lake aggregate metrics">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta property="og:site_name" content="Palimpsest">
@@ -31,7 +29,7 @@
   </script>
   <link rel="stylesheet" href="/dashboards/assets/tikto.css">
   <link rel="stylesheet" href="/assets/shell.css">
-  <link rel="stylesheet" href="/assets/data-catalog.css">
+  <link rel="stylesheet" href="/assets/data-catalog.css?v=20260914-live-data">
   <link rel="stylesheet" href="/assets/evidence-lake-metrics.css">
 </head>
 <body class="ps tk atlas">
@@ -66,9 +64,7 @@
         download. Active, passive, derived, gated and stale are never collapsed into “available.”</p>
       <div class="atlas-actions">
         <a class="ps-btn" href="#datasets">Explore datasets</a>
-        <a class="ps-btn ps-btn--ghost" href="/readings/catalog.json">Catalog JSON</a>
-        <a class="ps-btn ps-btn--ghost" href="/readings/catalog.jsonld">JSON-LD</a>
-        <a class="ps-btn ps-btn--ghost" href="/datapackage.json">Data package</a>
+        <a class="ps-btn ps-btn--ghost" href="/readings/public-data-catalog-latest.json">Catalog JSON</a>
         <a class="ps-btn ps-btn--ghost" href="#evidence-lake">Lake metrics</a>
       </div>
     </div>
@@ -179,7 +175,7 @@
     <noscript>
       <div class="atlas-empty">This explorer needs JavaScript for local filtering. Every file remains
         directly available in the <a href="/readings/">plain readings directory</a> and
-        <a href="/readings/catalog.json">catalog JSON</a>.</div>
+        <a href="/readings/public-data-catalog-latest.json">catalog JSON</a>.</div>
     </noscript>
   </section>
 
