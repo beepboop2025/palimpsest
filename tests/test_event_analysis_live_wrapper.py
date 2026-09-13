@@ -163,7 +163,7 @@ def _create_runtime_repository(
     repository = tmp_path / "canonical"
     repository.mkdir(mode=0o700)
     _git(repository, "init", "-q", "-b", "main")
-    _git(repository, "config", "user.email", "runtime-test@palimpsest.invalid")
+    _git(repository, "config", "user.email", "runtime-test@example.com")
     _git(repository, "config", "user.name", "Palimpsest Runtime Test")
     (repository / "README").write_text("protected predecessor\n", encoding="utf-8")
     _git(repository, "add", "README")

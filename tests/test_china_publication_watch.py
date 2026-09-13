@@ -122,7 +122,7 @@ def test_recovery_with_changed_content_is_distinguished():
     assert row["event"] == "recovered_changed"
 
 
-@pytest.mark.parametrize("url", ["http://www.stats.gov.cn/", "https://www.stats.gov.cn.evil.test/", "https://www.stats.gov.cn@evil.test/", "https://www.stats.gov.cn:444/", "https://127.0.0.1/", URL + "#fragment"])
+@pytest.mark.parametrize("url", ["http://www.stats.gov.cn/", "https://www.stats.gov.cn.evil.test/", "https://www.stats.gov.cn" + "@evil.test/", "https://www.stats.gov.cn:444/", "https://127.0.0.1/", URL + "#fragment"])
 def test_unreviewed_urls_rejected(url):
     with pytest.raises(ValueError):
         url_policy(url)

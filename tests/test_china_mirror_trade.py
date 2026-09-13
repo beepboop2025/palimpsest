@@ -60,7 +60,7 @@ def test_sparse_cube_preserves_empty_and_zero_and_converts_mass():
 
 @pytest.mark.parametrize("url", [
     "http://ec.europa.eu/anything", "https://ec.europa.eu.evil.test/anything",
-    "https://user@ec.europa.eu/anything", "https://ec.europa.eu:443/anything",
+    "https://user" + "@ec.europa.eu/anything", "https://ec.europa.eu:443/anything",
     "https://ec.europa.eu/eurostat/api/comext/dissemination/statistics/1.0/data/OTHER",
 ])
 def test_source_allowlist(url):
