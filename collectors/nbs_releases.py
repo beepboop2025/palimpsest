@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 
 from core.safe_fetch import safe_fetch_bytes
 
-PARSER_VERSION = "nbs-release-tables.v3"
+PARSER_VERSION = "nbs-release-tables.v4"
 INDEX_URL = "https://www.stats.gov.cn/english/PressRelease/"
 TERMS_URL = "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
 MAX_BYTES = 4 * 1024 * 1024
@@ -79,6 +79,8 @@ def soup_from(raw: bytes) -> BeautifulSoup:
 
 def classify(title: str) -> str | None:
     folded = title.casefold().replace("’", "'")
+    if re.fullmatch(r"preliminary accounting results of gdp for .+", folded):
+        return "national_accounts"
     if "profit of industrial enterprises" in folded:
         return "industrial_profits"
     return next((key for key, (_, term) in FAMILIES.items() if term in folded), None)
@@ -92,9 +94,10 @@ def discover(raw: bytes, url: str = INDEX_URL) -> list[dict]:
         if not re.fullmatch(r"https://www\.stats\.gov\.cn/english/PressRelease/\d{6}/t\d{8}_\d+\.html", target):
             continue
         title = clean(anchor.get("title") or anchor.get_text(" ", strip=True))
+        title = re.sub(r"^\d+\.\s*", "", title)
         family = classify(title)
         if family:
-            found[target] = {"url": target, "title": re.sub(r"^\d+\.", "", title), "family": family}
+            found[target] = {"url": target, "title": title, "family": family}
     if not found:
         raise NBSReleaseError("NBS index has no recognized statistical releases")
     return list(found.values())
@@ -159,10 +162,23 @@ def table_context(table) -> str:
 
 def extract_table(table, ordinal: int) -> dict | None:
     grid = expand_table(table)
-    # A data row has a dimension label and at least one numeric measure. A
-    # numeric date/header row has no nonnumeric first-column label and is skipped.
+    # A four-digit year is a dimension only when a single explicit Year header
+    # identifies column zero. Numeric amount/date headings without that contract
+    # must not silently become observation rows.
+    year_headers = [r for r, row in enumerate(grid)
+                    if row and row[0].casefold() == "year"
+                    and all(value and number(value) is None for value in row[1:])
+                    and len(set(row)) > 1]
+    year_header = year_headers[0] if len(year_headers) == 1 else None
+
+    def year_label(label: str, row_index: int) -> bool:
+        return (year_header is not None and row_index > year_header
+                and re.fullmatch(r"[0-9]{4}", label) is not None)
+
+    # Other datasets continue to require a nonnumeric first-column dimension.
     start = next((r for r, row in enumerate(grid)
-                  if row and row[0] and number(row[0]) is None
+                  if row and row[0] and row[0].casefold() != "year"
+                  and (number(row[0]) is None or year_label(row[0], r))
                   and any(number(value) is not None for value in row[1:])
                   and len(set(row)) > 1), None)
     if start is None or start == 0:
@@ -185,7 +201,8 @@ def extract_table(table, ordinal: int) -> dict | None:
             dimensions = [c for c in range(column) if re.search(r"\b(?:city|cities)\b", headers[c], re.I)]
             label_column = dimensions[-1] if dimensions else 0
             label = row[label_column]
-            if not label or number(label) is not None:
+            if not label or (number(label) is not None
+                             and not (label_column == 0 and year_label(label, source_row - 1))):
                 continue
             cells.append({"source_row": source_row, "source_column": column + 1,
                           "row_label": label, "column_label": headers[column],
