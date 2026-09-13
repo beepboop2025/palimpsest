@@ -30,6 +30,14 @@ New preregistration: sequence 548, timestamp
 The candidate has seven preregistrations and the same 542 historical runs. Its
 Merkle root is `0755867732952ba49f864a2155405196cfa93039d7f5b4cc1e3e50ea5e0b9fd8`.
 
+The preceding protocol is retained byte-for-byte at
+`readings/gfi-evaluation-protocol-v2-6744b2dfb76af10941eedd9bac5663adca68a90b4270c45e20d907f48c2d6b93.json`
+(SHA-256 `c58aa0bba81d2a1ecbff5c84e7ed368be46b974ceb36ad1c35b9d0d2df4c90de`).
+Historical transcripts and assurance resolve this exact recorded commitment;
+unknown, missing or altered archives fail verification. The current protocol
+continues to guard new collection. Future preregistrations preserve their
+predecessor automatically and refuse conflicting archive bytes.
+
 The classifier SHA-256 changes from
 `d51c6ed3bf864addd4114fad44b4d03966d013f4ac74ab07d7aa40ebcf7ff47b` to
 `af04c679402fc7e1035fbb9a2a38aea7fc1ef93fbd27ec18a3e8a1206c390615`.
@@ -53,6 +61,12 @@ Never append a preregistration and query models in the same unpublished run.
    querying a locally registered protocol before public deployment. Do not
    interrupt a running collector to obtain it. Coordinate the existing publisher
    and its source rotation using its normal release protocol.
+   Only while holding this lock, rotate the measurement service's immutable source
+   and deployed-commit marker to this exact merged candidate. The installed helper
+   does not overlay the protocol from host readings, so changing only the publisher
+   or host readings leaves the collector on its old protocol. This source update
+   also supplies the historical protocol archive and updated verifier. Activating
+   the new source before acquiring the lock could allow premature model requests.
 3. While holding the refresh lock, acquire
    `/var/lib/palimpsest/railway-publication/data.lock` exclusively. Re-read the
    host registry, verify its chain and exact pinned 309-entry hash, and require
@@ -61,8 +75,11 @@ Never append a preregistration and query models in the same unpublished run.
    preserve both sides; do not overwrite an advanced or divergent host.
 4. Preserve the old host registry and summary, their hashes, ownership and modes,
    and the fact that the host protocol was absent. Stage the three verified
-   candidate files on the host readings filesystem, preserving the appropriate
-   existing service ownership and `0640` readability. Replace each file by atomic
+   candidate files on the host readings filesystem, preserving verified existing
+   service ownership and modes (the registry and summary were observed as
+   `palimpsest-analysis:palimpsest-analysis`, mode `0664`). Set the new protocol's
+   ownership and permissions consistently so collectors and publishers can read
+   it. Replace each file by atomic
    rename under the data lock. Verify all hashes and the chain again before
    releasing that lock. Three renames are not one atomic transaction: retain a
    transaction receipt and keep publication blocked if any rename/check fails.
@@ -70,7 +87,8 @@ Never append a preregistration and query models in the same unpublished run.
    readings, while retaining the refresh lock. Publish the registered protocol,
    549-entry registry and matching summary through the normal admission/deployment
    gates. Verify HTTP success and byte equality for all three files on both
-   configured public origins, then verify the downloaded registry and protocol.
+   configured public origins, plus the archived protocol, then verify the
+   downloaded registry and both the current protocol and historical transcripts.
    Record release identity, hashes, URLs and retrieval timestamps. A successful
    merge or local `--check` alone is not proof of public preregistration.
 6. Only after those public checks pass, release the refresh lock and permit a

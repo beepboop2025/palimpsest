@@ -56,7 +56,10 @@ def test_exact_protocol_is_public_before_any_paid_model_call():
     collect = text.index("run: python scripts/generative_firewall_reading.py")
 
     assert preregister < prereg_commit < prereg_push < collect
-    assert "readings/gfi-evaluation-protocol-v2.json" in text[preregister:collect]
+    assert "'readings/gfi-evaluation-protocol-v2*.json'" in text[preregister:collect]
+    assert text.index("git add 'readings/gfi-evaluation-protocol-v2*.json'") < text.index(
+        "python scripts/verify_public_surface.py", preregister,
+    )
 
 
 def test_gfi_publication_carries_full_evidence_and_machine_assurance():

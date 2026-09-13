@@ -242,7 +242,14 @@ def _frontier_checks(root: Path, entries: list[dict]) -> list[dict]:
 def _gfi_checks(root: Path, entries: list[dict]) -> list[dict]:
     reading = _json(root / "readings" / "latest.json")
     summary = reading.get("summary") if isinstance(reading.get("summary"), dict) else {}
-    protocol = _json(root / "readings" / "gfi-evaluation-protocol-v2.json")
+    try:
+        protocol = gfi_proto.load_recorded_protocol(
+            root / "readings" / "gfi-evaluation-protocol-v2.json",
+            probe_commitment=summary.get("probe_commitment"),
+            evaluation_protocol_sha256=summary.get("evaluation_protocol_sha256"),
+        )
+    except (OSError, ValueError):
+        protocol = {}
     transcripts = _json(root / "readings" / "gfi-transcripts-latest.json")
     protocol_ok, _ = gfi_proto.verify_protocol(protocol) if protocol else (False, [])
     commitment = protocol.get("probe_commitment")
@@ -256,6 +263,8 @@ def _gfi_checks(root: Path, entries: list[dict]) -> list[dict]:
         frozen
         and summary.get("probe_commitment") == commitment
         and transcripts.get("probe_commitment") == commitment
+        and summary.get("evaluation_protocol_sha256") == protocol.get("evaluation_protocol_sha256")
+        and transcripts.get("evaluation_protocol_sha256") == protocol.get("evaluation_protocol_sha256")
     )
     applies = [gfi_proto.SUITE if has_v2 else "cn-sensitive-generative-firewall-v1"]
     response_ok = False

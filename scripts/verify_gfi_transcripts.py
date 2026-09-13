@@ -44,8 +44,12 @@ def verify_paths(
 ) -> tuple[bool, list[str], dict]:
     problems: list[str] = []
     reading = _load(reading_path)
-    protocol = _load(protocol_path)
     transcripts = _load(transcripts_path)
+    summary = reading.get("summary") if isinstance(reading.get("summary"), dict) else {}
+    protocol = gfi_proto.load_recorded_protocol(
+        protocol_path, probe_commitment=summary.get("probe_commitment"),
+        evaluation_protocol_sha256=summary.get("evaluation_protocol_sha256"),
+    )
     entries = reg.read_ledger(registry_path)
     chain_ok, chain_problems = reg.verify(entries)
     problems.extend(f"registry: {problem}" for problem in chain_problems)
@@ -54,7 +58,6 @@ def verify_paths(
     problems.extend(f"protocol: {problem}" for problem in protocol_problems)
     commitment = protocol.get("probe_commitment")
     protocol_hash = protocol.get("evaluation_protocol_sha256")
-    summary = reading.get("summary") if isinstance(reading.get("summary"), dict) else {}
     for name, artifact in (("reading", summary), ("transcripts", transcripts)):
         if artifact.get("probe_commitment") != commitment:
             problems.append(f"{name}: probe commitment differs from protocol")
