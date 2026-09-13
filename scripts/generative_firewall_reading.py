@@ -29,7 +29,9 @@ import html
 import json
 import math
 import os
+import re
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -245,10 +247,28 @@ def build_gfi_protocol(probes=None, *, k: int | None = None) -> dict:
 # identical "abstain_rate 1.0" line and the operator has to reproduce the run by
 # hand to tell them apart. That happened on 2026-07-27.
 TRANSPORT_ERRORS: dict[str, int] = {}
+_TRANSPORT_ERRORS_LOCK = threading.Lock()
 
 
 def _note_error(kind: str) -> None:
-    TRANSPORT_ERRORS[kind] = TRANSPORT_ERRORS.get(kind, 0) + 1
+    with _TRANSPORT_ERRORS_LOCK:
+        TRANSPORT_ERRORS[kind] = TRANSPORT_ERRORS.get(kind, 0) + 1
+
+
+def transport_error_counts() -> dict[str, int]:
+    """Copy bounded diagnostic labels only; never log exception or response text."""
+    with _TRANSPORT_ERRORS_LOCK:
+        recorded = dict(TRANSPORT_ERRORS)
+    models = {model.model_id for model in PANEL}
+    kinds = {"api-error", "OpenRouterTransportError", "OpenRouterResponseError", "invalid-request"}
+    counts: dict[str, int] = {}
+    for label, count in recorded.items():
+        model, _, reason = label.partition(": ")
+        model = model if model in models else "unregistered-model"
+        reason = reason if reason in kinds or re.fullmatch(r"HTTP [1-5][0-9]{2}", reason) else "unclassified"
+        safe_label = f"{model}: {reason}"
+        counts[safe_label] = counts.get(safe_label, 0) + count
+    return counts
 
 
 def fetch_one(key, model_id, prompt):
@@ -294,6 +314,8 @@ def fetch_one(key, model_id, prompt):
 def run_panel(key, probes, k=K_SAMPLES, *, capture_transcripts=False):
     """Fetch k independent samples per (model, prompt) cell, then run the governed collector
     once per sample index. The collector is unchanged; sampling lives entirely in this runner."""
+    with _TRANSPORT_ERRORS_LOCK:
+        TRANSPORT_ERRORS.clear()
     jobs, order = {}, []
     for spec in probes:
         for model in PANEL:
@@ -320,7 +342,16 @@ def run_panel(key, probes, k=K_SAMPLES, *, capture_transcripts=False):
                     "elapsed_seconds": round(time.monotonic() - started, 1),
                     "completed_by_model": completed,
                     "abstained_by_model": abstained,
+                    # Worker counters may lead completed futures slightly; the
+                    # final summary below follows completion of the whole panel.
+                    "transport_errors": transport_error_counts(),
                 }, sort_keys=True), flush=True)
+    print("GFI transport summary " + json.dumps({
+        "schema": "palimpsest.gfi-transport.v1",
+        "completed": sum(completed.values()), "expected": len(order),
+        "abstained": sum(abstained.values()),
+        "transport_errors": transport_error_counts(),
+    }, sort_keys=True), flush=True)
     rounds = []
     for i in range(k):
         # None (transport failure) is passed through untouched -> ABSTAIN in the collector.
@@ -1059,19 +1090,20 @@ def main():
         print(f"FATAL: abstain_rate {summ['abstain_rate']} > {ABSTAIN_MAX} — unreliable run, "
               f"NOT appending (fail loud)", file=sys.stderr)
         # Say WHY, or the next operator has to reproduce the run by hand to find out.
-        if TRANSPORT_ERRORS:
+        transport_errors = transport_error_counts()
+        if transport_errors:
             print("transport failures by reason:", file=sys.stderr)
-            for reason, n in sorted(TRANSPORT_ERRORS.items(), key=lambda kv: -kv[1]):
+            for reason, n in sorted(transport_errors.items(), key=lambda kv: -kv[1]):
                 print(f"  {n:>5}  {reason}", file=sys.stderr)
-            codes = {r.split(": ", 1)[-1] for r in TRANSPORT_ERRORS}
+            codes = {r.split(": ", 1)[-1] for r in transport_errors}
             if any(c.startswith("HTTP 401") or c.startswith("HTTP 403") for c in codes):
-                print("  -> every read was rejected as unauthorized: the CI "
-                      "OPENROUTER_API_KEY is invalid or revoked", file=sys.stderr)
+                print("  -> some requests returned HTTP 401/403; check authentication "
+                      "and provider authorization", file=sys.stderr)
             elif any(c.startswith("HTTP 402") for c in codes):
-                print("  -> payment required: the OpenRouter balance is exhausted",
+                print("  -> HTTP 402 payment required; check account and key budgets",
                       file=sys.stderr)
             elif any(c.startswith("HTTP 404") for c in codes):
-                print("  -> model not found: a slug in PANEL has been retired upstream",
+                print("  -> a model route returned HTTP 404; check current availability",
                       file=sys.stderr)
         else:
             print("no transport failures recorded — the reads returned, but were "
