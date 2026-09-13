@@ -1,0 +1,37 @@
+[Unit]
+Description=Publish verified Palimpsest archive context metadata
+Requires=palimpsest-common-crawl-context.service
+After=palimpsest-common-crawl-context.service
+RequiresMountsFor=/opt/palimpsest-archive/source /var/lib/palimpsest/archive-context-refresh /var/lib/palimpsest/common-crawl
+OnSuccess=palimpsest-railway-publish.service
+ConditionPathIsDirectory=/var/lib/palimpsest/archive-context-refresh
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+SupplementaryGroups=palimpsest-analysis
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/palimpsest/archive-context-refresh.env
+ExecStart=/usr/local/sbin/palimpsest-archive-context-refresh
+TimeoutStartSec=5m
+UMask=0077
+Nice=15
+MemoryMax=1G
+TasksMax=32
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/palimpsest/readings /var/lib/palimpsest/archive-context-refresh
+ReadOnlyPaths=/var/lib/palimpsest/common-crawl /var/lib/palimpsest/railway-publication
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+IPAddressDeny=any
+RestrictAddressFamilies=AF_UNIX
+NoNewPrivileges=true
+CapabilityBoundingSet=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
