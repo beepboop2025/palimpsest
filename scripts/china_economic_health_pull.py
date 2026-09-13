@@ -16,6 +16,9 @@ from core.safe_fetch import FetchError
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = "palimpsest.china-economic-health.v1"
+# GDP releases are quarterly, unlike the monthly source families. This is a
+# release-age allowance; rereading a source never advances its economic clock.
+FAMILY_RELEASE_MAX_AGE_DAYS = {"commodities": 25, "national_accounts": 120}
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -53,6 +56,12 @@ def _collect(store, output, index_pages, max_releases, pause_seconds, transport,
     manifest = json.loads(index_path.read_text()) if index_path.exists() else {"schema": SCHEMA, "captures": {}}
     if manifest.get("schema") != SCHEMA or not isinstance(manifest.get("captures"), dict):
         raise ValueError("economic capture manifest is invalid")
+    current_sources = {(row["source_url"], row["raw_sha256"])
+                       for row in manifest["captures"].values()
+                       if row.get("parser_version") == PARSER_VERSION}
+    if any((row["source_url"], row["raw_sha256"]) not in current_sources
+           for row in manifest["captures"].values()):
+        raise ValueError("retained parser versions require --reparse-retained before collection")
     found, failures = {}, []
     for page in range(index_pages):
         url = INDEX_URL + (f"index_{page}.html" if page else "")
@@ -120,7 +129,7 @@ def _collect(store, output, index_pages, max_releases, pause_seconds, transport,
             releases.append(json.loads(raw))
             # A successful reread does not advance the economic or release clock.
             age = (datetime.fromisoformat(now.replace("Z", "+00:00")) - datetime.fromisoformat(current["released_at"].replace("Z", "+00:00"))).total_seconds() / 86400
-            status = "current" if age <= (25 if family == "commodities" else 65) else "stale"
+            status = "current" if age <= FAMILY_RELEASE_MAX_AGE_DAYS.get(family, 65) else "stale"
             if newest_discovered and newest_discovered["url"] not in successful_urls:
                 status = "update_failed"
             elif not newest_discovered:
