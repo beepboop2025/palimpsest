@@ -88,6 +88,7 @@ public_outputs_for_job() {
     net4people) printf '%s\n' readings/net4people-latest.json readings/net4people-history.jsonl ;;
     public-deletion-ledgers) printf '%s\n' readings/public-deletion-ledgers-latest.json readings/public-deletion-ledgers-history.jsonl ;;
     greatfire-context) printf '%s\n' readings/greatfire-context-latest.json readings/greatfire-context-history.jsonl ;;
+    peer-context-rank) printf '%s\n' readings/peer-context-rank-latest.json readings/peer-context-rank-history.jsonl ;;
     peer-context) printf '%s\n' readings/peer-context-latest.json readings/peer-context-history.jsonl readings/peer-context-features.jsonl readings/ooni-peer-context-latest.json readings/ooni-peer-context-history.jsonl readings/cdt-context-latest.json readings/cdt-context-history.jsonl readings/weiboscope-context-latest.json ;;
     research-corpus) printf '%s\n' readings/research-corpus-latest.json readings/research-corpus-history.jsonl ;;
     ooni-gfw) printf '%s\n' readings/ooni-gfw-latest.json readings/ooni-gfw-history.jsonl ;;
@@ -347,12 +348,17 @@ run_job net4people 720 "$PYTHON_BIN" -m scripts.net4people_pull
 run_job public-deletion-ledgers 180 "$PYTHON_BIN" -m scripts.public_deletion_ledgers_pull
 run_job greatfire-context 720 "$PYTHON_BIN" -m scripts.greatfire_context_pull
 run_job peer-context 360 "$PYTHON_BIN" -m scripts.peer_context_pull
+# Cached warehouse analysis only; retain its distinct latest/history outputs.
+run_job peer-context-rank 360 "$PYTHON_BIN" -m scripts.peer_context_rank_pull
 run_job research-corpus 720 "$PYTHON_BIN" -m scripts.research_corpus_ingest
-run_job ooni-gfw 360 "$PYTHON_BIN" -m scripts.ooni_gfw_pull
-run_job in-path-interference 360 "$PYTHON_BIN" -m scripts.in_path_interference_pull
+# A 90-minute guard on the hourly timer normally collects every two hours.
+# The former six-hour guard exceeded these datasets' five-hour freshness budget.
+# Existing query sets, request throttles, retry caps and abstention stay intact.
+run_job ooni-gfw 90 "$PYTHON_BIN" -m scripts.ooni_gfw_pull
+run_job in-path-interference 90 "$PYTHON_BIN" -m scripts.in_path_interference_pull
 run_job censored-planet 1440 "$PYTHON_BIN" -m scripts.censored_planet_pull
 run_job inside-view 360 "$PYTHON_BIN" -m scripts.inside_view_pull
-run_job ioda-outages 360 "$PYTHON_BIN" -m scripts.ioda_outages_pull
+run_job ioda-outages 90 "$PYTHON_BIN" -m scripts.ioda_outages_pull
 run_job circumvention-demand 1440 "$PYTHON_BIN" -m scripts.circumvention_demand_pull
 run_job vantage-fusion 360 "$PYTHON_BIN" -m scripts.vantage_fusion_pull
 run_job erasure-observatory 360 "$PYTHON_BIN" -m scripts.erasure_pull

@@ -147,6 +147,14 @@ CADENCE_PER_DAY = {
     "data_darkness": 1.0, "silence_blackouts": 24.0,
 }
 
+# Current Hetzner producer upper bounds, kept separate from the historical
+# workflow rates above. A 90-minute successful-run guard permits at most 16
+# scheduled collections/day (normally 12 on the hourly timer). Use the upper
+# bound only for newly rendered wall-clock explanations; never rewrite history,
+# detector statistics or their reading-based guarantees. Movement-only history
+# and delayed runs can append fewer readings, so this is deliberately conservative.
+CURRENT_MAX_READINGS_PER_DAY = {"ooni_gfw": 16.0, "ioda_outages": 16.0}
+
 # Board-level signal -> history file, for every signal the board consumes: the
 # conformal registry plus the non-conformal churn signal. This is what the cadence
 # test walks, so a signal added here without a workflow behind its file fails loudly.
@@ -211,7 +219,7 @@ def layer_evalues(evalues: dict[str, float],
 
 
 def _readings_to_days(signal: str, readings: float) -> float | None:
-    rate = CADENCE_PER_DAY.get(signal)
+    rate = CURRENT_MAX_READINGS_PER_DAY.get(signal, CADENCE_PER_DAY.get(signal))
     return round(readings / rate, 1) if rate else None
 
 
@@ -332,6 +340,10 @@ def build_reading(
         "headline": headline,
         "readings_to_days": {
             s: _readings_to_days(s, ALARM_A) for s in sorted(CADENCE_PER_DAY)
+        },
+        "readings_to_days_basis": {
+            "current_producer_max_readings_per_day": dict(CURRENT_MAX_READINGS_PER_DAY),
+            "semantics": "Conservative current schedule conversion; historical rows and reading-based guarantees are unchanged.",
         },
         "method": (
             "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the "
