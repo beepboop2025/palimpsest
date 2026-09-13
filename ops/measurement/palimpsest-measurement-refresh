@@ -416,7 +416,9 @@ run_job wayback 720 "$PYTHON_BIN" -m scripts.wayback_reconstruct_pull
 run_job baike-redaction 360 "$PYTHON_BIN" -m scripts.baike_redaction_pull
 run_job baike-public-snapshot 360 "$PYTHON_BIN" -m scripts.baike_public_snapshot_pull
 run_job github-refuge 720 "$PYTHON_BIN" -m scripts.github_refuge_pull
-run_job app-storefront 360 "$PYTHON_BIN" -m scripts.app_storefront_pull
+# The public catalog promises two-hour observations; reserve thirty minutes
+# for completion-time drift before the existing hourly timer checks again.
+run_job app-storefront 90 "$PYTHON_BIN" -m scripts.app_storefront_pull
 run_job apple-censorship 1440 "$PYTHON_BIN" -m scripts.apple_censorship_pull
 run_job china-econ 360 "$PYTHON_BIN" -m scripts.china_econ_pull
 run_job china-economic-health 360 env PALIMPSEST_ECONOMIC_HEALTH_STORE="$STATE_ROOT/private/china-economic-health" "$PYTHON_BIN" -m scripts.china_economic_health_pull --index-pages 2 --max-releases 14
