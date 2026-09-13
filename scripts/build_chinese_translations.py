@@ -692,6 +692,8 @@ def discover_candidates(
 
 def _translation_cache_from_artifact(
     artifact: dict[str, Any],
+    *,
+    source_texts: dict[str, tuple[str, str]] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     cache: dict[str, dict[str, Any]] = {}
     for record in artifact.get("translations", []):
@@ -708,6 +710,17 @@ def _translation_cache_from_artifact(
             and provenance.get("prompt_revision") == PROMPT_REVISION
             and _valid_english(english)
         ):
+            if source_texts is not None:
+                title, context = original.get("title"), original.get("context")
+                if (
+                    not isinstance(title, str)
+                    or not isinstance(context, str)
+                    or _sha256_json({"title_zh": title, "context_zh": context}) != digest
+                ):
+                    raise TranslationBuildError(
+                        f"cache source content digest does not recompute: {digest}"
+                    )
+                source_texts[digest] = (title, context)
             cached = {
                 "english": english,
                 "translation_provenance": _normalise_provenance(provenance),
@@ -722,10 +735,12 @@ def _translation_cache_from_artifact(
     return cache, _normalise_usage(usage)
 
 
-def _translation_cache(path: Path) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+def _translation_cache(
+    path: Path, *, source_texts: dict[str, tuple[str, str]] | None = None,
+) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     if not path.exists():
         return {}, _empty_usage()
-    return _translation_cache_from_artifact(_read_json(path))
+    return _translation_cache_from_artifact(_read_json(path), source_texts=source_texts)
 
 
 def _load_work_cache(path: Path) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
@@ -1269,6 +1284,32 @@ def translate_missing(
     return len(missing)
 
 
+def _publication_english(
+    title_zh: str, context_zh: str, english: dict[str, Any],
+) -> dict[str, Any]:
+    """Apply only the same reviewed, source-bound presentation rules as output."""
+    # A headline-only ledger record has no retained context to translate.  Do
+    # not publish a model-generated placeholder as though it were source text.
+    english = dict(english)
+    if not context_zh:
+        english["context_en"] = ""
+    source_text = f"{title_zh}\n{context_zh}"
+    for normalization in _REVIEWED_NAME_NORMALIZATIONS:
+        if normalization["source_text"] not in source_text:
+            continue
+        for field in ("title_en", "context_en", "background_en"):
+            english[field] = normalization["variant"].sub(
+                normalization["canonical"], english[field]
+            )
+        note = normalization["note"]
+        prior_notes = english["translation_notes_en"].strip()
+        if note not in prior_notes:
+            english["translation_notes_en"] = " ".join(
+                part for part in (prior_notes, note) if part
+            )
+    return english
+
+
 def _record(candidate: Candidate, cached: dict[str, Any]) -> dict[str, Any]:
     profile = script_profile(f"{candidate.title_zh}\n{candidate.context_zh}")
     if not profile["chinese_dominant"]:
@@ -1285,25 +1326,7 @@ def _record(candidate: Candidate, cached: dict[str, Any]) -> dict[str, Any]:
         raise TranslationBuildError(
             f"nonempty Chinese context lacks English translation: {candidate.source_path}"
         )
-    # A headline-only ledger record has no retained context to translate.  Do
-    # not publish a model-generated placeholder as though it were source text.
-    english = dict(english)
-    if not candidate.context_zh:
-        english["context_en"] = ""
-    source_text = f"{candidate.title_zh}\n{candidate.context_zh}"
-    for normalization in _REVIEWED_NAME_NORMALIZATIONS:
-        if normalization["source_text"] not in source_text:
-            continue
-        for field in ("title_en", "context_en", "background_en"):
-            english[field] = normalization["variant"].sub(
-                normalization["canonical"], english[field]
-            )
-        note = normalization["note"]
-        prior_notes = english["translation_notes_en"].strip()
-        if note not in prior_notes:
-            english["translation_notes_en"] = " ".join(
-                part for part in (prior_notes, note) if part
-            )
+    english = _publication_english(candidate.title_zh, candidate.context_zh, english)
     return {
         "translation_id": candidate.translation_id,
         "record_sha256": candidate.record_sha256,
@@ -1685,8 +1708,9 @@ def run_with_state(
             schema_path=schema_path,
             seal_ledger_path=seal_ledger_path,
         )
+    source_texts: dict[str, tuple[str, str]] = {}
     if retained_artifact is None:
-        cache, usage = _translation_cache(output_path)
+        cache, usage = _translation_cache(output_path, source_texts=source_texts)
     else:
         # Use the exact file-descriptor snapshot that passed admission checks.
         # Reopening the path here would create a validation/use race.
@@ -1698,9 +1722,19 @@ def run_with_state(
         for digest, cached in work_cache.items():
             existing = cache.get(digest)
             if existing is not None and existing != cached:
-                raise TranslationBuildError(
-                    f"output and work cache disagree for content digest {digest}"
-                )
+                source = source_texts.get(digest)
+                projected = {
+                    **cached,
+                    "english": _publication_english(*source, cached["english"]),
+                } if source is not None else None
+                if projected != existing:
+                    raise TranslationBuildError(
+                        f"output and work cache disagree for content digest {digest}"
+                    )
+                # Retain the published entry exactly. A raw model placeholder
+                # for absent source context (or a reviewed name variant) is not
+                # a conflicting translation after the same output projection.
+                continue
             cache[digest] = cached
         usage = work_usage
     missing = _unique_missing(candidates, cache)
