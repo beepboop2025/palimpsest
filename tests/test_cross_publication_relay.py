@@ -21,7 +21,7 @@ def test_home_carries_a_complete_dated_narcoscope_fallback():
 def test_relay_upgrade_uses_text_only_and_rejects_foreign_links():
     script = (ROOT / "assets" / "network-relay.js").read_text(encoding="utf-8")
 
-    assert 'var ORIGIN = "https://narcoscope.com"' in script
+    assert 'var ORIGIN = "https://www.narcoscope.com"' in script
     assert "url.origin !== ORIGIN" in script
     assert "target.textContent" in script
     assert "data-relay-state" in script
