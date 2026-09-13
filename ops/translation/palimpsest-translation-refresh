@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Generate a bounded, resumable translation batch outside publication locks.
+set -Eeuo pipefail
+umask 077
+
+readonly SOURCE="${PALIMPSEST_TRANSLATION_SOURCE:?immutable source is required}"
+readonly COMMIT_FILE="${PALIMPSEST_TRANSLATION_COMMIT_FILE:?source marker is required}"
+readonly STATE="${PALIMPSEST_TRANSLATION_STATE_ROOT:-/var/lib/palimpsest/translation-refresh}"
+readonly READINGS="${PALIMPSEST_HOST_READINGS:-/var/lib/palimpsest/readings}"
+readonly WIRE="${PALIMPSEST_LIVE_WIRE_ROOT:-/var/lib/palimpsest/newswire}"
+readonly DATA_LOCK="${PALIMPSEST_DATA_LOCK_FILE:-/var/lib/palimpsest/railway-publication/data.lock}"
+readonly PYTHON="${PALIMPSEST_PYTHON_BIN:-/opt/palimpsest/collector-venv/bin/python}"
+readonly MAX_BATCHES="${PALIMPSEST_TRANSLATION_MAX_BATCHES:-120}"
+readonly WORKERS="${PALIMPSEST_TRANSLATION_WORKERS:-1}"
+[[ "$MAX_BATCHES" =~ ^[1-9][0-9]*$ && "$MAX_BATCHES" -le 120 ]]
+[[ "$WORKERS" =~ ^[1-4]$ ]]
+[[ -d "$STATE" && ! -L "$STATE" && -f "$STATE/refresh.lock" && ! -L "$STATE/refresh.lock" ]]
+exec 9<"$STATE/refresh.lock"
+flock -n 9 || exit 0
+
+base_sha="$(tr -d '[:space:]' < "$COMMIT_FILE")"
+[[ "$base_sha" =~ ^[0-9a-f]{40}$ ]]
+export GIT_NO_REPLACE_OBJECTS=1 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+[[ "$(git -c safe.directory="$SOURCE" -C "$SOURCE" rev-parse HEAD)" == "$base_sha" ]]
+[[ -z "$(git -c safe.directory="$SOURCE" -C "$SOURCE" status --porcelain --untracked-files=no)" ]]
+work="$(mktemp -d "$STATE/work.XXXXXX")"
+cleanup() { rm -rf --one-file-system -- "$work"; }
+trap cleanup EXIT
+trap 'exit 143' TERM
+trap 'exit 130' INT
+git -c safe.directory="$SOURCE" clone --quiet --shared --no-checkout "$SOURCE" "$work/source"
+git -C "$work/source" checkout --quiet --detach "$base_sha"
+cd "$work/source"
+export PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$work/source"
+args=(--host-readings "$READINGS" --wire-root "$WIRE" --state-root "$STATE" --data-lock "$DATA_LOCK")
+"$PYTHON" -B -m scripts.translation_refresh capture "${args[@]}"
+# The OpenRouter key is inherited only by this separate scheduler. Its configured
+# provider daily cap remains the monetary boundary; no credentials enter output.
+timeout --signal=TERM --kill-after=15s 45m "$PYTHON" -B -m scripts.build_chinese_translations \
+  --batch-size 8 --workers "$WORKERS" --max-batches "$MAX_BATCHES" \
+  --work-cache "$STATE/work-cache.json" --keep-work-cache
+"$PYTHON" -B -m scripts.translation_refresh promote "${args[@]}"
+printf '%s\n' 'Translation capture verified, sealed and promoted; public deployment is separate.'

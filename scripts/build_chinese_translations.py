@@ -107,6 +107,15 @@ class TranslationBuildError(RuntimeError):
     """Raised when source coverage or model output is incomplete or unsafe."""
 
 
+class TranslationCheckpointed(TranslationBuildError):
+    """A bounded, successful partial pass that may resume from its saved cache."""
+
+    def __init__(self, completed: int, pending: int):
+        super().__init__("bounded batch allowance reached; completed translations are checkpointed")
+        self.completed = completed
+        self.pending = pending
+
+
 class TranslationRateLimitError(TranslationBuildError):
     """A provider rate ceiling with a bounded server-advised retry delay."""
 
@@ -1213,6 +1222,7 @@ def translate_missing(
     batch_size: int,
     workers: int = DEFAULT_WORKERS,
     work_cache_path: Path | None = None,
+    max_batches: int | None = None,
 ) -> int:
     missing = _unique_missing(candidates, cache)
     batches = [
@@ -1230,10 +1240,11 @@ def translate_missing(
         )
         return batch, local_cache, local_usage
 
+    selected_batches = batches if max_batches is None else batches[:max_batches]
     completed = 0
     errors: list[Exception] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = [executor.submit(translate_one, batch) for batch in batches]
+        futures = [executor.submit(translate_one, batch) for batch in selected_batches]
         for future in concurrent.futures.as_completed(futures):
             try:
                 batch, completed_cache, completed_usage = future.result()
@@ -1253,6 +1264,8 @@ def translate_missing(
         raise TranslationBuildError(
             f"{len(errors)} translation batch(es) failed; first error: {errors[0]}"
         ) from errors[0]
+    if len(selected_batches) < len(batches):
+        raise TranslationCheckpointed(completed, len(missing) - completed)
     return len(missing)
 
 
@@ -1649,7 +1662,11 @@ def run_with_state(
     batch_size: int = DEFAULT_BATCH_SIZE,
     workers: int = DEFAULT_WORKERS,
     work_cache_path: Path | None = None,
+    max_batches: int | None = None,
+    keep_work_cache: bool = False,
 ) -> TranslationBuildResult:
+    if max_batches is not None and (type(max_batches) is not int or not 1 <= max_batches <= 120):
+        raise TranslationBuildError("max batches must be between 1 and 120")
     if check and retain_last_good:
         raise TranslationBuildError(
             "check and retain-last-good are distinct modes and cannot be combined"
@@ -1734,6 +1751,7 @@ def run_with_state(
             batch_size=effective_batch_size,
             workers=workers,
             work_cache_path=work_cache_path,
+            max_batches=max_batches,
         )
     artifact = build_artifact(
         candidates,
@@ -1751,7 +1769,10 @@ def run_with_state(
     else:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(rendered, encoding="utf-8")
-        work_cache_path.unlink(missing_ok=True)
+        if keep_work_cache:
+            _save_work_cache(work_cache_path, cache, usage)
+        else:
+            work_cache_path.unlink(missing_ok=True)
     return TranslationBuildResult(
         artifact=artifact,
         publication_state="current-complete",
@@ -1779,6 +1800,8 @@ def run(
     batch_size: int = DEFAULT_BATCH_SIZE,
     workers: int = DEFAULT_WORKERS,
     work_cache_path: Path | None = None,
+    max_batches: int | None = None,
+    keep_work_cache: bool = False,
 ) -> dict[str, Any]:
     return run_with_state(
         news_root=news_root,
@@ -1793,6 +1816,8 @@ def run(
         batch_size=batch_size,
         workers=workers,
         work_cache_path=work_cache_path,
+        max_batches=max_batches,
+        keep_work_cache=keep_work_cache,
     ).artifact
 
 
@@ -1834,6 +1859,8 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="atomic resumable cache; defaults beside --output and is removed on success",
     )
+    parser.add_argument("--max-batches", type=int, help="checkpoint after this many batches (1..120)")
+    parser.add_argument("--keep-work-cache", action="store_true", help="retain successful cache for guarded host promotion")
     return parser
 
 
@@ -1853,7 +1880,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             batch_size=args.batch_size,
             workers=args.workers,
             work_cache_path=args.work_cache,
+            max_batches=args.max_batches,
+            keep_work_cache=args.keep_work_cache,
         )
+    except TranslationCheckpointed as exc:
+        print("chinese-translations: " + json.dumps({
+            "schema": "palimpsest.translation-checkpoint.v1",
+            "state": "checkpointed", "reason": "batch_allowance_reached",
+            "completed_unique_content_digests": exc.completed,
+            "pending_unique_content_digests": exc.pending,
+            "output_mutated": False,
+        }, sort_keys=True), file=sys.stderr)
+        return 75
     except TranslationBuildError as exc:
         print(f"chinese-translations: {exc}", file=sys.stderr)
         return 1

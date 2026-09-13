@@ -1,0 +1,36 @@
+[Unit]
+Description=Refresh sealed Palimpsest Chinese translations
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/opt/palimpsest-translation/source /var/lib/palimpsest/translation-refresh
+OnSuccess=palimpsest-railway-publish.service
+ConditionPathIsDirectory=/var/lib/palimpsest/translation-refresh
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+SupplementaryGroups=palimpsest-analysis
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/palimpsest/translation-refresh.env
+EnvironmentFile=/etc/palimpsest/openrouter.env
+ExecStart=/usr/local/sbin/palimpsest-translation-refresh
+TimeoutStartSec=55m
+UMask=0077
+Nice=12
+MemoryMax=2G
+TasksMax=64
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/palimpsest/readings /var/lib/palimpsest/translation-refresh
+ReadOnlyPaths=/var/lib/palimpsest/newswire /var/lib/palimpsest/railway-publication
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

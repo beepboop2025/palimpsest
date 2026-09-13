@@ -137,3 +137,27 @@ def test_railway_publisher_keeps_translation_and_selects_a_monotonic_ledger() ->
     assert script.index("overlay_monotonic_readings_ledger\n") < script.index(
         "scripts.build_chinese_translations --retain-last-good"
     )
+    _assert_order(script, (
+        "overlay_monotonic_readings_ledger\n",
+        "scripts.translation_refresh admit",
+        "scripts.build_chinese_translations --retain-last-good",
+    ))
+
+
+def test_scheduled_translation_separates_capture_models_and_promotion() -> None:
+    script = (ROOT / "ops/translation/palimpsest-translation-refresh").read_text()
+    _assert_order(script, (
+        "scripts.translation_refresh capture",
+        "scripts.build_chinese_translations",
+        "scripts.translation_refresh promote",
+    ))
+    assert '--batch-size 8 --workers "$WORKERS" --max-batches' in script
+    assert 'PALIMPSEST_TRANSLATION_WORKERS:-1' in script
+    assert '[[ "$WORKERS" =~ ^[1-4]$ ]]' in script
+    assert '--work-cache "$STATE/work-cache.json" --keep-work-cache' in script
+    assert "45m" in script
+    unit = (ROOT / "ops/systemd/palimpsest-translation-refresh.service").read_text()
+    timer = (ROOT / "ops/systemd/palimpsest-translation-refresh.timer").read_text()
+    assert "EnvironmentFile=/etc/palimpsest/openrouter.env" in unit
+    assert "OnSuccess=palimpsest-railway-publish.service" in unit
+    assert "Persistent=true" in timer and "OnCalendar=hourly" in timer
