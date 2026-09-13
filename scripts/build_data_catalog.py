@@ -418,16 +418,26 @@ def _validate(config: dict[str, Any]) -> None:
             raise ValueError(f"dataset {slug} license URL must use HTTPS")
 
 
-def build_research_catalog(*, now: datetime | None = None) -> dict[str, Any]:
+def build_research_catalog(
+    *, now: datetime | None = None, public_catalog: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Publish editorial discovery without reading source observations.
 
     The mixed value catalog can be quarantined in its entirety. This separate
-    projection deliberately has no counts, file sizes, value hashes, source
-    timestamps, or derivatives. A registry entry cannot prove live availability.
+    projection deliberately has no counts, file sizes, value hashes or derivatives.
+    The final publisher may attach availability and observation clocks from its
+    already rights-checked public catalog. An editorial-only build stays unknown.
     It remains subject to the normal recursive publication-rights gate.
     """
     config = json.loads(CONFIG.read_text(encoding="utf-8"))
     _validate(config)
+    public_rows = {}
+    if public_catalog is not None:
+        candidates = public_catalog.get("datasets", [])
+        public_rows = {row["id"]: row for row in candidates}
+        if (len(public_rows) != len(candidates)
+                or set(public_rows) != {row["id"] for row in config["datasets"]}):
+            raise ValueError("public availability must cover the exact editorial registry")
     rows = []
     for source in config["datasets"]:
         row = {key: source[key] for key in (
@@ -443,6 +453,17 @@ def build_research_catalog(*, now: datetime | None = None) -> dict[str, Any]:
             "evidence_state": "gated" if source.get("publication_allowed") is False else "unknown",
             "observed_at": None,
         }
+        if source["id"] in public_rows:
+            public = public_rows[source["id"]]
+            artifacts = public["artifacts"]
+            denied = (source.get("publication_allowed") is False
+                      or public.get("publication_allowed") is False)
+            row["artifacts"] = {
+                "evidence_state": "gated" if denied else artifacts["evidence_state"],
+                "observed_at": None if denied else artifacts.get("observed_at"),
+            }
+            if denied or not artifacts.get("latest_available"):
+                row["urls"].pop("latest", None)
         row["values_included"] = False
         rows.append(row)
     return {
@@ -450,7 +471,11 @@ def build_research_catalog(*, now: datetime | None = None) -> dict[str, Any]:
         "generated_at": _iso(now or _utc_now()),
         "metadata_only": True,
         "source_registry": {"path": "config/public_data_catalog.json", "kind": "Palimpsest editorial dataset metadata"},
-        "availability_semantics": "Editorial registry only. Unknown means public observation availability and freshness have not been established by this index. Inspect the linked public resource and its publication-rights status.",
+        "availability_semantics": (
+            "Availability and observation clocks come from this release's rights-checked public data catalog. Fresh describes the dataset's declared cadence, not every source or a guarantee of completeness. Restricted datasets expose no observation clock or download."
+            if public_catalog is not None else
+            "Editorial registry only. Unknown means public observation availability and freshness have not been established by this index. Inspect the linked public resource and its publication-rights status."
+        ),
         "datasets": rows,
         "seiche": {"api": "https://api.seiche.info/api/v2/research-network", "site": "https://seiche.info/#RESEARCH", "tool": "research_network"},
     }

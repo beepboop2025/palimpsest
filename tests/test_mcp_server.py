@@ -1755,7 +1755,7 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
     assert mcp.SERVER_VERSION == live_version
     # The static REST contract has its own release authority and is not
     # version-coupled to the independently deployed MCP server.
-    assert openapi["info"]["version"] == "2.0.1"
+    assert openapi["info"]["version"] == "2.0.2"
     assert openapi["info"]["version"] != live_version
     assert "/readings/china-index-latest.json" in openapi["paths"]
     assert "/readings/china-econ-forecast-latest.json" in openapi["paths"]
@@ -1807,6 +1807,9 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
     tools = mcp.dispatch(_rpc("tools/list"))["result"]["tools"]
     assert catalog["capabilities"] == [tool["name"] for tool in tools]
     assert catalog["metadata"]["publicToolCount"] == len(tools) == 7
+    resources = mcp.dispatch(_rpc("resources/list"))["result"]["resources"]
+    assert catalog["resources"] == [resource["uri"] for resource in resources]
+    assert catalog["metadata"]["publicResourceCount"] == len(resources)
     assert not any(key.startswith("pendingTool") for key in catalog["metadata"])
     assert catalog["metadata"]["nativeDeploymentCommit"] != catalog["metadata"]["deploymentCommit"]
 

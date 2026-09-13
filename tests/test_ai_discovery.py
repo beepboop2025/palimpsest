@@ -150,7 +150,7 @@ def test_product_card_exposes_production_verified_bri_v2_wdi_context():
         "corridor_inference": "prohibited",
         "causal_inference": "prohibited",
     }
-    assert access["openapi_version"] == "2.0.1"
+    assert access["openapi_version"] == "2.0.2"
     assert access["mcp_version"] == "1.9.3"
     assert access["bri_economic_observations"] == (
         "https://palimpsest.info/readings/bri-economic-observations-latest.json"
@@ -190,6 +190,7 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
     for path, operations in spec["paths"].items():
         dynamic_event_analysis = path == "/news/wire/{event_id}/analysis.json"
         dynamic_instrument_analysis = path == "/news/{slug}/analysis.json"
+        generated_public_catalog = path == "/readings/public-data-catalog-latest.json"
         publication_receipt = (
             path == "/.well-known/receipts/bri-wdi-pages-publication-v1.json"
         )
@@ -204,7 +205,7 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
         elif dynamic_instrument_analysis:
             assert (ROOT / "protocol/instrument-analysis.schema.json").is_file()
             assert operations["get"]["parameters"][0]["name"] == "slug"
-        else:
+        elif not generated_public_catalog:
             assert (ROOT / path.lstrip("/")).is_file(), path
         assert "200" in operations["get"]["responses"]
     assert "/readings/china-index-latest.json" in spec["paths"]
@@ -219,7 +220,7 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
 
 def test_openapi_publishes_the_bri_wdi_pages_receipt_contract():
     spec = _json("openapi.json")
-    assert spec["info"]["version"] == "2.0.1"
+    assert spec["info"]["version"] == "2.0.2"
     assert spec["components"]["schemas"]["BRIWdiPagesPublicationReceipt"] == {
         "$ref": BRI_WDI_RECEIPT_SCHEMA_URL
     }
@@ -296,7 +297,7 @@ def test_developer_page_exposes_every_activation_path():
     assert "claude mcp add --transport http" in page
     assert '"type": "mcp"' in page and '"require_approval": "never"' in page
     assert "Settings → Apps → Create" in page
-    assert "six discovered read-only tools" in page
+    assert "seven discovered read-only tools" in page
     assert 'id="run-verdict"' in page and "whats_happening" in page
     assert 'id="gfi-transcripts-command"' in page
     assert "/readings/gfi-transcripts-latest.json" in page
@@ -358,8 +359,8 @@ def test_evidence_atlas_is_discoverable_by_humans_and_agents():
 
     assert "https://palimpsest.info/data.html" in sitemap
     assert "https://palimpsest.info/data.html" in llms
-    assert "https://palimpsest.info/readings/catalog.jsonld" in llms
-    assert card["evidence"]["data_catalog_json"].endswith("/readings/catalog.json")
+    assert "https://palimpsest.info/readings/public-data-catalog-latest.json" in llms
+    assert card["evidence"]["data_catalog_json"].endswith("/readings/public-data-catalog-latest.json")
     assert card["access"]["dataset_catalog"] == "https://palimpsest.info/data.html"
 
 

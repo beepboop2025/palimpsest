@@ -167,6 +167,10 @@ def main(argv: list[str] | None = None) -> int:
         # Re-inspect its size after its self-referential freshness has settled.
         catalog = build_public_catalog(now=now, _scan_cache=scan_cache)
         atlas._atomic_json(atlas.ROOT / OUTPUT, catalog)
+        atlas._atomic_json(
+            atlas.ROOT / "readings/research-catalog-latest.json",
+            atlas.build_research_catalog(now=now, public_catalog=catalog),
+        )
     print(json.dumps({"states": catalog["summary"]["states"], "written": not args.check}))
     return 0
 

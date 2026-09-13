@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Palimpsest Public Readings API",
-    "version": "2.0.1",
-    "description": "Stable public readings from Palimpsest's censorship observatory, revision-safe China Economic Observatory, global Belt and Road coverage contract, evidence-bound AI Eval Journal and verifiable AI evaluation registry. The API also exposes the evidence wire, bounded social observation ledger, combined China Situation index, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated newsroom, deterministic machine-analysis desk, and a hash-bound point-in-time Pages publication receipt for the WDI context bundle. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+    "version": "2.0.2",
+    "description": "Stable public readings from Palimpsest's censorship observatory, revision-safe China Economic Observatory, global Belt and Road coverage contract, evidence-bound AI Eval Journal and verifiable AI evaluation registry. The API also exposes the evidence wire, bounded social observation ledger, combined China Situation index, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated newsroom, deterministic machine-analysis desk, and a hash-bound point-in-time Pages publication receipt for the WDI context bundle. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm. Dataset discovery uses the rights-checked public catalog; the legacy mixed JSON catalog returns restricted metadata."
   },
   "servers": [
     {
@@ -1089,18 +1089,27 @@
     "/readings/catalog.json": {
       "get": {
         "operationId": "getEvidenceAtlasCatalog",
-        "summary": "Discover every documented dataset, its provenance, freshness, rights and files",
+        "summary": "Legacy aggregate catalog: restricted publication metadata",
         "responses": {
           "200": {
-            "$ref": "#/components/responses/DataCatalog"
+            "description": "Restricted publication metadata; no dataset values or distributions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://palimpsest.info/protocol/restricted-publication-v1.schema.json"
+                }
+              }
+            }
           }
-        }
+        },
+        "deprecated": true,
+        "description": "Use /readings/public-data-catalog-latest.json for current permitted dataset discovery. This legacy mixed catalog is quarantined by the publication policy."
       }
     },
     "/readings/catalog.jsonld": {
       "get": {
         "operationId": "getEvidenceAtlasJsonLd",
-        "summary": "Discover available datasets as schema.org/DCAT JSON-LD",
+        "summary": "Legacy dataset inventory format",
         "responses": {
           "200": {
             "description": "JSON-LD data catalog",
@@ -1113,7 +1122,9 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true,
+        "description": "Use /readings/public-data-catalog-latest.json for current publication-checked availability and permitted downloads. This legacy format does not establish current availability."
       }
     },
     "/readings/evidence-lake-metrics-latest.json": {
@@ -1417,7 +1428,7 @@
     "/datapackage.json": {
       "get": {
         "operationId": "getEvidenceDataPackage",
-        "summary": "Discover currently available files as a Frictionless-style data package",
+        "summary": "Legacy dataset inventory format",
         "responses": {
           "200": {
             "description": "Data package",
@@ -1430,7 +1441,9 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true,
+        "description": "Use /readings/public-data-catalog-latest.json for current publication-checked availability and permitted downloads. This legacy format does not establish current availability."
       }
     },
     "/readings/board-alarm-latest.json": {
@@ -1672,6 +1685,18 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/readings/public-data-catalog-latest.json": {
+      "get": {
+        "operationId": "getPublicDataCatalog",
+        "summary": "Discover current dataset availability, freshness and permitted downloads",
+        "description": "The publication-checked catalog used by the data library and collector health. Every dataset retains its cadence and source limitations. Restricted datasets have no source observation clock, counts or value downloads.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/DataCatalog"
           }
         }
       }
