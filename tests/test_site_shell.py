@@ -130,6 +130,30 @@ def test_nav_discovery_does_not_forget_a_page_when_both_markers_disappear(
     assert note == "INVALID MARKERS"
 
 
+def test_nav_stamping_preserves_the_gdp_parser_fixture(tmp_path, monkeypatch):
+    relative_fixture = "tests/fixtures/nbs_releases/gdp_quarterly_tables.html"
+    fixture_bytes = (ROOT / relative_fixture).read_bytes()
+    fixture = tmp_path / relative_fixture
+    fixture.parent.mkdir(parents=True)
+    fixture.write_bytes(fixture_bytes)
+    page = tmp_path / "managed.html"
+    page.write_text(
+        f"<!doctype html>{site_nav.BEGIN}old navigation{site_nav.END}",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sync_nav, "ROOT", tmp_path)
+    discovered = sync_nav.discover_pages()
+    assert discovered == {"managed.html": "/managed.html"}
+    monkeypatch.setattr(sync_nav, "PAGES", discovered)
+
+    monkeypatch.setattr(sys, "argv", ["sync_nav.py"])
+    assert sync_nav.main() == 0
+    assert site_nav.render("/managed.html") in page.read_text(encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["sync_nav.py", "--check"])
+    assert sync_nav.main() == 0
+    assert fixture.read_bytes() == fixture_bytes
+
+
 def test_every_managed_page_exists():
     """sync_nav's page list is the site map; a missing entry means a broken link."""
     missing = [rel for rel in sync_nav.PAGES if not (ROOT / rel).exists()]

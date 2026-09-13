@@ -62,6 +62,7 @@ EXCLUDED_HTML = frozenset(
         "tests/fixtures/china_econ_primary/nea_valid.html",
         "tests/fixtures/china_econ_primary/spb_unit_drift.html",
         "tests/fixtures/china_econ_primary/spb_valid.html",
+        "tests/fixtures/nbs_releases/gdp_quarterly_tables.html",
         "tests/fixtures/public_board_archives/freewechat-login.html",
         "tests/fixtures/public_board_archives/freewechat-titles.html",
         "validation/code.html",
