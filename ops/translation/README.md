@@ -9,6 +9,10 @@ still be pending when a verified older translation is retained.
 
 ## Source and service installation
 
+The runner stages exact committed files with `git archive` into its private work
+directory; it never needs a writable checkout of the root-owned source. Git trusts
+only the configured exact source path for its identity/status/archive commands.
+
 Use the exact reviewed merged source, copied into its own immutable checkout on
 the large runtime volume. Do not modify the protected production checkout or
 the separate measurement source. Install `palimpsest-translation-refresh` and

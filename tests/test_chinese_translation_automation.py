@@ -155,7 +155,9 @@ def test_scheduled_translation_separates_capture_models_and_promotion() -> None:
     assert 'PALIMPSEST_TRANSLATION_WORKERS:-1' in script
     assert '[[ "$WORKERS" =~ ^[1-4]$ ]]' in script
     assert '--work-cache "$STATE/work-cache.json" --keep-work-cache' in script
-    assert script.count('git -c safe.directory="$SOURCE" -c safe.directory="$SOURCE/.git"') == 3
+    assert script.count('git -c safe.directory="$SOURCE"') == 3
+    assert 'archive --format=tar "$base_sha"' in script
+    assert "git clone" not in script
     assert "45m" in script
     unit = (ROOT / "ops/systemd/palimpsest-translation-refresh.service").read_text()
     timer = (ROOT / "ops/systemd/palimpsest-translation-refresh.timer").read_text()
