@@ -1,0 +1,32 @@
+[Unit]
+Description=Archive official Palimpsest primary documents and refresh metadata
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/opt/palimpsest-primary-documents/source /var/lib/palimpsest/primary-documents-refresh /var/lib/palimpsest/data/evidence-documents
+ConditionPathIsDirectory=/var/lib/palimpsest/data/evidence-documents
+
+[Service]
+Type=oneshot
+User=palimpsest-analysis
+Group=palimpsest-analysis
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/palimpsest/primary-documents-refresh.env
+ExecStart=/usr/local/sbin/palimpsest-primary-documents-refresh
+TimeoutStartSec=15m
+UMask=0077
+Nice=12
+MemoryMax=1G
+TasksMax=32
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/palimpsest/data/evidence-documents /var/lib/palimpsest/primary-documents-refresh /var/lib/palimpsest/readings
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
