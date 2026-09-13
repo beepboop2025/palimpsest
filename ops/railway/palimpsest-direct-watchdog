@@ -96,12 +96,14 @@ DEFAULT_PUBLIC_ORIGIN = "https://www.palimpsest.info"
 TIMERS = (
     "palimpsest-evidence-wire.timer",
     "palimpsest-measurement-refresh.timer",
+    "palimpsest-translation-refresh.timer",
     "palimpsest-railway-publish.timer",
 )
 SERVICES = (
     "palimpsest-evidence-wire.service",
     "palimpsest-event-analysis-live.service",
     "palimpsest-measurement-refresh.service",
+    "palimpsest-translation-refresh.service",
     "palimpsest-railway-publish.service",
 )
 ANALYSIS_ROUTES = (

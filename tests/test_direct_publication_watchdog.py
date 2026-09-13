@@ -57,6 +57,15 @@ def _load_watchdog() -> ModuleType:
 watchdog = _load_watchdog()
 
 
+def test_scheduled_translation_cannot_disappear_from_runtime_monitoring():
+    for suffix, monitored in (("timer", watchdog.TIMERS), ("service", watchdog.SERVICES)):
+        unit = f"palimpsest-translation-refresh.{suffix}"
+        assert monitored.count(unit) == 1
+        assert (ROOT / "ops/systemd" / unit).is_file()
+    service = (ROOT / "ops/systemd/palimpsest-translation-refresh.service").read_text()
+    assert "SuccessExitStatus=75" not in service
+
+
 def test_public_catalog_watchdog_rejects_stale_counts_and_restricted_downloads():
     now = datetime(2026, 9, 13, 18, tzinfo=UTC)
     catalog = {
