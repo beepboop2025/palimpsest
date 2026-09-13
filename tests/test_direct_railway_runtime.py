@@ -1801,7 +1801,7 @@ def test_publisher_pre_mutation_binds_every_measurement_evidence_file(
                 f"PYTHON_BIN={shlex.quote(sys.executable)}",
                 "log() { printf '%s\\n' \"$*\" >&2; }",
                 "sha256_file() { shasum -a 256 \"$1\" | awk '{print $1}'; }",
-                "stat() { if [[ \"$1\" == '-c' && \"$2\" == '%s' ]]; then command stat -f '%z' \"$3\"; else command stat \"$@\"; fi; }",
+                "stat() { if [[ \"$1\" == '-c' && \"$2\" == '%s' ]]; then command stat -f '%z' \"$3\"; else command stat \"$@\"; fi; }" if sys.platform == "darwin" else "stat() { command stat \"$@\"; }",
                 measurement_functions,
                 manifest_functions,
                 "validate_measurement_evidence_local "
@@ -2023,7 +2023,7 @@ def test_unchanged_release_rejects_same_sha_with_mismatched_static_artifact(
                 "set -Eeuo pipefail",
                 "log() { printf '%s\\n' \"$*\" >&2; }",
                 "sha256_file() { shasum -a 256 \"$1\" | awk '{print $1}'; }",
-                "stat() { command stat -f '%z' \"${@: -1}\"; }",
+                "stat() { command stat -f '%z' \"${@: -1}\"; }" if sys.platform == "darwin" else "stat() { command stat \"$@\"; }",
                 function,
                 "validate_manifest_bound_pair "
                 f"{shlex.quote(str(manifest))} news/feed.json "
@@ -2090,7 +2090,7 @@ def test_unchanged_release_accepts_canonical_local_git_archive_manifest(
                 f"RELEASE_MANIFEST_ROOT={shlex.quote(str(manifest_root))}",
                 "log() { printf '%s\\n' \"$*\" >&2; }",
                 "sha256_file() { shasum -a 256 \"$1\" | awk '{print $1}'; }",
-                "stat() { if [[ \"$2\" == '%a' ]]; then command stat -f '%Lp' \"${@: -1}\"; else command stat \"$@\"; fi; }",
+                "stat() { if [[ \"$2\" == '%a' ]]; then command stat -f '%Lp' \"${@: -1}\"; else command stat \"$@\"; fi; }" if sys.platform == "darwin" else "stat() { command stat \"$@\"; }",
                 function,
                 "validate_durable_release_manifest "
                 f"{shlex.quote(str(manifest_path))} {release} {tree} {digest}",
