@@ -201,6 +201,29 @@ def test_pending_recovery_refuses_to_erase_foreign_ledger_append(tmp_path, monke
     assert ledger.read_bytes() == retained and (args['state']/'pending').is_dir()
 
 
+@pytest.mark.parametrize('change', ['mode', pytest.param('acl', marks=pytest.mark.skipif(sys.platform != 'linux', reason='Linux access ACL contract'))])
+def test_pending_recovery_preserves_foreign_metadata_with_unchanged_bytes(tmp_path, monkeypatch, change):
+    args = setup(tmp_path); original = refresh.io._replace
+    def interrupted(path, *a, **kw):
+        if path.name == refresh.HISTORY: raise OSError('injected interruption')
+        return original(path, *a, **kw)
+    monkeypatch.setattr(refresh.io, '_replace', interrupted)
+    with pytest.raises(OSError): refresh.refresh(**args)
+    monkeypatch.setattr(refresh.io, '_replace', original)
+    target = args['host']/refresh.HISTORY
+    before_bytes = target.read_bytes()
+    if change == 'mode':
+        target.chmod(0o640)
+    else:
+        assert shutil.which('setfacl')
+        subprocess.run(['setfacl', '-m', 'u:65534:r--', str(target)], check=True)
+    before_metadata = (target.stat().st_uid, target.stat().st_gid, target.stat().st_mode, refresh.io.access_acl(target))
+    with pytest.raises(ValueError, match='metadata changed'): refresh.refresh(**args)
+    assert target.read_bytes() == before_bytes
+    assert (target.stat().st_uid, target.stat().st_gid, target.stat().st_mode, refresh.io.access_acl(target)) == before_metadata
+    assert (args['state']/'pending').is_dir()
+
+
 @pytest.mark.parametrize('changed', ['history', 'context', 'features'])
 def test_concurrent_producer_or_host_change_is_not_overwritten(tmp_path, monkeypatch, changed):
     args = setup(tmp_path); original = refresh.project

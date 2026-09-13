@@ -479,7 +479,7 @@ def test_duckdb_plan_refuses_scope_drift(tmp_path, monkeypatch):
         )
 
 
-def test_duckdb_spill_guard_rejects_relative_and_root_disk_paths(tmp_path):
+def test_duckdb_spill_guard_rejects_relative_and_root_disk_paths(tmp_path, monkeypatch):
     relative = Path("relative-spill")
     with pytest.raises(lake.ValidationError, match="absolute"):
         lake.validate_duckdb_spill_directory(relative, bulk_volume_root=tmp_path)
@@ -487,6 +487,19 @@ def test_duckdb_spill_guard_rejects_relative_and_root_disk_paths(tmp_path):
     bulk_volume = tmp_path / "bulk-volume"
     spill = bulk_volume / "spill"
     spill.mkdir(parents=True)
+    # Acceptance deliberately puts test scratch on a separate large volume.
+    # Present this fixture's device as root to exercise the same rejection
+    # independently of where pytest's temporary directory is mounted.
+    original_stat = Path.stat
+    fixture_device = bulk_volume.stat().st_dev
+    def root_device_matches_fixture(path, *args, **kwargs):
+        result = original_stat(path, *args, **kwargs)
+        if Path(path) == Path("/"):
+            values = list(result)
+            values[2] = fixture_device
+            return os.stat_result(values)
+        return result
+    monkeypatch.setattr(Path, "stat", root_device_matches_fixture)
     with pytest.raises(lake.ValidationError, match="root filesystem"):
         lake.validate_duckdb_spill_directory(spill, bulk_volume_root=bulk_volume)
 

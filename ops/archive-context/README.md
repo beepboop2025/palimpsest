@@ -51,6 +51,8 @@ This directory does not supply an automatic installer or change host state.
   host files use GID10001 mode0660. The shared reading ledger uses
   UID1001:GID10001 mode0664 and an existing permanent sidecar lock. Never replace
   lock inodes or truncate the historical files.
+  All three retained output files must already exist; there is no empty-history
+  bootstrap fallback.
 - Prove access to the publisher's existing `data.lock`; retain its private mode.
 - Supply `PALIMPSEST_ARCHIVE_SOURCE`, `PALIMPSEST_ARCHIVE_COMMIT_FILE`, and the
   explicit absolute `PALIMPSEST_KILLFILE`. Optional host overrides are
@@ -80,7 +82,9 @@ verified before ledger-first atomic replacements. Restart completes an
 interrupted transaction only if every host file still matches its recorded
 before or after identity. An unrelated later write causes a visible refusal and
 preserves both host and pending evidence for review; do not delete or overwrite
-it to force a pass. A successful recovery verifies all three installed hashes and
+it to force a pass. Same-byte owner, group, mode or ACL changes also refuse
+recovery; they cannot be overwritten using an old receipt. A successful recovery
+verifies all three installed hashes and exact intended metadata, and
 keeps a small receipt; it removes only that transaction's disposable staged
 copies. Completed receipts are small, but should be included in existing state
 backup/retention monitoring.

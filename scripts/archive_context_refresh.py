@@ -257,12 +257,20 @@ def verify_public(document: dict, ledger: Path, history_raw: bytes):
 
 
 def metadata(path: Path, before: bytes | None):
-    info = path.stat() if before is not None else None
+    if before is None:
+        raise ArchiveRefreshError("archive admission requires existing retained output files")
+    info = path.stat()
     if info and info.st_uid != os.geteuid():
         raise ArchiveRefreshError("archive output owner requires reviewed installation normalization")
     return {"before": io.digest(before), "uid": info.st_uid if info else os.geteuid(),
             "gid": info.st_gid if info else os.getegid(), "mode": stat.S_IMODE(info.st_mode) if info else 0o640,
             "existing": info is not None, "access_acl": io.access_acl(path) if info else None}
+
+
+def verify_metadata(path: Path, expected: dict):
+    current = metadata(path, io.regular_bytes(path))
+    if any(current[key] != expected[key] for key in ("uid", "gid", "mode", "existing", "access_acl")):
+        raise ArchiveRefreshError("host archive metadata changed during interrupted promotion; preserve both")
 
 
 def recover_pending(host: Path, state: Path):
@@ -281,6 +289,7 @@ def recover_pending(host: Path, state: Path):
             raise ArchiveRefreshError("archive pending candidate differs")
         if io.digest(io.regular_bytes(host / name, optional=True)) not in {expected["before"], expected["after"]}:
             raise ArchiveRefreshError("host advanced during interrupted archive promotion; preserve both")
+        verify_metadata(host / name, expected)
     doc = strict(io.regular_bytes(pending / LATEST))
     verify_public(doc, pending / LEDGER, io.regular_bytes(pending / HISTORY))
     for name in FILES:
@@ -292,6 +301,7 @@ def recover_pending(host: Path, state: Path):
     for name in FILES:
         if io.digest(io.regular_bytes(host / name)) != receipt["files"][name]["after"]:
             raise ArchiveRefreshError("archive installed identity differs")
+        verify_metadata(host / name, receipt["files"][name])
     completed = state / "completed"
     completed.mkdir(mode=0o700, exist_ok=True)
     sealed.atomic_replace_bytes(completed / (io.digest(canonical(receipt)) + ".json"), canonical(receipt), mode=0o600)
