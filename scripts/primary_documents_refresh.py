@@ -56,7 +56,11 @@ def read_index(path: Path, registry):
         raise PrimaryDocumentError("primary index exceeds the bounded metadata size")
     value = strict_json_loads(raw, label="retained primary-document index")
     validate_primary_document_index(value, registry=registry)
-    return value, (info.st_dev, info.st_ino, hashlib.sha256(raw).hexdigest())
+    # Linux may recycle an inode after repeated atomic replacements. Include
+    # change/modify clocks so equal bytes plus a recycled inode cannot disguise
+    # a concurrent writer during this capture.
+    return value, (info.st_dev, info.st_ino, info.st_ctime_ns, info.st_mtime_ns,
+                   hashlib.sha256(raw).hexdigest())
 
 
 def refresh(*, store: Path, output: Path, lock: Path, config: Path, fetcher=None, now=None, kill_switch=None) -> dict:
