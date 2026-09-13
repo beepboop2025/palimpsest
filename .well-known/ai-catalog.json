@@ -65,7 +65,7 @@
       ],
       "resourceTemplates": [],
       "version": "1.9.3",
-      "updatedAt": "2026-09-09T05:06:33Z",
+      "updatedAt": "2026-09-13T20:17:46.194637Z",
       "metadata": {
         "authentication": "none",
         "access": "public-read-only",
@@ -95,8 +95,14 @@
         "nativeDeploymentSignatureSha256": "sha256:5976efbdff72fd061ee25022b09e337717a62c0dfcc8af29e65e1034282d1449",
         "nativeRuntimeSha256": "sha256:275fc2b8f6a411a7be486467bfb8fd40ff7a455740343569271a8723a3a2c8a1",
         "nativeManifestSha256": "sha256:be115e404655aaf00b2b935881296d59809093fb5aa526317ca3aa1c7a8a8820",
-        "nativeRuntimeProvenance": "Host-attested deployed source and module digest; public MCP inventory and behavior are independently checked. Publication-rights source clocks describe data, not the runtime."
-      }
+        "nativeRuntimeProvenance": "Host-attested deployed source and module digest; public MCP inventory and behavior are independently checked. Publication-rights source clocks describe data, not the runtime.",
+        "publicPromptCount": 4,
+        "publicResourceCount": 1,
+        "publicDataCatalog": "https://www.palimpsest.info/readings/public-data-catalog-latest.json"
+      },
+      "resources": [
+        "palimpsest://china-economic/publication-rights"
+      ]
     },
     {
       "identifier": "urn:air:palimpsest.info:openapi:public-readings",
@@ -125,8 +131,8 @@
         "Inspect the BRI source and project-field contract for Gwadar, CPEC, CMEC and Kyaukpyu.",
         "Check whether Palimpsest has promoted any China economic forecast target."
       ],
-      "version": "2.0.1",
-      "updatedAt": "2026-08-26T15:55:34Z",
+      "version": "2.0.2",
+      "updatedAt": "2026-09-13T20:17:46.194904Z",
       "metadata": {
         "authentication": "none",
         "access": "public-read-only",
@@ -135,7 +141,8 @@
         "wdiPublicationReceiptSha256": "sha256:239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06",
         "deploymentNote": "The WDI receipt attests only its three named WDI resources, not this OpenAPI document. Verify this contract's served bytes against its own release commit separately.",
         "documentation": "https://palimpsest.info/developers.html",
-        "versionAuthority": "Read info.version from the linked OpenAPI document; it is independent of the deployed MCP release."
+        "versionAuthority": "Read info.version from the linked OpenAPI document; it is independent of the deployed MCP release.",
+        "publicDataCatalog": "https://www.palimpsest.info/readings/public-data-catalog-latest.json"
       }
     },
     {

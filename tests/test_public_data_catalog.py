@@ -95,6 +95,33 @@ def test_publisher_refreshes_public_catalog_after_all_derived_builds():
     assert "/readings/public-data-catalog-latest.json" in (root / "assets/data-catalog.js").read_text()
 
 
+def test_published_mcp_registry_matches_rights_checked_availability(snapshot):
+    assert public.main([]) == 0
+    catalog = json.loads((snapshot / public.OUTPUT).read_text())
+    registry = json.loads((snapshot / "readings/research-catalog-latest.json").read_text())
+    rows = {row["id"]: row for row in registry["datasets"]}
+    assert registry["generated_at"] == catalog["generated_at"]
+    assert rows["ddti"]["artifacts"] == {
+        "evidence_state": "fresh", "observed_at": "2026-09-13T17:50:00Z",
+    }
+    assert rows["board-alarm"]["artifacts"] == {
+        "evidence_state": "gated", "observed_at": None,
+    }
+    assert "latest" not in rows["board-alarm"]["urls"]
+    assert "987.654321" not in json.dumps(registry)
+    assert "counts" not in json.dumps(registry)
+    assert public.rights.find_denied_value_paths(snapshot, evaluated_at=NOW) == [
+        "readings/board-alarm-latest.json",
+    ]
+
+
+def test_registry_rejects_incomplete_public_availability(snapshot):
+    catalog = public.build_public_catalog(now=NOW)
+    catalog["datasets"].pop()
+    with pytest.raises(ValueError, match="exact editorial registry"):
+        atlas.build_research_catalog(now=NOW, public_catalog=catalog)
+
+
 def test_corrupt_latest_does_not_break_other_datasets(snapshot):
     (snapshot / "readings/ddti-latest.json").write_text("{broken")
     catalog = public.build_public_catalog(now=NOW)

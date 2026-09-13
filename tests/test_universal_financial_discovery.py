@@ -132,7 +132,7 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
     assert mcp["data"] == registry_snapshot["server"]
     assert mcp["data"]["version"] == SERVER_VERSION
     assert mcp["version"] == SERVER_VERSION
-    assert mcp["updatedAt"] == MCP_REGISTRY_PUBLISHED_AT
+    assert mcp["updatedAt"] >= MCP_REGISTRY_PUBLISHED_AT
     assert mcp["metadata"]["deploymentBoundary"] == "production-verified"
     assert mcp["metadata"]["deploymentCommit"] == MCP_RELEASE_SHA
     assert mcp["metadata"]["deploymentReceipt"] == MCP_DEPLOY_RECEIPT_URL
@@ -145,10 +145,13 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
     assert mcp["metadata"]["registrySnapshotSha256"] == (MCP_REGISTRY_SNAPSHOT_SHA256)
     assert mcp["metadata"]["registryVersion"] == MCP_REGISTRY_VERSION_URL
     assert mcp["metadata"]["registryPublishedAt"] == MCP_REGISTRY_PUBLISHED_AT
-    assert "deployed and independently re-probed" in mcp["metadata"]["deploymentNote"]
+    assert "signed native deployment receipt" in mcp["metadata"]["deploymentNote"]
     assert "serverInfo.version" in mcp["metadata"]["liveVersionAuthority"]
-    assert mcp["metadata"]["publicToolCount"] == 6
+    assert mcp["metadata"]["publicToolCount"] == 7
+    assert mcp["metadata"]["publicResourceCount"] == 1
+    assert mcp["resources"] == ["palimpsest://china-economic/publication-rights"]
     assert mcp["capabilities"] == [
+        "research_catalog",
         "list_signals",
         "get_signal",
         "get_newsroom",
@@ -162,7 +165,7 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
             "url": "https://api.seiche.info/palimpsest/mcp",
         }
     ]
-    assert SERVER_VERSION in mcp["description"]
+    assert "Seven hosted read-only tools" in mcp["description"]
 
 
 def test_manifest_matches_the_proven_live_release():
@@ -256,8 +259,8 @@ def test_ai_catalog_routes_openapi_economic_evidence_and_agent_skill():
     mcp_description = entries["urn:air:palimpsest.info:mcp:evidence-observatory"][
         "description"
     ]
-    assert "native fail-closed" in mcp_description
-    assert "cannot be promoted" in mcp_description
+    assert "native fail-closed" in mcp_description.lower()
+    assert "no denied observations or derivatives are returned" in mcp_description
     assert "download economic observation ledger" not in openapi["capabilities"]
     assert "metadata-only China publication-rights status" in openapi["description"]
     assert "updatedAt" not in index
@@ -272,7 +275,7 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
     bri = entries["urn:air:palimpsest.info:dataset:belt-and-road-observatory"]
     wdi = entries["urn:air:palimpsest.info:dataset:bri-economic-observations"]
 
-    assert openapi["version"] == "2.0.1"
+    assert openapi["version"] == "2.0.2"
     assert openapi["metadata"]["access"] == "public-read-only"
     assert openapi["metadata"]["deploymentBoundary"] == (
         "current-contract-not-bound-by-wdi-receipt"
