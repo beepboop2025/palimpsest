@@ -517,10 +517,12 @@ bundle_files=(
   "collectors/__init__.py:collectors/__init__.py:0444"
   "collectors/common_crawl_lake.py:collectors/common_crawl_lake.py:0444"
   "config/common_crawl_targets.json:config/common_crawl_targets.json:0444"
+  "config/zh_censorship_gazetteer.json:config/zh_censorship_gazetteer.json:0444"
   "core/__init__.py:core/__init__.py:0444"
   "core/governance.py:core/governance.py:0444"
   "core/safe_fetch.py:core/safe_fetch.py:0444"
   "core/live_paths.py:core/live_paths.py:0444"
+  "core/china_observation.py:core/china_observation.py:0444"
   "processors/__init__.py:processors/__init__.py:0444"
   "processors/archive_context.py:processors/archive_context.py:0444"
   "processors/editorial_priority.py:processors/editorial_priority.py:0444"
@@ -543,8 +545,9 @@ chmod 0444 "$bundle_tmp/REVISION"
     README.md REVISION record-context-attempt.py backup/README.md backup/common_crawl_backup.py \
     backup/palimpsest-common-crawl-offsite-backup.sh \
     collectors/__init__.py collectors/common_crawl_lake.py \
-    config/common_crawl_targets.json \
+    config/common_crawl_targets.json config/zh_censorship_gazetteer.json \
     core/__init__.py core/governance.py core/safe_fetch.py core/live_paths.py \
+    core/china_observation.py \
     processors/__init__.py processors/archive_context.py \
     processors/editorial_priority.py scripts/common_crawl_lake.py \
     run_duckdb_filter.py verify-host-bundle.sh >MANIFEST.sha256
