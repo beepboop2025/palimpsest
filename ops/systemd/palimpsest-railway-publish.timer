@@ -3,9 +3,9 @@ Description=Reconcile Palimpsest with Railway after each completed publication c
 
 [Timer]
 OnBootSec=2m
-OnUnitInactiveSec=1m
-RandomizedDelaySec=30s
-AccuracySec=15s
+OnUnitInactiveSec=10s
+RandomizedDelaySec=5s
+AccuracySec=1s
 Unit=palimpsest-railway-publish.service
 
 [Install]

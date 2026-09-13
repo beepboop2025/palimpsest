@@ -748,8 +748,9 @@ def test_independent_publication_timer_coalesces_after_each_completed_run() -> N
     timer = PUBLISH_TIMER.read_text(encoding="utf-8")
 
     assert "OnBootSec=2m" in timer
-    assert "OnUnitInactiveSec=1m" in timer
-    assert "RandomizedDelaySec=30s" in timer
+    assert "OnUnitInactiveSec=10s" in timer
+    assert "RandomizedDelaySec=5s" in timer
+    assert "AccuracySec=1s" in timer
     assert "OnCalendar=" not in timer
     assert "Persistent=" not in timer
     assert "Unit=palimpsest-railway-publish.service" in timer
