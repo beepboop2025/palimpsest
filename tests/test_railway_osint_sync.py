@@ -231,3 +231,181 @@ def test_fetch_rejects_unapproved_urls_before_open(monkeypatch):
     for url in ("http://www.palimpsest.info/readings/osint-china-latest.json", "https://example.com/readings/osint-china-latest.json", adapter.ORIGINS[1] + "/private.json"):
         with pytest.raises(legacy.SyncFailure, match="public-url-refused"):
             adapter.fetch_public(url, "a" * 40)
+
+
+def successor(f, *, ledger=None, predecessor=True):
+    """Publish an independently generated branch from the same source base."""
+    prior = (f["config"].publication / "latest-success.json").read_bytes()
+    prior_receipt = json.loads(prior)
+    receipts = f["config"].publication / "receipts"
+    receipts.mkdir(exist_ok=True)
+    prior_path = receipts / (legacy._sha256(prior) + ".json")
+    prior_path.write_bytes(prior)
+    value = json.loads(f["second_artifact"])
+    value["generated_at"] = "2026-08-14T01:05:00Z"
+    value["signals"][0]["value"] = 1.25
+    fixtures._git(f["source"], "checkout", "-B", "next-edition", f["base_sha"])
+    ledger = ledger or fixtures._append_seal(f["first_ledger"], value, 1)
+    release = fixtures._write_publication(f["source"], value, ledger, "next independent publication")
+    f["second_artifact"] = (f["source"] / legacy.OSINT_REPOSITORY_PATH).read_bytes()
+    f["second_ledger"] = ledger
+    ref = "refs/palimpsest/releases/" + release
+    fixtures._git(f["source"], "update-ref", ref, release)
+    bundle = f["config"].publication / "release-bundles" / (release + ".bundle")
+    fixtures._git(f["source"], "bundle", "create", str(bundle), ref, "^" + f["base_sha"])
+    metadata = {"schema_version": adapter.BUNDLE_SCHEMA, "status": "verified", "path": str(bundle), "sha256": legacy._sha256(bundle.read_bytes()), "bytes": bundle.stat().st_size, "base_sha": f["base_sha"], "release_sha": release}
+    write_json(bundle.with_suffix(".json"), metadata)
+    public = fixtures._restricted_publication_bundle(f, release_commit=release)
+    manifest_raw = public["payloads"][legacy.PUBLIC_MANIFEST_URL]
+    manifest_path = f["config"].publication / "release-manifests" / (release + ".json")
+    manifest_path.write_bytes(manifest_raw)
+    receipt = dict(prior_receipt, release_sha=release, recorded_at="2026-08-14T01:25:00Z")
+    receipt["release_bundle"] = {k: v for k, v in metadata.items() if k != "status"}
+    receipt["release_bundle"].update(metadata_path=str(bundle.with_suffix(".json")), metadata_sha256=legacy._sha256(bundle.with_suffix(".json").read_bytes()))
+    receipt["live_manifest"] = {"path": str(manifest_path), "bytes": len(manifest_raw), "sha256": legacy._sha256(manifest_raw), **{k: public["manifest"][k] for k in ("tree_sha256", "file_count", "total_bytes")}}
+    if predecessor:
+        receipt["predecessor"] = {"receipt_sha256": legacy._sha256(prior), "archive_path": str(prior_path), "base_sha": prior_receipt["base_sha"], "release_sha": prior_receipt["release_sha"]}
+    write_json(f["config"].publication / "latest-success.json", receipt)
+
+    def fetch(url, release_pin):
+        assert release_pin == release
+        for origin in adapter.ORIGINS:
+            if url.startswith(origin + "/"):
+                return public["payloads"][adapter.ORIGINS[0] + url[len(origin):]]
+        raise AssertionError("unexpected origin")
+
+    f.update(fetch=fetch, release=release, receipt=receipt, prior_path=prior_path)
+    return f
+
+
+def test_successive_publication_branches_retain_every_prior_byte(tmp_path):
+    f = build(tmp_path)
+    adapter.synchronize(f["config"], fetcher=f["fetch"])
+    prior = {name: item.raw for name, item in adapter.state_snapshot(f["config"]).items()}
+    successor(f)
+    assert not f["second_ledger"].startswith(prior[legacy.LEDGER_FILENAME])
+    before = snapshot(f)
+    assert adapter.synchronize(f["config"], fetcher=f["fetch"], check=True)["status"] == "checked"
+    assert snapshot(f) == before
+    result = adapter.synchronize(f["config"], fetcher=f["fetch"])
+    assert result["release_sha"] == f["release"]
+    assert (f["config"].authority / legacy.LEDGER_FILENAME).read_bytes() == f["second_ledger"]
+    histories = [adapter.read_archive(f["config"], path.name) for path in (f["config"].state / adapter.HISTORY_NAME).iterdir()]
+    assert prior in histories
+    assert {name: item.raw for name, item in adapter.state_snapshot(f["config"]).items()} in histories
+    assert not (f["config"].state / adapter.TRANSACTION_NAME).exists()
+
+
+@pytest.mark.parametrize("kind,reason", [("missing", "publication-predecessor-missing"), ("tampered", "publication-predecessor-hash-mismatch"), ("foreign", "installed-byte-mismatch")])
+def test_publication_branch_requires_exact_prior_receipt(tmp_path, kind, reason):
+    f = build(tmp_path)
+    adapter.synchronize(f["config"], fetcher=f["fetch"])
+    successor(f, predecessor=kind != "missing")
+    if kind == "tampered":
+        f["prior_path"].write_bytes(f["prior_path"].read_bytes() + b" ")
+    if kind == "foreign":
+        ledger = f["config"].authority / legacy.LEDGER_FILENAME
+        ledger.chmod(0o644)
+        ledger.write_bytes(fixtures._append_seal(ledger.read_bytes(), json.loads(f["second_artifact"]), 2))
+        ledger.chmod(0o444)
+        # Keep the old OSINT newest seal: use an unrelated source for the tail.
+        rows = [json.loads(line) for line in ledger.read_bytes().splitlines()]
+        rows[-1]["source"] = "foreign-evidence"
+        rows[-1]["entry_hash"] = legacy._entry_hash(rows[-1])
+        ledger.chmod(0o644)
+        ledger.write_bytes(b"".join(legacy._canonical(row) + b"\n" for row in rows))
+        ledger.chmod(0o444)
+    before = snapshot(f)
+    with pytest.raises(legacy.SyncFailure, match=reason):
+        adapter.synchronize(f["config"], fetcher=f["fetch"])
+    assert snapshot(f) == before
+
+
+def test_publication_branch_cannot_rewrite_source_base_ledger(tmp_path):
+    f = build(tmp_path)
+    adapter.synchronize(f["config"], fetcher=f["fetch"])
+    first = json.loads(f["first_artifact"])
+    first["signals"][0]["value"] = 987
+    wrong_base = fixtures._append_seal(b"", first, 0)
+    next_value = json.loads(f["second_artifact"])
+    next_value["generated_at"] = "2026-08-14T01:05:00Z"
+    next_value["signals"][0]["value"] = 1.25
+    successor(f, ledger=fixtures._append_seal(wrong_base, next_value, 1))
+    before = snapshot(f)
+    with pytest.raises(legacy.SyncFailure, match="candidate-base-ledger-prefix-invalid"):
+        adapter.synchronize(f["config"], fetcher=f["fetch"])
+    assert snapshot(f) == before
+
+
+@pytest.mark.parametrize("stop_after", [legacy.LEDGER_FILENAME, legacy.OSINT_FILENAME, adapter.RECEIPT_NAME])
+def test_interrupted_branch_switch_recovers_old_pair_before_reverification(tmp_path, monkeypatch, stop_after):
+    f = build(tmp_path)
+    adapter.synchronize(f["config"], fetcher=f["fetch"])
+    prior = {name: item.raw for name, item in adapter.state_snapshot(f["config"]).items()}
+    successor(f)
+    original = legacy._install_authority_file
+
+    def interrupted(config, path, raw, **kwargs):
+        result = original(config, path, raw, **kwargs)
+        if path.name == stop_after:
+            raise OSError("simulated power loss")
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(legacy, "_install_authority_file", interrupted)
+        with pytest.raises(OSError, match="power loss"):
+            adapter.synchronize(f["config"], fetcher=f["fetch"])
+    interrupted_snapshot = snapshot(f)
+    with pytest.raises(legacy.SyncFailure, match="transaction-recovery-required"):
+        adapter.synchronize(f["config"], fetcher=f["fetch"], check=True)
+    assert snapshot(f) == interrupted_snapshot
+
+    def fail_reverification(*_):
+        assert {name: item.raw for name, item in adapter.state_snapshot(f["config"]).items()} == prior
+        raise legacy.SyncFailure("synthetic-publication-offline")
+
+    with pytest.raises(legacy.SyncFailure, match="synthetic-publication-offline"):
+        adapter.synchronize(f["config"], fetcher=fail_reverification)
+    assert {name: item.raw for name, item in adapter.state_snapshot(f["config"]).items()} == prior
+    assert adapter.synchronize(f["config"], fetcher=f["fetch"])["status"] == "installed"
+
+
+def test_interrupted_branch_never_overwrites_foreign_state(tmp_path, monkeypatch):
+    f = build(tmp_path)
+    adapter.synchronize(f["config"], fetcher=f["fetch"])
+    successor(f)
+    original = legacy._install_authority_file
+
+    def interrupted(config, path, raw, **kwargs):
+        if path.name == legacy.OSINT_FILENAME:
+            raise OSError("simulated power loss")
+        return original(config, path, raw, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(legacy, "_install_authority_file", interrupted)
+        with pytest.raises(OSError):
+            adapter.synchronize(f["config"], fetcher=f["fetch"])
+    foreign = f["config"].authority / legacy.OSINT_FILENAME
+    foreign.chmod(0o644)
+    foreign.write_bytes(foreign.read_bytes() + b" ")
+    foreign.chmod(0o444)
+    before = snapshot(f)
+    with pytest.raises(legacy.SyncFailure, match="transaction-foreign-state"):
+        adapter.synchronize(f["config"], fetcher=f["fetch"])
+    assert snapshot(f) == before
+
+
+def test_same_publication_reverification_preserves_receipts_and_history(tmp_path, monkeypatch):
+    f = build(tmp_path)
+    first = adapter.synchronize(f["config"], fetcher=f["fetch"])
+    files = {str(path): (path.read_bytes(), path.stat().st_ino) for path in f["config"].state.rglob("*") if path.is_file()}
+    monkeypatch.setattr(legacy, "_now", lambda: fixtures.datetime(2026, 8, 14, 1, 40, tzinfo=fixtures.timezone.utc))
+    calls = []
+
+    def fetch(*args):
+        calls.append(args)
+        return f["fetch"](*args)
+
+    assert adapter.synchronize(f["config"], fetcher=fetch) == first
+    assert len(calls) == 8
+    assert {str(path): (path.read_bytes(), path.stat().st_ino) for path in f["config"].state.rglob("*") if path.is_file()} == files
