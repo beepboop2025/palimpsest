@@ -1,0 +1,12 @@
+[Unit]
+Description=Retry Palimpsest runtime backups hourly and retain six-hour recovery points
+
+[Timer]
+OnBootSec=10m
+OnUnitInactiveSec=1h
+RandomizedDelaySec=5m
+AccuracySec=1m
+Unit=palimpsest-runtime-backup.service
+
+[Install]
+WantedBy=timers.target

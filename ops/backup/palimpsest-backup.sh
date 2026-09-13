@@ -229,6 +229,21 @@ artifact_image="$(docker inspect --format '{{.Image}}' "$artifact_container")"
 [[ "$artifact_image" =~ ^sha256:[a-f0-9]{64}$ ]] || \
   die "artifact container has an unsafe image identity: $artifact_image"
 
+# API-only nodes can retain a running container after its image was removed.
+# A separately pinned Python runtime can execute the same immutable archiver.
+archive_runtime_mounts=()
+if [[ -n "${PALIMPSEST_BACKUP_ARCHIVE_RUNTIME_IMAGE:-}" ]]; then
+  artifact_image="$PALIMPSEST_BACKUP_ARCHIVE_RUNTIME_IMAGE"
+  [[ "$artifact_image" =~ ^sha256:[a-f0-9]{64}$ ]] || die "archive runtime must be a full image digest"
+  [[ "$(docker image inspect --format '{{.Id}}' "$artifact_image")" == "$artifact_image" ]] || \
+    die "pinned archive runtime is unavailable"
+  archive_helper="$repo_root/scripts/palimpsest_backup_archive.py"
+  [[ -f "$archive_helper" && ! -L "$archive_helper" ]] || die "independent archiver is missing or unsafe"
+  [[ "$(stat -c '%u:%a' "$archive_helper")" == "0:644" ]] || \
+    die "independent archiver must be root-owned and immutable to the backup user"
+  archive_runtime_mounts=(--mount "type=bind,src=$archive_helper,dst=/app/scripts/palimpsest_backup_archive.py,readonly")
+fi
+
 verify_bind_mount() {
   local destination="$1"
   local expected="$2"
@@ -301,6 +316,7 @@ docker run --rm --pull never --network none --read-only --log-driver none \
   --mount "type=bind,src=$analysis_root,dst=/source/analysis,readonly" \
   --mount "type=bind,src=$newswire_root,dst=/source/newswire,readonly" \
   --mount "type=bind,src=$witness_root,dst=/source/witness,readonly" \
+  "${archive_runtime_mounts[@]}" \
   --env "PALIMPSEST_EXPECTED_WITNESS_IDENTITY=$witness_identity" \
   --entrypoint /usr/local/bin/python3 "$artifact_image" -I -B \
   /app/scripts/palimpsest_backup_archive.py >"$staging_dir/artifacts.tar.gz"
