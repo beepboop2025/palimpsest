@@ -1,8 +1,51 @@
 from pathlib import Path
+import hashlib
+import json
+
+from core import eval_registry as registry
+from core import gfi_protocol
+from scripts import preregister_gfi_v2
 
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "gfi-refresh.yml"
+
+
+def test_shipping_instrument_has_an_exact_preregistration():
+    # This reads the committed production instrument and registry, not a fixture.
+    # Even transport-only edits change the exact classifier commitment.
+    assert preregister_gfi_v2.main(["--check"]) == 0
+
+
+def test_unregistered_classifier_bytes_fail_the_shipping_check(monkeypatch):
+    protocol = preregister_gfi_v2.gfr.build_gfi_protocol()
+    changed = {field: protocol[field] for field in gfi_protocol.CORE_FIELDS}
+    changed["classifier_sha256"] = "0" * 64
+    monkeypatch.setattr(
+        preregister_gfi_v2.gfr, "build_gfi_protocol",
+        lambda: gfi_protocol.seal_protocol(changed),
+    )
+    paths = [ROOT / "readings" / name for name in (
+        "eval-registry.jsonl", "eval-registry-latest.json",
+        "gfi-evaluation-protocol-v2.json",
+    )]
+    before = [path.read_bytes() for path in paths]
+
+    assert preregister_gfi_v2.main(["--check"]) == 1
+    assert [path.read_bytes() for path in paths] == before
+
+
+def test_registry_preserves_recovered_history_and_its_summary():
+    path = ROOT / "readings" / "eval-registry.jsonl"
+    historical_prefix = b"".join(path.read_bytes().splitlines(keepends=True)[:548])
+    # Immutable history recovered from source 499d485a; later append is allowed.
+    assert hashlib.sha256(historical_prefix).hexdigest() == (
+        "de8e8e6638cb116f52b5234c69579aa624300a1163ef0ff44589ff60ec2cab18"
+    )
+    entries = registry.read_ledger(path)
+    assert registry.verify(entries) == (True, [])
+    published = json.loads((ROOT / "readings/eval-registry-latest.json").read_text())
+    assert published == registry.summary_document(entries)
 
 
 def test_exact_protocol_is_public_before_any_paid_model_call():
