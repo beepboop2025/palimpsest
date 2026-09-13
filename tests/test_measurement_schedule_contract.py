@@ -17,7 +17,7 @@ from scripts import stage_pages_rights as rights
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "ops/measurement/palimpsest-measurement-refresh"
-NETWORK = ("ooni-gfw", "in-path-interference", "ioda-outages")
+TWO_HOUR_JOBS = ("ooni-gfw", "in-path-interference", "ioda-outages", "app-storefront")
 
 
 def _jobs():
@@ -30,12 +30,12 @@ def _function(name, next_name):
     return source[source.index(f"{name}() {{"):source.index(f"\n{next_name}() {{")]
 
 
-def test_network_jobs_meet_catalog_target_on_the_hourly_timer():
+def test_two_hour_jobs_meet_catalog_target_on_the_hourly_timer():
     catalog = json.loads((ROOT / "config/public_data_catalog.json").read_text())
     rows = {row["id"]: row for row in catalog["datasets"]}
     timer = (ROOT / "ops/systemd/palimpsest-measurement-refresh.timer").read_text()
     assert "OnCalendar=hourly" in timer
-    for name in NETWORK:
+    for name in TWO_HOUR_JOBS:
         # Quantize the successful-run guard to the actual timer, rather than
         # comparing a catalog promise to a guard the service cannot poll at.
         nominal_minutes = 60 * math.ceil(_jobs()[name] / 60)
@@ -45,10 +45,11 @@ def test_network_jobs_meet_catalog_target_on_the_hourly_timer():
 
 
 @pytest.mark.parametrize("age,expected", [(0, 1), (89 * 60, 1), (90 * 60, 0), (121 * 60, 0)])
-def test_actual_due_guard_enforces_the_successful_run_interval(tmp_path, age, expected):
+@pytest.mark.parametrize("name", TWO_HOUR_JOBS)
+def test_actual_due_guard_enforces_the_successful_run_interval(tmp_path, age, expected, name):
     (tmp_path / "jobs").mkdir()
-    (tmp_path / "jobs/ooni-gfw.success").write_text(str(1_000_000 - age))
-    code = _function("job_due", "run_job") + '\ndate() { echo 1000000; }\njob_due ooni-gfw 90\n'
+    (tmp_path / f"jobs/{name}.success").write_text(str(1_000_000 - age))
+    code = _function("job_due", "run_job") + f'\ndate() {{ echo 1000000; }}\njob_due {name} {_jobs()[name]}\n'
     result = subprocess.run(["bash", "-c", code], env={"STATE_ROOT": str(tmp_path), "PATH": "/usr/bin:/bin"})
     assert result.returncode == expected
 
