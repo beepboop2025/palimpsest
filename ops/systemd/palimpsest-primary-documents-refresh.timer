@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily retained primary-document capture
+
+[Timer]
+OnCalendar=*-*-* 02:37:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+Unit=palimpsest-primary-documents-refresh.service
+
+[Install]
+WantedBy=timers.target
