@@ -256,6 +256,45 @@ def verify_public(document: dict, ledger: Path, history_raw: bytes):
         raise ArchiveRefreshError("archive latest history differs")
 
 
+def verify_public_snapshot(readings: Path, *, source: Path | None = None, now=None) -> dict:
+    """Check copied bridge outputs before publication without rebuilding evidence."""
+    before = {name: io.regular_bytes(readings / name, optional=True) for name in (LATEST, HISTORY)}
+    if source is not None:
+        expected = {name: io.regular_bytes(source / name, optional=True) for name in (LATEST, HISTORY)}
+        if any(raw is not None for raw in expected.values()):
+            if any(raw is None for raw in expected.values()) or before != expected:
+                raise ArchiveRefreshError("archive companions differ from immutable host snapshot")
+    if all(raw is None for raw in before.values()):
+        return {"status": "unavailable", "reason": "archive-not-collected", "model_calls": 0}
+    if any(raw is None for raw in before.values()):
+        raise ArchiveRefreshError("archive publication snapshot has an incomplete companion pair")
+    before[LEDGER] = io.regular_bytes(readings / LEDGER)
+    document = strict(before[LATEST])
+    verify_public(document, readings / LEDGER, before[HISTORY])
+    observed = now or datetime.now(timezone.utc)
+    generated = clock(document["generated_at"])
+    stale = []
+    for name, value, ceiling in (
+        ("generated_at", document["generated_at"], 5400),
+        ("newswire_generated_at", document["source_snapshot"]["newswire_generated_at"], 7200),
+        ("osint_generated_at", document["source_snapshot"]["osint_generated_at"], 7200),
+    ):
+        source_clock = clock(value)
+        age = (observed - source_clock).total_seconds()
+        if age < -300:
+            raise ArchiveRefreshError(f"archive {name} is future-dated")
+        if age > ceiling:
+            stale.append(name)
+        if source_clock > generated:
+            raise ArchiveRefreshError("archive input clock exceeds producer clock")
+    if {name: io.regular_bytes(readings / name) for name in FILES} != before:
+        raise ArchiveRefreshError("archive publication snapshot changed during verification")
+    return {"status": "verified", "generated_at": document["generated_at"],
+            "context_sha256": document["context_sha256"], "newest_seal": "PASS",
+            "freshness": "stale" if stale else "fresh", "stale_clocks": stale,
+            "original_clocks_preserved": True, "model_calls": 0}
+
+
 def metadata(path: Path, before: bytes | None):
     if before is None:
         raise ArchiveRefreshError("archive admission requires existing retained output files")

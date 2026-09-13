@@ -279,6 +279,34 @@ def _strict_json(path: Path, label: str) -> Any:
         raise ManifestError(f"{label} is not strict JSON") from exc
 
 
+def _archive_context_paths(root: Path) -> tuple[str, ...]:
+    paths = ("readings/archive-news-context-latest.json",
+             "readings/archive-news-context-history.jsonl")
+    if any((root / relative).exists() for relative in paths):
+        return paths
+    for relative in ("readings/public-data-catalog-latest.json", "readings/research-catalog-latest.json"):
+        path = root / relative
+        if not path.exists():
+            continue
+        catalog = _strict_json(path, "archive discovery catalog")
+        if not isinstance(catalog, dict) or not isinstance(catalog.get("datasets", []), list):
+            raise ManifestError("archive discovery catalog has an invalid dataset inventory")
+        for row in catalog.get("datasets", []):
+            if not isinstance(row, dict):
+                raise ManifestError("archive discovery catalog has an invalid dataset row")
+            if row.get("id") != "archive-news-context":
+                continue
+            metadata, urls = row.get("artifacts", {}), row.get("urls", {})
+            if not isinstance(metadata, dict) or not isinstance(urls, dict):
+                raise ManifestError("archive discovery catalog has invalid availability metadata")
+            advertised = metadata.get("latest_available") is True
+            if relative == "readings/research-catalog-latest.json":
+                advertised = advertised or bool(urls.get("latest"))
+            if advertised:
+                return paths
+    return ()
+
+
 def _measurement_evidence_paths(root: Path) -> tuple[str, ...]:
     newsroom_path = root / "readings/newsroom-latest.json"
     newsroom = _strict_json(newsroom_path, "structured newsroom")
@@ -363,7 +391,9 @@ def build_manifest(root: Path, source_commit: str, built_at: str) -> dict[str, A
     if not file_rows:
         raise ManifestError("publication bundle is empty")
     by_path = {relative: (size, digest) for relative, size, digest in file_rows}
-    dynamic_critical_paths = _measurement_evidence_paths(root)
+    dynamic_critical_paths = (*_measurement_evidence_paths(root), *_archive_context_paths(root))
+    # An uncollected archive may remain explicitly unavailable in the catalog.
+    # Once either generated companion exists, both must be bound to the release.
     critical_paths = tuple(dict.fromkeys((*CRITICAL_PATHS, *dynamic_critical_paths)))
     missing = [relative for relative in critical_paths if relative not in by_path]
     if missing:
