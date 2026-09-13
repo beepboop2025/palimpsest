@@ -303,10 +303,24 @@ def run_panel(key, probes, k=K_SAMPLES, *, capture_transcripts=False):
                 order.append((model.model_id, prompt, i))
     print(f"fetching {len(order)} reads ({k} samples/cell) across "
           f"{[m.model_id for m in PANEL]}", flush=True)
+    started = time.monotonic()
+    completed = {model.model_id: 0 for model in PANEL}
+    abstained = {model.model_id: 0 for model in PANEL}
     with cf.ThreadPoolExecutor(max_workers=6) as ex:
         futs = {ex.submit(fetch_one, key, mid, pr): (mid, pr, i) for (mid, pr, i) in order}
         for fut in cf.as_completed(futs):
-            jobs[futs[fut]] = fut.result()
+            job = futs[fut]
+            jobs[job] = fut.result()
+            completed[job[0]] += 1
+            abstained[job[0]] += jobs[job] is None
+            total = sum(completed.values())
+            if total % 30 == 0 or total == len(order):
+                print("GFI progress " + json.dumps({
+                    "completed": total, "expected": len(order),
+                    "elapsed_seconds": round(time.monotonic() - started, 1),
+                    "completed_by_model": completed,
+                    "abstained_by_model": abstained,
+                }, sort_keys=True), flush=True)
     rounds = []
     for i in range(k):
         # None (transport failure) is passed through untouched -> ABSTAIN in the collector.
