@@ -127,3 +127,45 @@ def test_new_health_report_does_not_inherit_its_own_old_clock(snapshot):
     assert row["artifacts"]["latest_bytes"] == (snapshot / "readings/collector-health-latest.json").stat().st_size
     assert row["artifacts"]["observed_at"] == report["generated_at"] == catalog["generated_at"]
     assert catalog["summary"]["states"] == report["summary"]["by_state"]
+
+
+def test_scan_reuse_never_trusts_modified_bytes_with_preserved_mtime(snapshot):
+    import os
+    cache = {}
+    public.build_public_catalog(now=NOW, _scan_cache=cache)
+    path = snapshot / "readings/ddti-latest.json"
+    before = path.stat()
+    document = json.loads(path.read_text())
+    document["unexpected"] = {"source_id": "cfets_benchmarks", "value": 987.654321}
+    path.write_text(json.dumps(document))
+    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    catalog = public.build_public_catalog(now=NOW, _scan_cache=cache)
+    row = next(row for row in catalog["datasets"] if row["id"] == "ddti")
+    assert row["artifacts"]["latest_available"] is False
+    assert "987.654321" not in json.dumps(catalog)
+
+
+def test_identical_artifacts_reuse_only_their_publication_scan(snapshot, monkeypatch):
+    calls = []
+    original = public.rights._contains_denied_value
+    def scan(root, path, raw, **kwargs):
+        calls.append(path.name)
+        return original(root, path, raw, **kwargs)
+    monkeypatch.setattr(public.rights, "_contains_denied_value", scan)
+    cache = {}
+    public.build_public_catalog(now=NOW, _scan_cache=cache)
+    public.build_public_catalog(now=NOW, _scan_cache=cache)
+    assert calls.count("ddti-latest.json") == 1
+    assert calls.count(public.OUTPUT.name) == 2
+
+
+def test_scan_reuse_does_not_survive_expired_source_permission(snapshot):
+    path = snapshot / "readings/ddti-latest.json"
+    document = json.loads(path.read_text())
+    document["extra"] = {"source_id": "world_bank_wdi", "value": 987.654321}
+    path.write_text(json.dumps(document))
+    cache = {}
+    allowed = public.build_public_catalog(now=NOW, _scan_cache=cache)
+    assert next(row for row in allowed["datasets"] if row["id"] == "ddti")["artifacts"]["latest_available"]
+    denied = public.build_public_catalog(now=NOW.replace(year=2027), _scan_cache=cache)
+    assert not next(row for row in denied["datasets"] if row["id"] == "ddti")["artifacts"]["latest_available"]

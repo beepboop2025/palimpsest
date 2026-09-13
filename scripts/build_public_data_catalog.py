@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 from collections import Counter
 from datetime import datetime, timezone
@@ -24,6 +25,7 @@ OUTPUT = Path("readings/public-data-catalog-latest.json")
 def build_public_catalog(
     catalog: Mapping[str, Any] | None = None, *, root: Path | None = None,
     now: datetime | None = None,
+    _scan_cache: dict[tuple, bool] | None = None,
 ) -> dict[str, Any]:
     root = (root or atlas.ROOT).resolve()
     now = now or atlas._utc_now()
@@ -38,6 +40,7 @@ def build_public_catalog(
     denied = frozenset(set(policy.decisions) - allowed)
     pattern = rights._lineage_pattern(denied)
     decisions = {}
+    scan_cache = _scan_cache if _scan_cache is not None else {}
 
     def permitted(relative: str | None) -> bool:
         if not relative:
@@ -53,6 +56,12 @@ def build_public_catalog(
             return False
         try:
             raw = rights._read_bounded(path)
+            # Only reuse a verdict for identical bytes, path and effective
+            # permissions. Never use mtime or a previous edition's cache.
+            cache_key = (str(path), hashlib.sha256(raw).digest(), allowed, denied)
+            if cache_key in scan_cache:
+                decisions[relative] = scan_cache[cache_key]
+                return decisions[relative]
             text = rights._decode_public_text(raw)
         except (OSError, ValueError):
             decisions[relative] = False
@@ -77,6 +86,7 @@ def build_public_catalog(
             )
         except ValueError:
             decisions[relative] = False
+        scan_cache[cache_key] = decisions[relative]
         return decisions[relative]
 
     for item in result["datasets"]:
@@ -142,19 +152,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
     now = datetime.now(timezone.utc)
-    catalog = build_public_catalog(now=now)
+    scan_cache: dict[tuple, bool] = {}
+    catalog = build_public_catalog(now=now, _scan_cache=scan_cache)
     from processors.collector_health import build_health
     health = build_health(catalog, root=atlas.ROOT, now=now)
     if not args.check:
         # Health is itself an atlas entry. Materialize this edition before the
         # final projection so it cannot inherit the committed report's old clock.
         atlas._atomic_json(atlas.ROOT / "readings/collector-health-latest.json", health)
-        catalog = build_public_catalog(now=now)
+        catalog = build_public_catalog(now=now, _scan_cache=scan_cache)
         health = build_health(catalog, root=atlas.ROOT, now=now)
         atlas._atomic_json(atlas.ROOT / "readings/collector-health-latest.json", health)
         # The final report has different bytes from the provisional report.
         # Re-inspect its size after its self-referential freshness has settled.
-        catalog = build_public_catalog(now=now)
+        catalog = build_public_catalog(now=now, _scan_cache=scan_cache)
         atlas._atomic_json(atlas.ROOT / OUTPUT, catalog)
     print(json.dumps({"states": catalog["summary"]["states"], "written": not args.check}))
     return 0
