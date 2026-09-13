@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# Back up the API-only node with the existing v4 archive and restore contract.
+set -Eeuo pipefail
+umask 077
+
+readonly source_root=/usr/local/libexec/palimpsest-runtime-backup/source
+readonly state_root=/var/lib/palimpsest-runtime-backup
+readonly backup_root=/home/palimpsest/backups/runtime-node
+readonly status_file="$state_root/latest-success.json"
+
+exec 9>"$state_root/run.lock"
+flock -n 9 || exit 0
+
+# Hourly attempts retry failures; completed snapshots are at least six hours apart.
+if python3 - "$status_file" <<'PY'
+import json, sys
+from datetime import datetime, timezone
+from pathlib import Path
+try:
+    receipt = json.loads(Path(sys.argv[1]).read_text())
+    stamp = datetime.fromisoformat(receipt["verified_at"].replace("Z", "+00:00"))
+    age = (datetime.now(timezone.utc) - stamp).total_seconds()
+    fresh = receipt["status"] == "verified" and 0 <= age < 21600
+    fresh = fresh and Path(receipt["snapshot_path"], "SHA256SUMS").is_file()
+except (OSError, ValueError, KeyError, TypeError):
+    fresh = False
+sys.exit(0 if fresh else 1)
+PY
+then
+  printf 'A verified runtime backup is less than six hours old.\n'
+  exit 0
+fi
+
+export PALIMPSEST_ROOT="$source_root"
+export PALIMPSEST_STATE_ROOT=/var/lib/palimpsest
+export PALIMPSEST_ANALYSIS_ROOT=/var/lib/palimpsest-analysis
+export PALIMPSEST_NEWSWIRE_ROOT="$state_root/wire-snapshot"
+export PALIMPSEST_WITNESS_ROOT=/home/palimpsest/.palimpsest-witness
+export PALIMPSEST_BACKUP_DIR="$backup_root"
+export PALIMPSEST_BACKUP_ARTIFACT_SERVICE=api
+export PALIMPSEST_BACKUP_RETENTION_DAYS=7
+export PALIMPSEST_BACKUP_MIN_FREE_MB=16384
+export PALIMPSEST_COMPOSE_PROJECT=palimpsest
+
+started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+python3 - "$state_root" <<'PY'
+import fcntl, hashlib, json, os, shutil, stat, sys
+from datetime import datetime, timezone
+from pathlib import Path
+state = Path(sys.argv[1])
+live = Path("/var/lib/palimpsest/newswire")
+closed = {"newswire-latest.json", "newswire-status.json", "newswire-versions.jsonl", "newswire.lock"}
+derived = "event-analysis-latest.json"
+with (live / "newswire.lock").open("rb") as lease:
+    fcntl.flock(lease, fcntl.LOCK_SH)
+    inventory = {p.name for p in live.iterdir()}
+    if not closed <= inventory or inventory - closed - {derived}:
+        raise SystemExit("Unknown wire recovery files require an explicit backup contract.")
+    target = state / "wire-snapshot"
+    if target.is_symlink():
+        raise SystemExit("Unsafe frozen wire path")
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir(mode=0o700)
+    for name in sorted(closed):
+        path = live / name
+        metadata = path.lstat()
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise SystemExit("Unsafe live wire recovery file")
+        shutil.copy2(path, target / name)
+    supplement = None
+    if derived in inventory:
+        path = live / derived
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise SystemExit("Unsafe derived wire recovery file")
+        raw = path.read_bytes()
+        identity = hashlib.sha256(raw).hexdigest()
+        supplements = Path("/home/palimpsest/backups/runtime-node/.wire-supplements")
+        supplements.mkdir(mode=0o700, exist_ok=True)
+        destination = supplements / (identity + ".json")
+        if not destination.exists():
+            destination.write_bytes(raw)
+        supplement = {"path": str(destination), "sha256": identity}
+    capture = {"captured_at": datetime.now(timezone.utc).isoformat(),
+               "derived_event_analysis": supplement}
+    (state / "wire-capture.json").write_text(json.dumps(capture) + "\n")
+PY
+"$source_root/ops/backup/palimpsest-backup.sh"
+snapshot="$(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name '20??????T??????Z' -printf '%f\n' | LC_ALL=C sort | tail -1)"
+[[ "$snapshot" =~ ^[0-9]{8}T[0-9]{6}Z$ ]]
+verification="$(mktemp "$state_root/verification.XXXXXX")"
+trap 'rm -f -- "$verification"' EXIT
+python3 "$source_root/ops/backup/node_backup_snapshot.py" verify \
+  "$backup_root/$snapshot" --snapshot-id "$snapshot" >"$verification"
+python3 - "$verification" "$status_file" "$backup_root/$snapshot" "$started_at" <<'PY'
+import json, os, sys
+from datetime import datetime, timezone
+from pathlib import Path
+proof = json.loads(Path(sys.argv[1]).read_text())
+if proof.get("status") != "verified":
+    raise SystemExit("The complete backup failed its independent restore contract.")
+snapshot_time = datetime.strptime(Path(sys.argv[3]).name, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+if snapshot_time < datetime.fromisoformat(sys.argv[4].replace("Z", "+00:00")):
+    raise SystemExit("The backup command did not publish a new snapshot.")
+receipt = {
+    "schema": "palimpsest-runtime-backup.v1", "status": "verified",
+    "verified_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "snapshot_path": sys.argv[3], "verification": proof,
+    "wire_capture": json.loads(Path(sys.argv[2]).with_name("wire-capture.json").read_text()),
+    "storage_scope": "Attached volume; external offsite replication is not configured.",
+}
+output = Path(sys.argv[2])
+temporary = output.with_suffix(".tmp")
+with temporary.open("w") as handle:
+    json.dump(receipt, handle, sort_keys=True)
+    handle.write("\n")
+    handle.flush()
+    os.fsync(handle.fileno())
+os.replace(temporary, output)
+descriptor = os.open(output.parent, os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(descriptor)
+finally:
+    os.close(descriptor)
+print(json.dumps({"status": "verified", "snapshot": Path(sys.argv[3]).name}))
+PY
