@@ -7,8 +7,10 @@ the shell with fake curl/flock/python executables, and fault-inject atomic write
 from __future__ import annotations
 
 import os
+import re
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -24,6 +26,70 @@ TIMER = ROOT / "ops/systemd/palimpsest-bleedthrough.timer"
 ENV_EXAMPLE = ROOT / "ops/bleedthrough/bleedthrough.env.example"
 PROBER = ROOT / "ops/bleedthrough_prober.sh"
 RUNBOOK = ROOT / "ops/bleedthrough/README.md"
+
+
+def _standalone_bundle(tmp_path, array_name):
+    installer = (ROOT / "ops/common-crawl/install-host-bundle.sh").read_text()
+    block = re.search(r"^" + array_name + r"=\((.*?)^\)", installer, re.M | re.S)
+    assert block is not None
+    specs = re.findall(r'"([^":]+):([^":]+):([0-7]+)"', block.group(1))
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    for source, destination, mode in specs:
+        target = bundle / destination
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((ROOT / source).read_bytes())
+        target.chmod(int(mode, 8))
+    manifest_start = installer.index("  sha256sum \\", block.end())
+    manifest_end = installer.index(" >MANIFEST.sha256", manifest_start)
+    manifest_paths = set(installer[manifest_start:manifest_end].replace("\\\n", " ").split()[1:])
+    assert {destination for _, destination, _ in specs} <= manifest_paths
+    return bundle
+
+
+@pytest.mark.parametrize(
+    ("array_name", "modules", "missing_dependency"),
+    [
+        ("lane_bundle_files", "network_lane,scripts.bleedthrough_pull,scripts.bleedthrough_curate,scripts.bleedthrough_fetch_prefixes", "core/safe_fetch.py"),
+        ("bundle_files", "scripts.common_crawl_lake,collectors.common_crawl_lake,processors.archive_context", "core/live_paths.py"),
+    ],
+)
+@pytest.mark.parametrize("remove_dependency", [False, True])
+def test_installed_bundles_import_without_checkout_or_network(
+    tmp_path, array_name, modules, missing_dependency, remove_dependency
+):
+    bundle = _standalone_bundle(tmp_path, array_name)
+    if remove_dependency:
+        (bundle / missing_dependency).unlink()
+    # Isolated Python ignores the checkout and ambient PYTHONPATH. Block DNS
+    # and both stream/datagram egress before importing the actual entrypoints.
+    code = """
+import importlib, pathlib, socket, sys
+bundle = pathlib.Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(bundle))
+def deny(*args, **kwargs):
+    raise AssertionError('bundle import attempted network access')
+socket.getaddrinfo = deny
+socket.socket.connect = deny
+socket.socket.sendto = deny
+for name in sys.argv[2].split(','):
+    module = importlib.import_module(name)
+    assert pathlib.Path(module.__file__).resolve().is_relative_to(bundle)
+for name, module in tuple(sys.modules.items()):
+    if name.split('.')[0] in {'core', 'collectors', 'scripts', 'processors'} and getattr(module, '__file__', None):
+        assert pathlib.Path(module.__file__).resolve().is_relative_to(bundle)
+"""
+    result = subprocess.run(
+        [sys.executable, "-I", "-B", "-c", code, str(bundle), modules],
+        cwd=tmp_path, text=True, capture_output=True, timeout=30,
+    )
+    if remove_dependency:
+        assert result.returncode != 0
+        assert "ModuleNotFoundError" in result.stderr
+        assert missing_dependency.removesuffix(".py").replace("/", ".") in result.stderr
+    else:
+        assert result.returncode == 0, result.stderr
+    assert not list(bundle.rglob("__pycache__"))
 
 
 def test_systemd_service_is_fixed_user_least_privilege_and_state_separated():

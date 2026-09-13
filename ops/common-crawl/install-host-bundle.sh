@@ -399,6 +399,7 @@ validate_lane_bundle_permissions() {
     'core/__init__.py:444' \
     'core/claim_support.py:444' \
     'core/governance.py:444' \
+    'core/safe_fetch.py:444' \
     'config/bleedthrough_asns.json:444'; do
     IFS=: read -r relative_path expected_mode <<<"$specification"
     candidate_path="$candidate_bundle/$relative_path"
@@ -479,6 +480,7 @@ lane_bundle_files=(
   "core/__init__.py:core/__init__.py:0444"
   "core/claim_support.py:core/claim_support.py:0444"
   "core/governance.py:core/governance.py:0444"
+  "core/safe_fetch.py:core/safe_fetch.py:0444"
   "config/bleedthrough_asns.json:config/bleedthrough_asns.json:0444"
 )
 for specification in "${lane_bundle_files[@]}"; do
@@ -497,7 +499,7 @@ chmod 0444 "$lane_bundle_tmp/REVISION"
     scripts/bleedthrough_fetch_prefixes.py \
     scripts/bleedthrough_curate.py scripts/bleedthrough_pull.py \
     collectors/__init__.py collectors/bleedthrough.py collectors/undertext.py \
-    core/__init__.py core/claim_support.py core/governance.py \
+    core/__init__.py core/claim_support.py core/governance.py core/safe_fetch.py \
     config/bleedthrough_asns.json >MANIFEST.sha256
 )
 chown root:root "$lane_bundle_tmp/MANIFEST.sha256"
@@ -517,6 +519,7 @@ bundle_files=(
   "core/__init__.py:core/__init__.py:0444"
   "core/governance.py:core/governance.py:0444"
   "core/safe_fetch.py:core/safe_fetch.py:0444"
+  "core/live_paths.py:core/live_paths.py:0444"
   "processors/__init__.py:processors/__init__.py:0444"
   "processors/archive_context.py:processors/archive_context.py:0444"
   "processors/editorial_priority.py:processors/editorial_priority.py:0444"
@@ -540,7 +543,7 @@ chmod 0444 "$bundle_tmp/REVISION"
     backup/palimpsest-common-crawl-offsite-backup.sh \
     collectors/__init__.py collectors/common_crawl_lake.py \
     config/common_crawl_targets.json \
-    core/__init__.py core/governance.py core/safe_fetch.py \
+    core/__init__.py core/governance.py core/safe_fetch.py core/live_paths.py \
     processors/__init__.py processors/archive_context.py \
     processors/editorial_priority.py scripts/common_crawl_lake.py \
     run_duckdb_filter.py verify-host-bundle.sh >MANIFEST.sha256
