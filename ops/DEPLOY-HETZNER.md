@@ -30,6 +30,12 @@ does not require moving the canonical host checkout or changing
 `/etc/palimpsest/deployed-commit`; rotate only the direct publisher's public
 base with `ops/railway/rotate-direct-publication-base`.
 
+The publisher timer rearms ten seconds after a completed cycle, with at most
+five seconds of jitter and one second of timer coalescing. Full-size publications
+can take about fifteen minutes; a further ninety seconds of idle time can make
+the preceding wire exceed its unchanged thirty-minute freshness budget before
+the next edition arrives. The publisher's existing lock still prevents overlap.
+
 This is a zero-quiesce transaction. Do **not** create the continuity
 maintenance hold and do not disable or stop the publisher, watchdog, or
 continuity timers: a base-only rotation cannot produce the full protected host
