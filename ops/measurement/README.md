@@ -74,17 +74,17 @@ read-only at `/opt/palimpsest-gfi/source`. Follow the existing measurement
 source ownership contract: the checkout is owned by `palimpsest`, so the shared
 helper's Git commands do not cross Git's repository ownership boundary. Its
 private state is bound from the large volume at `/var/lib/palimpsest/gfi-refresh`,
-owned by `palimpsest` with mode0700. Both mounts must be present before service
+owned by `palimpsest` with mode 0700. Both mounts must be present before service
 activation. Keep the source marker/configuration root controlled, and load the
-existing root0600 OpenRouter environment only through the GFI service.
+existing root-owned, mode 0600 OpenRouter environment only through the GFI service.
 
 Install the stable `/var/lib/palimpsest/readings/.eval-registry.jsonl.lock` once
-as `palimpsest:palimpsest-analysis`, mode0664, without replacing any existing
-lock inode. The five existing GFI outputs were observed as UID/GID10001,
-mode0664; transcripts were absent. Under data -> registry locks, the root
-installer normalizes only those existing output UIDs to1001, preserving their
+as `palimpsest:palimpsest-analysis`, mode 0664, without replacing any existing
+lock inode. The five existing GFI outputs were observed as UID/GID 10001,
+mode 0664; transcripts were absent. Under data -> registry locks, the root
+installer normalizes only those existing output UIDs to 1001, preserving their
 group, modes, access ACLs, inodes and exact bytes. The service has supplementary
-`palimpsest-analysis` membership. New outputs use UID1001/GID1001 and mode0644.
+`palimpsest-analysis` membership. New outputs use UID 1001/GID 1001 and mode 0644.
 Before models, `--check-host` validates the installed locks, registry and file
 ownership; publication preserves all existing ownership/mode/ACL metadata.
 
@@ -99,7 +99,7 @@ run. The runtime progress change does not alter the committed classifier hash.
 The model run holds only its private refresh lock. Before collection, the longer
 exact source/host history prefix is retained and copied into private
 `gfi-history-before.jsonl`; divergent histories stop before model calls. This
-retains all46reviewed source rows when the host has only the older37row prefix.
+retains all 46 reviewed source rows when the host has only the older prefix of 37 rows.
 Promotion verifies every historical date against that capture and current host.
 Only the existing daily-point upsert may replace the current day's prior point;
 its prior bytes remain in the private capture.

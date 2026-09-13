@@ -57,12 +57,13 @@ def _load_watchdog() -> ModuleType:
 watchdog = _load_watchdog()
 
 
-def test_scheduled_translation_cannot_disappear_from_runtime_monitoring():
+@pytest.mark.parametrize("job", ["translation-refresh", "gfi-refresh", "primary-documents-refresh", "regional-research"])
+def test_scheduled_product_jobs_cannot_disappear_from_runtime_monitoring(job):
     for suffix, monitored in (("timer", watchdog.TIMERS), ("service", watchdog.SERVICES)):
-        unit = f"palimpsest-translation-refresh.{suffix}"
+        unit = f"palimpsest-{job}.{suffix}"
         assert monitored.count(unit) == 1
         assert (ROOT / "ops/systemd" / unit).is_file()
-    service = (ROOT / "ops/systemd/palimpsest-translation-refresh.service").read_text()
+    service = (ROOT / "ops/systemd" / f"palimpsest-{job}.service").read_text()
     assert "SuccessExitStatus=75" not in service
 
 
