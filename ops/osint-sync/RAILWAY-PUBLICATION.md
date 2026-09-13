@@ -16,12 +16,29 @@ must remain a restricted stub tied to the exact master rights decision and
 manifest. Restricted values are never copied to the shared readings tree.
 
 Only after every proof passes and the publication receipt and protected marker
-are rechecked does the adapter advance the existing private authority. Its ledger
-must extend the exact existing bytes; generations cannot roll back or equivocate.
-The ledger is installed first, then the artifact and a new `railway-receipt.json`.
-An interrupted installation is safely repeatable: the old artifact remains sealed
-by the longer ledger. The existing `receipt.json`, any `release-proof.json`, source
-checkout, protected deployed marker, and public bytes are not rewritten.
+are rechecked does the adapter advance the existing private authority. Each
+publication ledger must extend its exact Git source-base ledger. The initial
+migration must also extend the entire existing private ledger. Later generated
+editions may have distinct sealed suffixes only when their retained,
+content-addressed publication predecessor chain reaches the exact installed
+publication receipt. Both source bases must have ancestor and byte-prefix
+continuity. Installed receipts, old seals, generation monotonicity and generation
+equivocation checks remain mandatory; no historical row is rewritten or merged.
+
+Before switching, retain both complete authority states (artifact, full ledger
+and Railway receipt) beneath the private `railway-history/<manifest-sha256>/`.
+Each directory is immutable to this adapter and binds every byte with a manifest.
+Write a durable `railway-transaction.json` naming both states, then install the
+ledger, artifact and receipt. On interruption, the next sync first proves every
+current member is exactly an old or candidate member, restores the previous
+complete state, and retries current publication verification. Foreign bytes,
+unsafe metadata or altered retained history refuse recovery without replacement.
+`--check` refuses pending recovery and never changes authority. History from
+aborted candidates is retained too. The existing `receipt.json`, any
+`release-proof.json`, host readings ledger, source checkout, protected deployed
+marker, and public bytes remain untouched. The independent canonical host ledger
+may advance after a publication capture; this adapter does not overwrite it or
+claim that a previously built edition contains those later observations.
 
 The existing publisher regenerates OSINT with its captured publication clock in
 `scripts.build_osint_china` on every successful publication cycle. Its timer
