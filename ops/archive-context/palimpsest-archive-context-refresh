@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Exact immutable source; no paid client, network or source-checkout writes.
+set -Eeuo pipefail
+umask 077
+readonly SOURCE="${PALIMPSEST_ARCHIVE_SOURCE:?immutable source required}"
+readonly COMMIT_FILE="${PALIMPSEST_ARCHIVE_COMMIT_FILE:?source marker required}"
+readonly STATE="${PALIMPSEST_ARCHIVE_STATE_ROOT:-/var/lib/palimpsest/archive-context-refresh}"
+readonly DERIVED="${PALIMPSEST_ARCHIVE_DERIVED_ROOT:-/var/lib/palimpsest/common-crawl/derived}"
+readonly READINGS="${PALIMPSEST_ARCHIVE_READINGS:-/var/lib/palimpsest/readings}"
+readonly DATA_LOCK="${PALIMPSEST_ARCHIVE_DATA_LOCK:-/var/lib/palimpsest/railway-publication/data.lock}"
+readonly PYTHON="${PALIMPSEST_PYTHON_BIN:-/opt/palimpsest/collector-venv/bin/python}"
+export PALIMPSEST_KILLFILE="${PALIMPSEST_KILLFILE:?explicit host halt path required}"
+[[ "$PALIMPSEST_KILLFILE" == /* && "$SOURCE" == /* && "$COMMIT_FILE" == /* ]]
+[[ -d "$STATE" && ! -L "$STATE" && -f "$STATE/refresh.lock" && ! -L "$STATE/refresh.lock" ]]
+base_sha="$(tr -d '[:space:]' < "$COMMIT_FILE")"
+[[ "$base_sha" =~ ^[0-9a-f]{40}$ ]]
+export GIT_NO_REPLACE_OBJECTS=1 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+[[ "$(git -c safe.directory="$SOURCE" -C "$SOURCE" rev-parse HEAD)" == "$base_sha" ]]
+[[ -z "$(git -c safe.directory="$SOURCE" -C "$SOURCE" status --porcelain --untracked-files=no)" ]]
+cd "$SOURCE"
+export PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$SOURCE"
+exec "$PYTHON" -B -m scripts.archive_context_refresh \
+ --context "$DERIVED/archive-news-context.json" --features "$DERIVED/common-crawl-features.jsonl" \
+ --host "$READINGS" --state "$STATE" --data-lock "$DATA_LOCK" --refresh-lock "$STATE/refresh.lock" \
+ --config "$SOURCE/config/common_crawl_targets.json"
