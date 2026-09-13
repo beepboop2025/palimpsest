@@ -202,6 +202,10 @@ def _publication_root(tmp_path: Path) -> Path:
         + "\n",
         encoding="utf-8",
     )
+    for name in ("public-data-catalog-latest.json", "research-catalog-latest.json"):
+        (tmp_path / "readings" / name).write_text(
+            json.dumps({"datasets": []}) + "\n", encoding="utf-8"
+        )
     return tmp_path
 
 

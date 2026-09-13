@@ -95,6 +95,8 @@ readonly INSTALLED_WATCHDOG_SERVICE="${PALIMPSEST_INSTALLED_WATCHDOG_SERVICE:-/e
 readonly INSTALLED_WATCHDOG_TIMER="${PALIMPSEST_INSTALLED_WATCHDOG_TIMER:-/etc/systemd/system/palimpsest-direct-watchdog.timer}"
 
 declare -ar PUBLIC_COMPANION_PATHS=(
+  "readings/archive-news-context-latest.json"
+  "readings/archive-news-context-history.jsonl"
   "readings/public-deletion-ledgers-history.jsonl"
   "readings/greatfire-context-history.jsonl"
   "readings/peer-context-history.jsonl"
@@ -4198,6 +4200,17 @@ cd "$checkout"
 # seal may replace the reviewed source sidecar. Keep the model-free publisher.
 "$PYTHON_BIN" -B -m scripts.translation_refresh admit \
   --host-readings "$snapshot_readings" --wire-root "$snapshot_newswire"
+
+# The archive bridge creates untracked metadata companions on the host. Admit
+# their frozen pair only against the overlaid ledger and original source clocks.
+"$PYTHON_BIN" -B - "$snapshot_readings" <<'PYARCHIVE'
+import json
+import sys
+from pathlib import Path
+from scripts.archive_context_refresh import verify_public_snapshot
+
+print(json.dumps(verify_public_snapshot(Path.cwd() / "readings", source=Path(sys.argv[1])), sort_keys=True))
+PYARCHIVE
 
 # Rebuild cached peer joins with the accepted target code before analysis. The
 # pinned host producer may still project OONI's query end date as a measurement
