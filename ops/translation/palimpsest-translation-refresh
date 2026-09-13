@@ -21,14 +21,14 @@ flock -n 9 || exit 0
 base_sha="$(tr -d '[:space:]' < "$COMMIT_FILE")"
 [[ "$base_sha" =~ ^[0-9a-f]{40}$ ]]
 export GIT_NO_REPLACE_OBJECTS=1 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
-[[ "$(git -c safe.directory="$SOURCE" -C "$SOURCE" rev-parse HEAD)" == "$base_sha" ]]
-[[ -z "$(git -c safe.directory="$SOURCE" -C "$SOURCE" status --porcelain --untracked-files=no)" ]]
+[[ "$(git -c safe.directory="$SOURCE" -c safe.directory="$SOURCE/.git" -C "$SOURCE" rev-parse HEAD)" == "$base_sha" ]]
+[[ -z "$(git -c safe.directory="$SOURCE" -c safe.directory="$SOURCE/.git" -C "$SOURCE" status --porcelain --untracked-files=no)" ]]
 work="$(mktemp -d "$STATE/work.XXXXXX")"
 cleanup() { rm -rf --one-file-system -- "$work"; }
 trap cleanup EXIT
 trap 'exit 143' TERM
 trap 'exit 130' INT
-git -c safe.directory="$SOURCE" clone --quiet --shared --no-checkout "$SOURCE" "$work/source"
+git -c safe.directory="$SOURCE" -c safe.directory="$SOURCE/.git" clone --quiet --shared --no-checkout "$SOURCE" "$work/source"
 git -C "$work/source" checkout --quiet --detach "$base_sha"
 cd "$work/source"
 export PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$work/source"
