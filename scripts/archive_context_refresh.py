@@ -161,6 +161,10 @@ def project(context_raw: bytes, features_raw: bytes, *, config, now: datetime) -
             raise ArchiveRefreshError("archive event claims exceed context authority")
         event_id = safe_text(event["event_id"], "event identity")
         version_id = safe_text(event["version_id"], "version identity")
+        if (not re.fullmatch(r"event-[a-f0-9]{24}", event_id)
+                or not re.fullmatch(r"eventv-[a-f0-9]{24}", version_id)
+                or event["event_url"] != f"https://palimpsest.info/news/wire/{event_id}/"):
+            raise ArchiveRefreshError("archive event does not match its canonical public wire identity")
         if (event_id, version_id) in identities:
             raise ArchiveRefreshError("duplicate archive event identity")
         identities.add((event_id, version_id))

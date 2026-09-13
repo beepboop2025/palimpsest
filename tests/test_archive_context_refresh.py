@@ -108,7 +108,7 @@ def test_stale_and_future_source_clocks_fail(field, delta):
         project(context, features)
 
 
-@pytest.mark.parametrize('change', ['unknown-top', 'unknown-event', 'policy', 'event-authority', 'receipt-value', 'receipt-future', 'url-credentials', 'count', 'digest'])
+@pytest.mark.parametrize('change', ['unknown-top', 'unknown-event', 'policy', 'event-authority', 'receipt-value', 'receipt-future', 'url-credentials', 'url-private-path', 'count', 'digest'])
 def test_mutated_or_unsafe_context_fails(change):
     context, features = source()
     if change == 'unknown-top': context['raw_body'] = 'private'
@@ -118,6 +118,7 @@ def test_mutated_or_unsafe_context_fails(change):
     elif change == 'receipt-value': context['events'][0]['archive_context'][0]['unique_urls'] += 1
     elif change == 'receipt-future': context['events'][0]['published_at'] = '2026-07-01T00:00:00Z'
     elif change == 'url-credentials': context['events'][0]['event_url'] = 'https://' + 'credential' + '@example.org/'
+    elif change == 'url-private-path': context['events'][0]['event_url'] = 'https://example.org/private?token=fixture'
     elif change == 'count': context['n_events_contextualized'] = 99
     elif change == 'digest': context['feature_export_sha256'] = '0' * 64
     with pytest.raises((ValueError, archive.ValidationError)): project(context, features)
