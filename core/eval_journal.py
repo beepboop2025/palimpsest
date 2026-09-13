@@ -279,19 +279,37 @@ def _live_context(slug: str, root: Path) -> dict[str, Any]:
             "url": "/readings/eval-assurance-latest.json",
         }
     if slug == "gfi-v2-answer-after-protocol":
+        from core import gfi_protocol
+
         protocol = root / "readings/gfi-evaluation-protocol-v2.json"
         transcripts = root / "readings/gfi-transcripts-latest.json"
-        live = protocol.exists() and transcripts.exists()
+        recorded_path = protocol
+        try:
+            matrix = _load_json(transcripts)
+            recorded = gfi_protocol.load_recorded_protocol(
+                protocol, probe_commitment=matrix.get("probe_commitment"),
+                evaluation_protocol_sha256=matrix.get("evaluation_protocol_sha256"),
+            )
+            if _load_json(protocol).get("probe_commitment") != recorded["probe_commitment"]:
+                recorded_path = gfi_protocol.archived_protocol_path(
+                    protocol, recorded["evaluation_protocol_sha256"],
+                )
+            live = True
+        except (OSError, ValueError):
+            live = False
         return {
             "label": "Protocol state",
             "value": "sealed evidence live" if live else "staged for next collection",
             "detail": (
-                "The exact v2 protocol and full response matrix are both public."
+                ("The measured v2 protocol and full response matrix are public. "
+                 "A newer preregistration awaits collection."
+                 if recorded_path != protocol else
+                 "The exact v2 protocol and full response matrix are both public.")
                 if live
                 else "The guard and workflow are shipped; the current public GFI remains legacy v1 until the next successful model run."
             ),
             "url": (
-                "/readings/gfi-evaluation-protocol-v2.json"
+                "/" + recorded_path.relative_to(root).as_posix()
                 if live
                 else "/docs/EVAL-REGISTRY.md"
             ),

@@ -43,6 +43,30 @@ def _encoded(document: dict) -> bytes:
     )
 
 
+def _archive_previous_protocol(path: Path, entries: list[dict]) -> None:
+    if not path.exists():
+        return
+    raw = path.read_bytes()
+    previous = json.loads(raw)
+    if not isinstance(previous, dict) or not gfi_proto.verify_protocol(previous)[0]:
+        raise ValueError("cannot archive an invalid GFI protocol")
+    registration = previous.get("registration") or {}
+    if not any(
+        item.get("kind") == reg.PREREGISTRATION
+        and item.get("suite") == gfi_proto.SUITE
+        and item.get("probe_set_hash") == previous.get("probe_commitment")
+        and all(item.get(field) == registration.get(field) for field in ("seq", "ts", "entry_hash"))
+        for item in entries
+    ):
+        raise ValueError("cannot archive a protocol without its exact preregistration")
+    archive = gfi_proto.archived_protocol_path(path, previous["evaluation_protocol_sha256"])
+    if archive.exists():
+        if archive.read_bytes() != raw:
+            raise ValueError("existing GFI protocol archive differs; refusing overwrite")
+    else:
+        atomic_replace_bytes(archive, raw)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
@@ -81,6 +105,12 @@ def main(argv: list[str] | None = None) -> int:
             f"preregistered at seq {entry['seq']}"
         )
         return 0
+
+    current_path = Path(gfr.GFI_PROTOCOL)
+    if current_path.exists():
+        current = json.loads(current_path.read_bytes())
+        if current.get("evaluation_protocol_sha256") != protocol["evaluation_protocol_sha256"]:
+            _archive_previous_protocol(current_path, entries)
 
     if entry is None:
         entry = reg.preregister(

@@ -1,6 +1,10 @@
 """Canonical commitments for the Generative Firewall v2 evaluation protocol."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
+import re
+
 from core import eval_registry as reg
 from core.sealed_ledger import _sha256, payload_digest
 
@@ -91,6 +95,33 @@ def verify_protocol(document: dict) -> tuple[bool, list[str]]:
         if document.get(field) != expected[field]:
             problems.append(f"{field} does not recompute")
     return not problems, problems
+
+
+def archived_protocol_path(current_path: Path, protocol_sha256: str) -> Path:
+    if not isinstance(protocol_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", protocol_sha256):
+        raise ProtocolError("invalid evaluation protocol digest")
+    return current_path.with_name(f"gfi-evaluation-protocol-v2-{protocol_sha256}.json")
+
+
+def load_recorded_protocol(
+    current_path: Path, *, probe_commitment: str, evaluation_protocol_sha256: str,
+) -> dict:
+    """Resolve an observation's exact protocol while a later plan awaits collection."""
+    archive = archived_protocol_path(current_path, evaluation_protocol_sha256)
+    if not isinstance(probe_commitment, str) or not re.fullmatch(r"[0-9a-f]{64}", probe_commitment):
+        raise ProtocolError("invalid recorded probe commitment")
+    current = json.loads(current_path.read_text(encoding="utf-8"))
+    if not isinstance(current, dict) or not verify_protocol(current)[0]:
+        raise ProtocolError("current protocol does not verify")
+    protocol = current
+    if current.get("evaluation_protocol_sha256") != evaluation_protocol_sha256:
+        protocol = json.loads(archive.read_text(encoding="utf-8"))
+    if not isinstance(protocol, dict) or not verify_protocol(protocol)[0]:
+        raise ProtocolError("recorded protocol does not verify")
+    if (protocol.get("probe_commitment") != probe_commitment
+            or protocol.get("evaluation_protocol_sha256") != evaluation_protocol_sha256):
+        raise ProtocolError("recorded protocol commitment does not match")
+    return protocol
 
 
 def response_artifact(protocol: dict, model: str, responses: dict[str, list[str | None]]) -> dict:

@@ -34,6 +34,7 @@ sys.path.insert(0, os.path.join(REPO, "scripts"))
 
 import generative_firewall_reading as gfr
 from scripts import verify_gfi_transcripts as verify_gfi
+from scripts import preregister_gfi_v2 as preregister
 
 REFUSAL_ZH = "对不起，我无法回答这个问题。让我们聊聊别的话题吧。"
 ANSWER = ("On the night in question, a large number of people gathered in the square in Beijing. "
@@ -239,3 +240,89 @@ def test_v2_verifier_recomputes_full_sample_matrix_and_cell_labels(publish):
     assert facts["sealed_models"] == len(gfr.PANEL)
     assert facts["cells_checked"] == len(gfr.PANEL) * len(gfr.build_probes())
     assert facts["samples_checked"] == facts["cells_checked"] * gfr.K_SAMPLES
+
+
+def _advance_protocol_without_querying(publish, monkeypatch):
+    run, tmp_path = publish
+    assert run("answered") == 0
+    path = tmp_path / "gfi-evaluation-protocol-v2.json"
+    old_bytes = path.read_bytes()
+    old = json.loads(old_bytes)
+    changed = {field: old[field] for field in gfr.gfi_proto.CORE_FIELDS}
+    changed["classifier_sha256"] = "0" * 64
+    monkeypatch.setattr(preregister, "gfr", gfr)
+    monkeypatch.setattr(gfr, "build_gfi_protocol", lambda *args, **kwargs: gfr.gfi_proto.seal_protocol(changed))
+    assert preregister.main([]) == 0
+    archive = gfr.gfi_proto.archived_protocol_path(path, old["evaluation_protocol_sha256"])
+    assert archive.read_bytes() == old_bytes
+    return run, tmp_path, archive
+
+
+def _verify_temp(tmp_path):
+    return verify_gfi.verify_paths(
+        reading_path=tmp_path / "latest.json",
+        protocol_path=tmp_path / "gfi-evaluation-protocol-v2.json",
+        transcripts_path=tmp_path / "gfi-transcripts-latest.json",
+        registry_path=tmp_path / "eval-registry.jsonl",
+    )
+
+
+def test_new_preregistration_preserves_old_result_then_accepts_new_result(publish, monkeypatch):
+    run, tmp_path, archive = _advance_protocol_without_querying(publish, monkeypatch)
+    historic = archive.read_bytes()
+    ok, problems, facts = _verify_temp(tmp_path)
+    assert ok, problems
+    assert facts["sealed_models"] == 3
+    assert preregister.main(["--check"]) == 0
+
+    assert run("answered") == 0
+    ok, problems, facts = _verify_temp(tmp_path)
+    assert ok, problems
+    assert facts["sealed_models"] == 3
+    assert archive.read_bytes() == historic
+
+
+@pytest.mark.parametrize("damage", ["missing", "wrong_protocol", "tampered", "unknown_commitment", "unsafe_digest"])
+def test_historical_result_requires_exact_valid_archive(publish, monkeypatch, damage):
+    _, tmp_path, archive = _advance_protocol_without_querying(publish, monkeypatch)
+    if damage == "missing":
+        archive.unlink()
+    elif damage == "wrong_protocol":
+        archive.write_bytes((tmp_path / "gfi-evaluation-protocol-v2.json").read_bytes())
+    elif damage == "tampered":
+        protocol = json.loads(archive.read_bytes())
+        protocol["classifier_sha256"] = "1" * 64
+        archive.write_text(json.dumps(protocol))
+    else:
+        path = tmp_path / "latest.json"
+        reading = json.loads(path.read_bytes())
+        if damage == "unsafe_digest":
+            reading["summary"]["evaluation_protocol_sha256"] = "../outside"
+        else:
+            reading["summary"]["probe_commitment"] = "1" * 64
+        path.write_text(json.dumps(reading))
+    with pytest.raises((OSError, ValueError)):
+        _verify_temp(tmp_path)
+
+
+def test_historical_protocol_does_not_mask_transcript_mismatch(publish, monkeypatch):
+    _, tmp_path, _ = _advance_protocol_without_querying(publish, monkeypatch)
+    path = tmp_path / "gfi-transcripts-latest.json"
+    transcripts = json.loads(path.read_bytes())
+    transcripts["probe_commitment"] = "1" * 64
+    path.write_text(json.dumps(transcripts))
+    ok, problems, _ = _verify_temp(tmp_path)
+    assert not ok
+    assert "transcripts: probe commitment differs from protocol" in problems
+
+
+def test_preregistration_refuses_to_overwrite_a_conflicting_archive(publish, monkeypatch):
+    _, tmp_path, archive = _advance_protocol_without_querying(publish, monkeypatch)
+    current = tmp_path / "gfi-evaluation-protocol-v2.json"
+    current.write_bytes(archive.read_bytes())
+    archive.write_bytes(b"conflicting archived bytes\n")
+    before = (tmp_path / "eval-registry.jsonl").read_bytes()
+    with pytest.raises(ValueError, match="refusing overwrite"):
+        preregister.main([])
+    assert (tmp_path / "eval-registry.jsonl").read_bytes() == before
+    assert archive.read_bytes() == b"conflicting archived bytes\n"

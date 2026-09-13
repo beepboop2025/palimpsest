@@ -1,23 +1,23 @@
 {
   "author": "Palimpsest Eval Lab",
   "claim": "The first guarded GFI v2 run now provides live evidence for exact-prompt precommitment and complete response recomputation. It does not by itself validate the classifier's construct or generalize beyond the declared panel and prompt bank.",
-  "content_sha256": "4b183d8fbc2b400174382c24097a935269f886741776c909b3b0b1c1ecc43ae7",
+  "content_sha256": "a784d0e91651dc32452d4a6d5019cc4f36a25d6e7c1f1594d08a19c0e1330e34",
   "dek": "The first guarded Generative Firewall v2 run published its exact protocol before sampling, retained all 660 sampled responses, and survived a concurrent-main publication race without re-querying.",
   "evidence": [
     {
-      "bytes": 4979,
+      "bytes": 6577,
       "label": "Canonical GFI v2 protocol",
       "path": "core/gfi_protocol.py",
       "role": "Builds and verifies the exact prompt, panel, cohort, sample, method, and classifier commitment",
-      "sha256": "af85421c535550c0dda695505c5d7799a0ca38f6e4dc101b0380cc4558b74795",
+      "sha256": "8621ae128f977b2e1fabe3e4ae9797e17347f0cb4a893cb29a0ca1e8a583318c",
       "url": "/core/gfi_protocol.py"
     },
     {
-      "bytes": 3788,
+      "bytes": 5169,
       "label": "Pre-query preregistration command",
       "path": "scripts/preregister_gfi_v2.py",
       "role": "Writes the protocol and prior registry commitment",
-      "sha256": "0f0659dbb115ba54fadfe3282156b392ecb34ce15fabbb1f69fe6229d1079d2a",
+      "sha256": "40bb787bb202e8654b66f508b1e8408926193082a1906c935b0736cbda482b61",
       "url": "/scripts/preregister_gfi_v2.py"
     },
     {
@@ -29,11 +29,11 @@
       "url": "/scripts/generative_firewall_reading.py"
     },
     {
-      "bytes": 8347,
+      "bytes": 8517,
       "label": "Full-evidence verifier",
       "path": "scripts/verify_gfi_transcripts.py",
       "role": "Recomputes matrices, seals, labels, and reading bindings",
-      "sha256": "a4e6e0b6b2786f80841f7186c66219b59d55710c45f9583b5b5e44805f140347",
+      "sha256": "2d773f1ddd196e2fa3fec431bb8d2ec51b6c004a97ec4c9700ba42dde1d5b2a5",
       "url": "/scripts/verify_gfi_transcripts.py"
     },
     {
@@ -49,7 +49,7 @@
       "label": "Current assurance state",
       "path": "readings/eval-assurance-latest.json",
       "role": "Reports live prompt-commitment and response-recomputation passes while keeping validation and replication gates separate",
-      "sha256": "9b02ed1d778a38e41b7a717671272ed54f057bce6c1d2abd0f7815dbab664f38",
+      "sha256": "c6e6d218a04e5633ba57115446bca4997ba06302c9204d90e1e0f072fc7ecc16",
       "url": "/readings/eval-assurance-latest.json"
     }
   ],
@@ -69,12 +69,12 @@
     "API providers can change routing or model weights behind an endpoint; Palimpsest records the endpoint and time but cannot independently prove the provider's hidden serving stack."
   ],
   "live_context": {
-    "detail": "The exact v2 protocol and full response matrix are both public.",
+    "detail": "The measured v2 protocol and full response matrix are public. A newer preregistration awaits collection.",
     "label": "Protocol state",
-    "url": "/readings/gfi-evaluation-protocol-v2.json",
+    "url": "/readings/gfi-evaluation-protocol-v2-6744b2dfb76af10941eedd9bac5663adca68a90b4270c45e20d907f48c2d6b93.json",
     "value": "sealed evidence live"
   },
-  "modified_at": "2026-08-24T06:31:10.572234Z",
+  "modified_at": "2026-09-13T20:23:56.487621Z",
   "published_at": "2026-08-14T17:45:00Z",
   "schema": "palimpsest.eval-journal-article.v1",
   "sections": [
