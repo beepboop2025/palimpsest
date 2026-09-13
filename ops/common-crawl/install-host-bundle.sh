@@ -511,6 +511,7 @@ sync -f "$lane_bundle_tmp"
 bundle_files=(
   "ops/common-crawl/README.md:README.md:0444"
   "ops/common-crawl/record-context-attempt.py:record-context-attempt.py:0444"
+  "ops/common-crawl/restore-context-reader.py:restore-context-reader.py:0444"
   "ops/backup/COMMON-CRAWL-OFFSITE.md:backup/README.md:0444"
   "ops/backup/common_crawl_backup.py:backup/common_crawl_backup.py:0555"
   "ops/backup/palimpsest-common-crawl-offsite-backup.sh:backup/palimpsest-common-crawl-offsite-backup.sh:0555"
@@ -542,7 +543,7 @@ chmod 0444 "$bundle_tmp/REVISION"
 (
   cd "$bundle_tmp"
   sha256sum \
-    README.md REVISION record-context-attempt.py backup/README.md backup/common_crawl_backup.py \
+    README.md REVISION record-context-attempt.py restore-context-reader.py backup/README.md backup/common_crawl_backup.py \
     backup/palimpsest-common-crawl-offsite-backup.sh \
     collectors/__init__.py collectors/common_crawl_lake.py \
     config/common_crawl_targets.json config/zh_censorship_gazetteer.json \

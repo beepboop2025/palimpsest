@@ -20,6 +20,7 @@ ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-common-crawl/current/verify-h
 ExecStartPre=/usr/bin/python3 -B /usr/local/libexec/palimpsest-common-crawl/current/record-context-attempt.py
 ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-common-crawl/current/REVISION /etc/palimpsest/deployed-commit
 ExecStart=/usr/bin/python3 -m scripts.common_crawl_lake --warehouse /var/lib/palimpsest/common-crawl refresh --newswire /var/lib/palimpsest/newswire/newswire-latest.json --osint /var/lib/palimpsest/readings/osint-china-latest.json
+ExecStartPost=/usr/bin/python3 -B /usr/local/libexec/palimpsest-common-crawl/current/restore-context-reader.py
 TimeoutStartSec=2h
 UMask=0027
 Nice=12

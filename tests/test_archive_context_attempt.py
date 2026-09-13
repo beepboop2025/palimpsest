@@ -62,4 +62,4 @@ def test_attempt_helper_is_packaged_and_unit_retains_all_dependency_gates():
     assert 'Requires=palimpsest-public-osint-sync.service' in unit and 'IPAddressDeny=any' in unit
     installer=(ROOT/'ops/common-crawl/install-host-bundle.sh').read_text()
     assert 'ops/common-crawl/record-context-attempt.py:record-context-attempt.py:0444' in installer
-    assert 'README.md REVISION record-context-attempt.py backup/README.md' in installer
+    assert 'README.md REVISION record-context-attempt.py restore-context-reader.py backup/README.md' in installer
