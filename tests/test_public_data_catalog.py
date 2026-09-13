@@ -107,3 +107,22 @@ def test_corrupt_history_does_not_hide_a_permitted_latest(snapshot):
     row = next(row for row in public.build_public_catalog(now=NOW)["datasets"] if row["id"] == "ddti")
     assert row["artifacts"]["latest_available"] is True
     assert row["artifacts"]["history_available"] is False
+
+
+def test_new_health_report_does_not_inherit_its_own_old_clock(snapshot):
+    config_path = snapshot / "config/public_data_catalog.json"
+    config = json.loads(config_path.read_text())
+    original = json.loads((Path(__file__).resolve().parents[1] / "config/public_data_catalog.json").read_text())
+    config["datasets"].append(next(row for row in original["datasets"] if row["id"] == "collector-health"))
+    config_path.write_text(json.dumps(config))
+    (snapshot / "readings/collector-health-latest.json").write_text(json.dumps({
+        "generated_at": "2020-01-01T00:00:00Z", "summary": {"n_datasets": 3},
+    }))
+    assert public.main([]) == 0
+    catalog = json.loads((snapshot / public.OUTPUT).read_text())
+    report = json.loads((snapshot / "readings/collector-health-latest.json").read_text())
+    row = next(row for row in catalog["datasets"] if row["id"] == "collector-health")
+    assert row["artifacts"]["evidence_state"] == "fresh"
+    assert row["artifacts"]["age_seconds"] == 0
+    assert row["artifacts"]["observed_at"] == report["generated_at"] == catalog["generated_at"]
+    assert catalog["summary"]["states"] == report["summary"]["by_state"]

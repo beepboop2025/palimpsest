@@ -146,6 +146,11 @@ def main(argv: list[str] | None = None) -> int:
     from processors.collector_health import build_health
     health = build_health(catalog, root=atlas.ROOT, now=now)
     if not args.check:
+        # Health is itself an atlas entry. Materialize this edition before the
+        # final projection so it cannot inherit the committed report's old clock.
+        atlas._atomic_json(atlas.ROOT / "readings/collector-health-latest.json", health)
+        catalog = build_public_catalog(now=now)
+        health = build_health(catalog, root=atlas.ROOT, now=now)
         atlas._atomic_json(atlas.ROOT / OUTPUT, catalog)
         atlas._atomic_json(atlas.ROOT / "readings/collector-health-latest.json", health)
     print(json.dumps({"states": catalog["summary"]["states"], "written": not args.check}))
