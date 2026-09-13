@@ -63,15 +63,21 @@
     mark("[data-home-registry]", "live");
   }).catch(function () {
     mark("[data-home-registry]", "unavailable");
+    setText("[data-home-registry-runs]", "unavailable");
+    setText("[data-home-registry-root]", "Current receipt unavailable");
   });
 
-  read("/readings/osint-china-latest.json", "osint-china.v1").then(function (board) {
-    if (!Number.isInteger(board.n_signals_live) || !Number.isInteger(board.n_signals_total)) {
-      throw new Error("invalid OSINT counts");
+  read("/readings/collector-health-latest.json", "palimpsest-collector-health.v1").then(function (board) {
+    var summary = board.summary || {};
+    var states = summary.by_state || {};
+    var age = Date.now() - Date.parse(board.generated_at);
+    if (!Number.isInteger(summary.n_datasets) || !Number.isInteger(states.fresh)
+        || !Number.isFinite(age) || age < -120000 || age > 3600000) {
+      throw new Error("invalid or stale collector-health counts");
     }
-    setText("[data-home-osint-live]", board.n_signals_live);
-    setText("[data-home-osint-total]", board.n_signals_total);
-    setText("[data-home-osint-state]", board.health && board.health.status || "unknown");
+    setText("[data-home-osint-live]", states.fresh);
+    setText("[data-home-osint-total]", summary.n_datasets);
+    setText("[data-home-osint-state]", (states.stale || 0) + " stale; " + (states.gated || 0) + " gated; " + (states.partial || 0) + " partial");
     mark("[data-home-osint]", "live");
   }).catch(function () {
     mark("[data-home-osint]", "unavailable");

@@ -16,7 +16,7 @@ from core.collector_artifact import project_reading
 
 
 SCHEMA_VERSION = "palimpsest-collector-health.v1"
-METHOD_VERSION = 1
+METHOD_VERSION = 2
 
 
 def build_health(
@@ -73,8 +73,9 @@ def build_health(
         "signals": signals,
         "abstention": None,
         "method": (
-            "Projection of config/public_data_catalog.json plus the catalog builder's "
-            "artifact timestamps. Envelope compliance is a schema check on the latest "
+            "Projection of this edition's public dataset catalog and artifact "
+            "timestamps, with publication limits and source abstentions retained. "
+            "Envelope compliance is a schema check on the latest "
             "file, not a second measurement."
         ),
         "limitations": [
@@ -92,7 +93,8 @@ def _row(dataset: Mapping[str, Any], *, root: Path | None) -> dict[str, Any]:
     observed_at = artifacts.get("observed_at")
     envelope = None
     latest = dataset.get("latest")
-    if root is not None and isinstance(latest, str) and latest:
+    if (dataset.get("publication_allowed") is not False
+            and root is not None and isinstance(latest, str) and latest):
         path = Path(latest)
         if not path.is_absolute():
             path = root / latest
@@ -129,7 +131,7 @@ def _iso(now: datetime | None) -> str:
     current = now or datetime.now(timezone.utc)
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
-    return current.astimezone(timezone.utc).isoformat()
+    return current.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _limit_catalog() -> str:

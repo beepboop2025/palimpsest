@@ -4268,7 +4268,6 @@ cp -p "$generated_analysis" "$checkout/readings/event-analysis-latest.json"
 "$PYTHON_BIN" -m scripts.forecast_ledger_pull
 "$PYTHON_BIN" -m scripts.cross_layer_pull
 "$PYTHON_BIN" -m scripts.weekly_situation_pull
-"$PYTHON_BIN" -m scripts.collector_health_pull
 "$PYTHON_BIN" -m scripts.gazetteer_phylogeny_pull
 
 publish_clock="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -4399,6 +4398,7 @@ if (( bri_build_status != 0 || situation_build_status != 0 )); then
 fi
 "$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"
 "$PYTHON_BIN" -m scripts.build_data_catalog --check
+"$PYTHON_BIN" -m scripts.build_public_data_catalog
 "$PYTHON_BIN" -m scripts.sync_nav
 "$PYTHON_BIN" -m scripts.sync_nav --check
 "$PYTHON_BIN" scripts/seal_readings.py

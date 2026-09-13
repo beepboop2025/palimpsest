@@ -12,20 +12,18 @@ if str(ROOT) not in sys.path:
 
 from core.sealed_ledger import atomic_replace_bytes  # noqa: E402
 from processors.collector_health import build_health  # noqa: E402
+from scripts.build_public_data_catalog import build_public_catalog  # noqa: E402
 
 
 READINGS = ROOT / "readings"
 OUT = READINGS / "collector-health-latest.json"
 HIST = READINGS / "collector-health-history.jsonl"
-CATALOG_BUILT = READINGS / "catalog.json"
-CATALOG_CONFIG = ROOT / "config" / "public_data_catalog.json"
 
 
 def _load_catalog() -> dict:
-    for path in (CATALOG_BUILT, CATALOG_CONFIG):
-        if path.is_file():
-            return json.loads(path.read_text(encoding="utf-8"))
-    return {}
+    # A committed catalog belongs to an older edition. Recompute the states
+    # from this snapshot's files before assigning a new health-report clock.
+    return build_public_catalog()
 
 
 def main(argv: list[str] | None = None) -> int:

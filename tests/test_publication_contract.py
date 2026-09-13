@@ -83,6 +83,11 @@ CONTRACT = {
         "generated_at", ["method", "limitations"],
         reason="the atlas datasets are enumerated in signals and summary.by_state; "
                "collapsing them into one rate would mix fresh, stale, gated and missing."),
+    "public-data-catalog": _d(
+        "generated_at", ["schema", "availability_semantics"],
+        reason="The dataset inventory is enumerated in datasets and summary.states; "
+               "each artifact retains its own observation clock and count fields, "
+               "so independent collections cannot share one statistical denominator."),
     "gdelt":                _d("generated_at", ["source", "scope"], "n_terms"),
     "github-refuge":        _d("generated_at", ["source", "scope"], "n_watched"),
     "inside-view":          _d("generated_at", ["source", "method"], "panel_size"),

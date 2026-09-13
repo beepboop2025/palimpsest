@@ -15,6 +15,9 @@ SCHEMA_VERSION = "palimpsest.railway-static-release.v1"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 MANIFEST_NAME = "railway-release.json"
 CRITICAL_PATHS = (
+    "readings/public-data-catalog-latest.json",
+    "readings/collector-health-latest.json",
+    "assets/data-catalog.js",
     "research/markets/index.html",
     "assets/research-theme.css",
     "assets/workspace.css",
