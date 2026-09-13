@@ -8,7 +8,7 @@
   var root = document.querySelector("[data-narcoscope-relay]");
   if (!root || !("fetch" in window)) return;
 
-  var ORIGIN = "https://narcoscope.com";
+  var ORIGIN = "https://www.narcoscope.com";
   var controller = "AbortController" in window ? new AbortController() : null;
   var timeout = window.setTimeout(function () {
     if (controller) controller.abort();
