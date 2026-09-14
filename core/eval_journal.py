@@ -374,7 +374,11 @@ def build_journal(root: str | Path) -> dict[str, Any]:
             receipts.append(
                 {
                     **evidence,
-                    "url": "/" + evidence["path"],
+                    "url": (
+                        "https://github.com/beepboop2025/palimpsest/blob/main/" + evidence["path"]
+                        if evidence["path"].startswith(".github/")
+                        else "/" + evidence["path"]
+                    ),
                     "sha256": digest,
                     "bytes": len(payload),
                 }
