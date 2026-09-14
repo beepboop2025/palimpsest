@@ -50,6 +50,16 @@ def test_launch_edition_is_evidence_bound_and_scoped():
             assert receipt["bytes"] == len(payload)
 
 
+def test_workflow_citations_use_the_public_repository_with_content_receipts():
+    journal = eval_journal.build_journal(ROOT)
+    receipts = [receipt for article in journal["articles"] for receipt in article["evidence"]]
+    workflow = next(row for row in receipts if row["path"] == ".github/workflows/gfi-refresh.yml")
+    assert workflow["url"] == "https://github.com/beepboop2025/palimpsest/blob/main/.github/workflows/gfi-refresh.yml"
+    assert workflow["sha256"] == hashlib.sha256((ROOT / workflow["path"]).read_bytes()).hexdigest()
+    reading = next(row for row in receipts if row["path"] == "readings/eval-assurance-latest.json")
+    assert reading["url"] == "/readings/eval-assurance-latest.json"
+
+
 def test_gfi_article_and_live_context_match_the_published_v2_state():
     journal = eval_journal.build_journal(ROOT)
     gfi = next(
