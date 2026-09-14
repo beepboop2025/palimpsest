@@ -9,6 +9,8 @@
   if (!root || !("fetch" in window)) return;
 
   var ORIGIN = "https://www.narcoscope.com";
+  var SLUG = "china-linked-precursor-incidents-official-record";
+  var STORY_ID = "narcoscope.newsroom." + SLUG;
   var controller = "AbortController" in window ? new AbortController() : null;
   var timeout = window.setTimeout(function () {
     if (controller) controller.abort();
@@ -24,7 +26,7 @@
   function safeUrl(value) {
     try {
       var url = new URL(String(value || ""), ORIGIN);
-      if (url.origin !== ORIGIN) return null;
+      if (url.origin !== ORIGIN || url.username || url.password) return null;
       url.searchParams.set("ref", "palimpsest_signal_relay");
       return url.toString();
     } catch (_) {
@@ -39,8 +41,9 @@
     return figures.find(function (item) { return item && item.id === id; }) || null;
   }
   function humanDate(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
     var parsed = new Date(value + "T00:00:00Z");
-    if (!isFinite(parsed.getTime())) return null;
+    if (!isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) return null;
     return new Intl.DateTimeFormat("en-GB", {
       day: "numeric", month: "short", year: "numeric", timeZone: "UTC"
     }).format(parsed);
@@ -58,9 +61,14 @@
 
   getJson(ORIGIN + "/news/index.json")
     .then(function (index) {
-      var article = index && Array.isArray(index.articles) ? index.articles[0] : null;
+      var article = index && index.schemaVersion === "narcoscope.newsroom.index.v1"
+        && Array.isArray(index.articles) ? index.articles.find(function (item) {
+          return item && item.id === STORY_ID && item.slug === SLUG;
+        }) : null;
       var dossierUrl = safeUrl(article && article.dossierUrl);
-      if (!article || !dossierUrl) throw new Error("No safe NarcoScope dossier");
+      if (!article || !dossierUrl || new URL(dossierUrl).pathname !== "/news/" + SLUG + ".dossier.json") {
+        throw new Error("No matching NarcoScope dossier");
+      }
       return getJson(dossierUrl).then(function (dossier) {
         return { article: article, dossier: dossier };
       });
@@ -68,37 +76,43 @@
     .then(function (loaded) {
       var article = loaded.article;
       var dossier = loaded.dossier;
-      if (!dossier || typeof dossier.title !== "string" || typeof dossier.dek !== "string") {
+      if (!dossier || dossier.schemaVersion !== "narcoscope.newsroom.evidence-analysis.v1"
+          || dossier.slug !== SLUG || typeof dossier.title !== "string" || !dossier.title.trim()
+          || typeof dossier.dek !== "string" || !dossier.dek.trim()) {
         throw new Error("Invalid NarcoScope dossier");
       }
-
-      set("[data-ns-title]", dossier.title);
-      set("[data-ns-dek]", dossier.dek);
-      set("[data-ns-feed-state]", "Latest dossier fetched");
-
-      var storyLink = node("[data-ns-story-link]");
+      var dateNode = node("[data-ns-data-as-of]");
+      var dateLabel = humanDate(dossier.dataAsOf);
+      var previousDate = dateNode && dateNode.getAttribute("datetime");
       var safeStory = safeUrl(article && article.htmlUrl);
-      if (storyLink && safeStory) storyLink.href = safeStory;
-
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dossier.dataAsOf || "")) {
-        var dateNode = node("[data-ns-data-as-of]");
-        var dateLabel = humanDate(dossier.dataAsOf);
-        if (dateNode && dateLabel) {
-          dateNode.dateTime = dossier.dataAsOf;
-          dateNode.textContent = dateLabel;
-        }
+      if (!dateLabel || !humanDate(previousDate) || dossier.dataAsOf < previousDate
+          || dossier.dataAsOf > new Date().toISOString().slice(0, 10)
+          || !safeStory || new URL(safeStory).pathname !== "/news/" + SLUG + ".html") {
+        throw new Error("Invalid NarcoScope identity or evidence date");
       }
-
       var incidents = figure(dossier, "china-eu-incident-count");
       var tonnes = figure(dossier, "china-eu-upper-bound-mass");
       var incidentValue = boundedNumber(incidents && incidents.value);
       var tonneValue = boundedNumber(tonnes && tonnes.value);
-      if (incidentValue !== null) set("[data-ns-incidents]", incidentValue.toLocaleString("en-US"));
-      if (tonneValue !== null) set("[data-ns-tonnes]", "≈" + tonneValue.toLocaleString("en-US") + " t");
-
       var coverage = dossier.verificationReceipt && dossier.verificationReceipt.visualCitationCoverage;
       var percent = boundedNumber(coverage && coverage.percent);
-      if (percent !== null && percent >= 0 && percent <= 100) set("[data-ns-citations]", percent + "%");
+      if (incidentValue === null || incidentValue < 0 || !Number.isInteger(incidentValue)
+          || tonneValue === null || tonneValue < 0 || percent === null || percent < 0 || percent > 100
+          || incidents.unit !== "incidents" || tonnes.unit !== "tonnes, nearly") {
+        throw new Error("Incomplete NarcoScope figures");
+      }
+
+      // Validate the entire card before replacing any dated fallback field.
+      set("[data-ns-title]", dossier.title);
+      set("[data-ns-dek]", dossier.dek);
+      set("[data-ns-feed-state]", "Latest dossier fetched");
+      var storyLink = node("[data-ns-story-link]");
+      if (storyLink) storyLink.href = safeStory;
+      dateNode.dateTime = dossier.dataAsOf;
+      dateNode.textContent = dateLabel;
+      set("[data-ns-incidents]", incidentValue.toLocaleString("en-US"));
+      set("[data-ns-tonnes]", "≈" + tonneValue.toLocaleString("en-US") + " t");
+      set("[data-ns-citations]", percent + "%");
       root.setAttribute("data-relay-state", "remote");
     })
     .catch(function () {
