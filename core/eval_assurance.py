@@ -616,6 +616,11 @@ def build_assurance(root: str | Path) -> dict:
         if check["id"] in {"gfi-concept-id-commitment", "gfi-response-recomputation"}
     )
     validation_passed = validation_status == "pass"
+    frontier_full_evidence = all(
+        check["status"] == "pass"
+        for check in checks
+        if check["id"] in {"frontier-exact-prompt-commitment", "frontier-response-recomputation"}
+    )
     claim_level = (
         "human-validated-measurement" if validation_passed else "provisional-measurement"
     )
@@ -627,7 +632,11 @@ def build_assurance(root: str | Path) -> dict:
         "claim_ceiling": {
             "level": claim_level,
             "can_claim": (
-                "Palimpsest publishes tamper-evident, statistically explicit eval outputs; both the frontier and China-focused suites bind exact protocols and let readers recompute current seals from full responses."
+                "Palimpsest publishes an explicit audit of eval evidence gaps. The registry chain does not currently verify; no claim of intact sealed-run integrity is supported."
+                if not chain_ok or not entries
+                else "Palimpsest publishes a verified eval registry and per-suite evidence checks. Current frontier transcripts do not establish complete recomputation of every published seal."
+                if not frontier_full_evidence
+                else "Palimpsest publishes tamper-evident, statistically explicit eval outputs; both the frontier and China-focused suites bind exact protocols and let readers recompute current seals from full responses."
                 if gfi_full_evidence
                 else "Palimpsest publishes tamper-evident, statistically explicit eval outputs; the frontier suite binds exact prompts and lets readers recompute current seals from full responses."
             ),
