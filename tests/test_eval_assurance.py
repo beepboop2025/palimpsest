@@ -52,6 +52,30 @@ def test_broken_registry_cannot_keep_an_integrity_pass(tmp_path):
     document = build_assurance(tmp_path)
     integrity = next(c for c in document["checks"] if c["id"] == "registry-chain-integrity")
     assert integrity["status"] == "fail"
+    assert "does not currently verify" in document["claim_ceiling"]["can_claim"]
+    assert "tamper-evident" not in document["claim_ceiling"]["can_claim"]
+
+
+def test_missing_frontier_responses_cannot_claim_complete_recomputation(tmp_path):
+    for relative in (
+        "readings/eval-registry.jsonl",
+        "readings/refusal-drift-latest.json",
+        "readings/refusal-drift-transcripts.json",
+    ):
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((ROOT / relative).read_bytes())
+    path = tmp_path / "readings/refusal-drift-transcripts.json"
+    transcripts = json.loads(path.read_bytes())
+    del transcripts["responses"][next(iter(transcripts["responses"]))]
+    path.write_text(json.dumps(transcripts), encoding="utf-8")
+
+    document = build_assurance(tmp_path)
+    checks = {row["id"]: row for row in document["checks"]}
+    assert checks["registry-chain-integrity"]["status"] == "pass"
+    assert checks["frontier-response-recomputation"]["status"] == "fail"
+    assert "do not establish complete recomputation" in document["claim_ceiling"]["can_claim"]
+    assert "lets readers recompute current seals" not in document["claim_ceiling"]["can_claim"]
 
 
 def test_a_coder_filename_cannot_promote_construct_validation(tmp_path):
