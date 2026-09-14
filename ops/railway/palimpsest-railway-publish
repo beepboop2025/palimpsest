@@ -4414,6 +4414,10 @@ if (( bri_build_status != 0 || situation_build_status != 0 )); then
   log "parallel BRI or China-situation deterministic build failed" >&2
   exit 1
 fi
+"$PYTHON_BIN" -m scripts.build_eval_assurance
+"$PYTHON_BIN" -m scripts.build_eval_assurance --check
+"$PYTHON_BIN" -m scripts.build_eval_journal
+"$PYTHON_BIN" -m scripts.build_eval_journal --check
 "$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"
 "$PYTHON_BIN" -m scripts.build_data_catalog --check
 "$PYTHON_BIN" -m scripts.build_public_data_catalog
