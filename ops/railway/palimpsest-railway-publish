@@ -4120,8 +4120,10 @@ copy_host_public_file() {
   [[ "$relative" == readings/* && "$relative" != *'/../'* ]] || return 1
   # Translation pairs are admitted separately by exact seal and clock checks.
   # The ledger is selected first by exact monotonic-prefix proof below.
+  # The registry HTML is reviewed application content; its measurements are
+  # loaded from the live registry JSON, which remains eligible for overlay.
   case "$relative" in
-    readings/chinese-translations-latest.json|readings/readings-ledger.jsonl)
+    readings/chinese-translations-latest.json|readings/readings-ledger.jsonl|readings/eval-registry.html)
       return 0
       ;;
   esac
@@ -4416,6 +4418,9 @@ if (( bri_build_status != 0 || situation_build_status != 0 )); then
 fi
 "$PYTHON_BIN" -m scripts.build_eval_assurance
 "$PYTHON_BIN" -m scripts.build_eval_assurance --check
+# Finalize cited HTML before the journal records its exact content receipts.
+"$PYTHON_BIN" -m scripts.sync_nav
+"$PYTHON_BIN" -m scripts.sync_nav --check
 "$PYTHON_BIN" -m scripts.build_eval_journal
 "$PYTHON_BIN" -m scripts.build_eval_journal --check
 "$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"
@@ -4423,6 +4428,8 @@ fi
 "$PYTHON_BIN" -m scripts.build_public_data_catalog
 "$PYTHON_BIN" -m scripts.sync_nav
 "$PYTHON_BIN" -m scripts.sync_nav --check
+# Later builders must not invalidate a citation before the reading is sealed.
+"$PYTHON_BIN" -m scripts.build_eval_journal --check
 "$PYTHON_BIN" scripts/seal_readings.py
 "$PYTHON_BIN" scripts/seal_readings.py --check
 

@@ -412,7 +412,11 @@ def build_json_feed(journal: Mapping[str, Any]) -> dict[str, Any]:
                 "tags": ["AI evaluations", article["kind"], article["status"]],
                 "attachments": [
                     {
-                        "url": f"{SITE}{receipt['url']}",
+                        "url": (
+                            receipt["url"]
+                            if receipt["url"].startswith("https://")
+                            else f"{SITE}{receipt['url']}"
+                        ),
                         "mime_type": "application/json" if receipt["path"].endswith(".json") else "text/plain",
                         "title": receipt["label"],
                         "size_in_bytes": receipt["bytes"],

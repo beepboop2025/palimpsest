@@ -58,6 +58,14 @@ def test_workflow_citations_use_the_public_repository_with_content_receipts():
     assert workflow["sha256"] == hashlib.sha256((ROOT / workflow["path"]).read_bytes()).hexdigest()
     reading = next(row for row in receipts if row["path"] == "readings/eval-assurance-latest.json")
     assert reading["url"] == "/readings/eval-assurance-latest.json"
+    feed_urls = {
+        attachment["url"]
+        for item in builder.build_json_feed(journal)["items"]
+        for attachment in item["attachments"]
+    }
+    assert workflow["url"] in feed_urls
+    assert eval_journal.SITE + reading["url"] in feed_urls
+    assert all("https://" not in url.removeprefix("https://") for url in feed_urls)
 
 
 def test_gfi_article_and_live_context_match_the_published_v2_state():
