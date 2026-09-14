@@ -702,6 +702,9 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlsplit(self.path)
         path = parsed.path
+        if path == "/favicon.ico":
+            self._favicon_redirect()
+            return
         if path == GROWTH_EVENT_PATH:
             self._growth_method_not_allowed()
             return
@@ -722,6 +725,9 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
     def do_HEAD(self) -> None:  # noqa: N802
         parsed = urlsplit(self.path)
         path = parsed.path
+        if path == "/favicon.ico":
+            self._favicon_redirect()
+            return
         if path == GROWTH_EVENT_PATH:
             self._growth_method_not_allowed()
             return
@@ -738,6 +744,13 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
             self._mcp_not_here(include_body=False)
             return
         super().do_HEAD()
+
+    def _favicon_redirect(self) -> None:
+        """Use the existing publication icon for browsers' implicit icon request."""
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", "/brand/palimpsest-icon.svg")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def do_POST(self) -> None:  # noqa: N802
         if urlsplit(self.path).path == GROWTH_EVENT_PATH:

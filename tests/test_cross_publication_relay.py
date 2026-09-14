@@ -1,5 +1,9 @@
 """The reciprocal NarcoScope teaser stays useful, bounded and injection-safe."""
 from pathlib import Path
+import hashlib
+import re
+import shutil
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,3 +42,16 @@ def test_relay_has_mobile_and_reduced_motion_treatment():
     assert ".sister-relay__boundary" in css
     assert '@media (max-width: 620px)' in css
     assert ".sister-relay__route path { animation: none; }" in css
+
+
+def test_relay_asset_url_tracks_its_exact_script_bytes():
+    page = (ROOT / "index.html").read_text(encoding="utf-8")
+    expected = hashlib.sha256((ROOT / "assets/network-relay.js").read_bytes()).hexdigest()[:16]
+    assert re.search(r'/assets/network-relay\.js\?v=' + expected + r'"', page)
+
+
+def test_relay_rejects_incomplete_or_unrelated_publication_without_partial_updates():
+    node = shutil.which("node")
+    assert node, "Node is required to exercise the browser relay behavior"
+    subprocess.run([node, "--test", str(ROOT / "tests/network-relay.test.cjs")],
+                   check=True, timeout=30)
