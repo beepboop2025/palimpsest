@@ -272,7 +272,7 @@
     {
       "author": "Palimpsest Eval Lab",
       "claim": "The first guarded GFI v2 run now provides live evidence for exact-prompt precommitment and complete response recomputation. It does not by itself validate the classifier's construct or generalize beyond the declared panel and prompt bank.",
-      "content_sha256": "a784d0e91651dc32452d4a6d5019cc4f36a25d6e7c1f1594d08a19c0e1330e34",
+      "content_sha256": "451fb55eb32526f3b783d81ae369223678f8ffbc79eb46fd6af7d8cf655d7c16",
       "dek": "The first guarded Generative Firewall v2 run published its exact protocol before sampling, retained all 660 sampled responses, and survived a concurrent-main publication race without re-querying.",
       "evidence": [
         {
@@ -292,11 +292,11 @@
           "url": "/scripts/preregister_gfi_v2.py"
         },
         {
-          "bytes": 58258,
+          "bytes": 60491,
           "label": "Guarded GFI collector",
           "path": "scripts/generative_firewall_reading.py",
           "role": "Refuses the first model call without a matching public protocol receipt and captures complete responses",
-          "sha256": "c078888692400b452e692f805fd7cacf55ffb041091e76ba26015cecddbfda92",
+          "sha256": "8a83192b64ffc8e49500ebd19a3a0527fcef2d5695530fd1adefa5e9613f1fa1",
           "url": "/scripts/generative_firewall_reading.py"
         },
         {
@@ -308,11 +308,11 @@
           "url": "/scripts/verify_gfi_transcripts.py"
         },
         {
-          "bytes": 16424,
+          "bytes": 16427,
           "label": "Two-stage publication workflow",
           "path": ".github/workflows/gfi-refresh.yml",
           "role": "Publishes the protocol before collection and preserves measured bytes across push races",
-          "sha256": "3c3c7c86c147febd8203b5a593b4ba370740d88c9b0c31f2a0d4cbff4b4f28d9",
+          "sha256": "b765996a112656dde717e66711ef4a61a046af846d452be4fd9a57255d8584e1",
           "url": "/.github/workflows/gfi-refresh.yml"
         },
         {
@@ -411,7 +411,7 @@
     {
       "author": "Palimpsest's founder",
       "claim": "The initial observation justified a controlled research question—not a verdict about every Chinese model, every political topic, or the motive behind any one output.",
-      "content_sha256": "64f867b7b35888fdea258ad7873e2552e3acea6fc92843bed2b3d92aa95936fe",
+      "content_sha256": "8245a94d484c15264c374f921981c5c8c77df950b29ec3f16984b391e11ee70a",
       "dek": "Palimpsest began when its founder saw Chinese and state-aligned language models change, withhold, or replace answers to criticism of the Chinese Communist Party. The harder question was what one disturbing answer could actually prove.",
       "evidence": [
         {
@@ -447,11 +447,11 @@
           "url": "/readings/eval-assurance-latest.json"
         },
         {
-          "bytes": 58258,
+          "bytes": 60491,
           "label": "Generative Firewall runner",
           "path": "scripts/generative_firewall_reading.py",
           "role": "Declared concepts, controls, model panel, sampling, and publication behavior",
-          "sha256": "c078888692400b452e692f805fd7cacf55ffb041091e76ba26015cecddbfda92",
+          "sha256": "8a83192b64ffc8e49500ebd19a3a0527fcef2d5695530fd1adefa5e9613f1fa1",
           "url": "/scripts/generative_firewall_reading.py"
         }
       ],
