@@ -1262,6 +1262,15 @@ def test_railway_container_is_non_root_and_bundle_stays_public_only() -> None:
     assert 'archive_paths+=("${release_authority_paths[@]}")' in builder
 
 
+def test_manifest_refuses_missing_image_permission_verifier(tmp_path: Path) -> None:
+    root = _publication_root(tmp_path)
+    relative = "ops/railway/verify_readonly_tree.py"
+    assert relative in manifest_module.CRITICAL_PATHS
+    (root / relative).unlink()
+    with pytest.raises(ValueError, match="missing critical paths.*verify_readonly_tree"):
+        manifest_module.build_manifest(root, "e" * 40, "2026-08-26T18:00:00Z")
+
+
 def test_railway_bundle_git_archive_contains_only_allowlisted_github_authority() -> (
     None
 ):
