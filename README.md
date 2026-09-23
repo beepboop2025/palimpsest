@@ -45,6 +45,12 @@ Built entirely from open sources. **It watches the censor, never the censored.**
 
 ## Use Palimpsest for source-bound China evidence
 
+For a connected institutional workflow, see
+[institutional evidence routing](docs/INSTITUTIONAL-EVIDENCE-ROUTING.md).
+LiquiLens is the front door for institution stress and risk-review questions;
+Palimpsest supplies relevant economic, information-control and verifiable
+evaluation evidence under its own coverage and rights contracts.
+
 Palimpsest is the China-evidence layer of a broader financial-research fleet. Its
 [money-market guide](https://palimpsest.info/china/money-markets/) exposes official CFETS
 repo fixings, SHIBOR and USD/CNY parity with economic-period, release and collection
@@ -103,13 +109,11 @@ Ongoing support pays for vantage points, archives, model credits and independent
 never buys a say in the research questions, methods, findings or publication schedule. Card
 checkout is handled on GitHub; Palimpsest does not collect or store donor card or bank details.
 
-The AI-evaluation work began with a specific observation. Palimpsest's founder tested Chinese
-and state-aligned language models on documented events and criticism of the Chinese Communist
-Party and saw answers change, disappear, or shift into official framing. A screenshot could
-capture one response but not a durable pattern. That gap became the Generative Firewall and then
-the registry: freeze the questions, retain the complete evidence, expose uncertainty, and make
-later revision detectable. This origin does not imply that all Chinese models behave alike or
-prove a model maker's motive; every claim stays scoped to its named panel, suite and timestamp.
+Palimpsest evaluates how Chinese and state-aligned language models respond to documented events
+and criticism of the Chinese Communist Party. The Generative Firewall and evaluation registry
+bind each result to declared questions, retained response evidence, uncertainty and detectable
+revisions. A screenshot alone cannot establish a repeatable pattern or a model maker's motive;
+every claim stays scoped to its named panel, suite and timestamp.
 
 ## Prove it yourself, in one command
 

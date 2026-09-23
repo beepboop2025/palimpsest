@@ -335,7 +335,7 @@ def _live_context(slug: str, root: Path) -> dict[str, Any]:
     return {
         "label": "Evidence posture",
         "value": claim_level,
-        "detail": "The origin explains why the instrument exists; the registry and assurance report determine what its results may claim.",
+        "detail": "The method describes the comparison; the registry and assurance report determine what its results may claim.",
         "url": "/readings/eval-assurance-latest.json",
     }
 

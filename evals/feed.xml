@@ -5,10 +5,10 @@
   <link>https://palimpsest.info/evals/</link>
   <description>Evidence-bound essays about censorship evaluations, method changes, failures, and what the current record can actually support.</description>
   <language>en</language>
-  <lastBuildDate>Sun, 13 Sep 2026 20:23:56 +0000</lastBuildDate>
+  <lastBuildDate>Wed, 23 Sep 2026 19:18:59 +0000</lastBuildDate>
   <atom:link href="https://palimpsest.info/evals/feed.xml" rel="self" type="application/rss+xml" />
   <item>
-    <guid isPermaLink="false">urn:sha256:811fc7d189edf5421c4bfbb38fdbcd1524157978ab180fca236936eae18dae52</guid>
+    <guid isPermaLink="false">urn:sha256:00d392f48aad529abb8668f9ade6288464ec86fc662f757174ecb7ce5d199cc1</guid>
     <title>[Palimpsest method article] A green hash is not a validity result</title>
     <link>https://palimpsest.info/evals/what-the-evidence-can-claim/</link>
     <pubDate>Fri, 14 Aug 2026 17:54:00 +0000</pubDate>
@@ -199,29 +199,29 @@ What would change the claim
 A v2 run is invalid if its exact protocol was not publicly committed before the first API call, if any expected arm or sample is missing without an explicit null abstention, if any undeclared model appears, if a response matrix does not reproduce its registry seal, or if published labels do not re-derive under the committed classifier. The workflow must fail closed in every one of those cases.]]></content:encoded>
   </item>
   <item>
-    <guid isPermaLink="false">urn:sha256:8245a94d484c15264c374f921981c5c8c77df950b29ec3f16984b391e11ee70a</guid>
+    <guid isPermaLink="false">urn:sha256:72f83f81948e76de784b4e7a36d85c04863bde8e491d70d0bb8f32cc13ce0380</guid>
     <title>[Palimpsest method article] A censored answer is not yet evidence</title>
     <link>https://palimpsest.info/evals/a-censored-answer-is-not-evidence/</link>
     <pubDate>Fri, 14 Aug 2026 17:40:00 +0000</pubDate>
-    <description>Palimpsest evaluation method article. Palimpsest began when its founder saw Chinese and state-aligned language models change, withhold, or replace answers to criticism of the Chinese Communist Party. The harder question was what one disturbing answer could actually prove.</description>
+    <description>Palimpsest evaluation method article. Palimpsest compares model responses across declared prompts, languages and controls. A screenshot alone cannot establish a repeatable pattern; the evaluation needs retained evidence and explicit limits.</description>
     <category>palimpsest-eval-method</category>
     <content:encoded><![CDATA[A censored answer is not yet evidence
 
-Palimpsest began when its founder saw Chinese and state-aligned language models change, withhold, or replace answers to criticism of the Chinese Communist Party. The harder question was what one disturbing answer could actually prove.
+Palimpsest compares model responses across declared prompts, languages and controls. A screenshot alone cannot establish a repeatable pattern; the evaluation needs retained evidence and explicit limits.
 
-Claim boundary: The initial observation justified a controlled research question—not a verdict about every Chinese model, every political topic, or the motive behind any one output.
+Claim boundary: A controlled comparison can support a scoped claim about named model responses. It cannot establish the behavior of every Chinese model, every political topic, or the motive behind an output.
 
-The answer that changed the project
+What the evaluation measures
 
-I started testing language models built in China and models aligned with Chinese state narratives because I wanted to know whether the information controls I had been measuring on networks and platforms had moved into the answer itself. When a prompt directly criticised the Chinese Communist Party or asked about a documented political event, some answers became thinner. Some withheld the requested account. Some substituted an official frame for the premise of the question.
+Palimpsest tests Chinese and state-aligned language models with declared prompts about documented political events and criticism of the Chinese Communist Party. The comparison distinguishes refusal, omission and narrative substitution across the named models and languages.
 
-That was the beginning of Palimpsest's AI-evaluation work. It was not the conclusion. A model response can be striking and still be weak evidence: the prompt may have been selected after seeing the answer; an unlucky sample may look systematic; a safety refusal may be misread as political censorship; a model endpoint may change without notice; or the publisher may later revise the record. The project exists because a screenshot cannot resolve any of those possibilities.
+A screenshot preserves a single response. It cannot establish whether the prompt was selected after the answer, whether sampling changed the result, whether a safety refusal was misclassified, or whether the endpoint changed. Those questions require a declared comparison and retained response evidence.
 
-What the screenshot could not tell me
+What the record contains
 
-The dramatic artifact is usually the answer. The scientific object is the comparison around it. Palimpsest therefore asks the same concepts across declared models, languages, prompt families, and neutral controls. It records unreachable calls as abstentions instead of refusals. It publishes denominators and uncertainty. Most importantly, it freezes a probe commitment before the result and preserves the response evidence needed to recompute the seal.
+Palimpsest compares declared models, languages, prompt families and neutral controls. Unreachable calls remain abstentions. Each result carries denominators and uncertainty; protocol commitments and retained response evidence support checks on collection order and later revision.
 
-Those choices turn a personal observation into a test another person can attack. They do not make the test infallible. They make selection, omission, method changes, and later revision easier to see.
+These records let a reviewer inspect selection, omission and method changes. Their integrity does not establish that the classifier is valid or that a result generalizes beyond the tested panel.
 
 - Prompt: freeze the question, language, model panel, sampling plan, and judge before collection.
 
@@ -229,21 +229,21 @@ Those choices turn a personal observation into a test another person can attack.
 
 - Proof: publish the response bytes, hashes, denominators, method version, verification commands, and the limits on the claim.
 
-Why this belongs inside a censorship observatory
+How model evaluations relate to the observatory
 
-People increasingly encounter public history and political facts through generated answers. If access to an event now depends on which model is asked, in which language, and with what framing, that behavior belongs beside DNS interference, content deletion, search suppression, and storefront removal as a separate measurement layer.
+Model responses are a separate measurement layer alongside DNS interference, content deletion, search suppression and storefront removal. A model answer is not averaged into a national censorship score.
 
-Separate matters. A model answer is not averaged into a national censorship score, and a refusal does not establish a government instruction. Palimpsest measures named endpoints on named dates under a declared prompt bank. The surrounding observatory supplies context and possible comparisons, not automatic causation.
+The surrounding observatory supplies context and possible comparisons. It does not establish causation, and a refusal does not establish a government instruction. Palimpsest measures named endpoints on named dates under a declared prompt bank.
 
-The standard I want the work held to
+When the claim must narrow
 
-The point is not to produce the harshest possible number. It is to produce a record that remains useful when the number is inconvenient. If controls fail, the reading should abstain. If a classifier change moves the result, the series should rebaseline. If two human coders do not support the labels, that failure should be published. If another team cannot reproduce the pattern, the claim should shrink.
+Failed controls require abstention. A classifier change requires a new baseline. Human coding and independent replication must be evaluated separately from a valid run seal, and negative findings remain part of the record.
 
-Palimpsest started with an answer that felt censored. It became an evaluation project when the question changed from ‘How bad does this look?’ to ‘What evidence would let someone who disagrees with me check it?’
+The published claim must narrow when repeated samples, matched language pairs or independent checks fail to support it. The question is whether another reviewer can check the result against the declared test and retained evidence.
 
 Limitations
 
-- The origin account reports the founder's observation; it is not itself an experimental result.
+- This method note describes the evaluation design; it is not itself an experimental result.
 
 - Palimpsest evaluates named model endpoints, prompts, and dates. It does not estimate all Chinese models or all political knowledge.
 
@@ -253,7 +253,7 @@ Limitations
 
 What would change the claim
 
-If preregistered comparisons with clean controls, repeated samples, prompt families, and language pairs do not show a stable discrepancy on the named model endpoints, the founding observation does not generalize and Palimpsest must say so. If human coders reject the labels or an unaffiliated replication fails, the corresponding claim must shrink rather than the test being redrawn after the result.]]></content:encoded>
+If preregistered comparisons with clean controls, repeated samples, prompt families and language pairs do not show a stable discrepancy on the named model endpoints, the claim does not generalize. If human coders reject the labels or an unaffiliated replication fails, the corresponding claim must narrow; the test must not be redrawn after the result.]]></content:encoded>
   </item>
 </channel>
 </rss>
