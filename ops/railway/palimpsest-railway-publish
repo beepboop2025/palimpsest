@@ -3157,6 +3157,34 @@ if instance.get("source") not in (None, {"image": None, "repo": None}):
 if "source" not in instance or instance.get("cronSchedule") is not None or instance.get("nextCronRunAt") is not None:
     raise SystemExit("Railway topology scheduling/source contract is invalid")
 latest = instance.get("latestDeployment")
+# Railway retains a failed attempt as latest while the predecessor serves.
+# Current status payloads must name exactly one active deployment. Historical
+# anchors without that field retain the stricter successful-latest contract.
+active_rows = instance.get("activeDeployments")
+if "activeDeployments" in instance:
+    if not isinstance(active_rows, list) or len(active_rows) != 1 or not isinstance(active_rows[0], dict):
+        raise SystemExit("Railway active deployment inventory is not singular")
+    active = active_rows[0]
+    if not isinstance(latest, dict) or not isinstance(active.get("id"), str):
+        raise SystemExit("Railway latest/active deployment identity is invalid")
+    if latest.get("id") == active["id"]:
+        for field in ("status", "deploymentStopped", "createdAt", "instances"):
+            if latest.get(field) != active.get(field):
+                raise SystemExit("Railway latest/active deployment fields disagree")
+        latest_meta, active_meta = latest.get("meta"), active.get("meta")
+        if not isinstance(latest_meta, dict) or not isinstance(active_meta, dict) or any(latest_meta.get(key) != active_meta.get(key) for key in ("imageDigest", "reason", "buildOnly", "serviceManifest", "volumeMounts")):
+            raise SystemExit("Railway latest/active deployment metadata disagrees")
+    else:
+        if not isinstance(latest.get("id"), str) or re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", latest["id"]) is None or latest.get("status") not in {"CANCELED", "CANCELLED", "CRASHED", "FAILED", "REMOVED", "SKIPPED"} or latest.get("deploymentStopped") is not True or latest.get("instances") != []:
+            raise SystemExit("Railway newer deployment is not terminal and stopped")
+        try:
+            attempt_time = datetime.fromisoformat(latest["createdAt"].replace("Z", "+00:00"))
+            active_time = datetime.fromisoformat(active["createdAt"].replace("Z", "+00:00"))
+            if attempt_time.tzinfo is None or active_time.tzinfo is None or attempt_time <= active_time:
+                raise ValueError("deployment order")
+        except (KeyError, TypeError, AttributeError, ValueError) as exc:
+            raise SystemExit("Railway latest/active deployment clocks are invalid") from exc
+    latest = active
 if not isinstance(latest, dict) or latest.get("id") != deployment_id or latest.get("status") != "SUCCESS" or latest.get("deploymentStopped") is not False:
     raise SystemExit("Railway latest deployment identity is invalid")
 instances = latest.get("instances")
