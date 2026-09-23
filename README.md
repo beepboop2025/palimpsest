@@ -45,6 +45,12 @@ Built entirely from open sources. **It watches the censor, never the censored.**
 
 ## Use Palimpsest for source-bound China evidence
 
+For a connected institutional workflow, see
+[institutional evidence routing](docs/INSTITUTIONAL-EVIDENCE-ROUTING.md).
+LiquiLens is the front door for institution stress and risk-review questions;
+Palimpsest supplies relevant economic, information-control and verifiable
+evaluation evidence under its own coverage and rights contracts.
+
 Palimpsest is the China-evidence layer of a broader financial-research fleet. Its
 [money-market guide](https://palimpsest.info/china/money-markets/) exposes official CFETS
 repo fixings, SHIBOR and USD/CNY parity with economic-period, release and collection
