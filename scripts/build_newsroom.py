@@ -1683,6 +1683,7 @@ def _historical_wire_share_outputs(
     """Contextualize retained dossier aliases without rewriting immutable JSON."""
 
     cards: dict[str, share_cards.RenderedCard] = {}
+    pending_cards: list[tuple[str, Path, Mapping[str, Any], str]] = []
     html_outputs: dict[Path, bytes] = {}
     wire_root = archive_root / "news" / "wire"
     if not wire_root.is_dir() or wire_root.is_symlink():
@@ -1743,7 +1744,11 @@ def _historical_wire_share_outputs(
             raise newsroom.NewsroomError(
                 f"historical wire event page has the wrong canonical: {event_id}"
             )
-        card = share_cards.render_card(_event_share_card_spec(event))
+        pending_cards.append((event_id, base, _event_share_card_spec(event), source_html))
+    rendered = share_cards.render_cards([
+        spec for _, _, spec, _ in pending_cards
+    ])
+    for (event_id, base, _, source_html), card in zip(pending_cards, rendered, strict=True):
         cards[event_id] = card
         html_outputs[base / "index.html"] = _inject_share_image_meta(
             source_html, card
@@ -6879,15 +6884,15 @@ def build_outputs(
         )
         for story in feed["stories"]
     }
-    event_share_cards = {
-        event["event_id"]: share_cards.render_card(
-            _event_share_card_spec(
-                event,
-                analysis=event_analyses[event["event_id"]],
-            )
-        )
-        for event in (wire["events"] if wire is not None else [])
-    }
+    card_events = wire["events"] if wire is not None else []
+    event_share_cards = dict(zip(
+        (event["event_id"] for event in card_events),
+        share_cards.render_cards([
+            _event_share_card_spec(event, analysis=event_analyses[event["event_id"]])
+            for event in card_events
+        ]),
+        strict=True,
+    ))
     edition_share_card = share_cards.render_card(_edition_share_card_spec(feed))
     china_analysis_share_card = share_cards.render_card(
         _china_analysis_share_card_spec(china_analysis)
@@ -7821,7 +7826,7 @@ def _managed_share_card_inventory(*, root: Path) -> dict[Path, bool]:
     manifest_rows: dict[Path, share_cards.RenderedCard] = {}
     if manifest_path.is_file() and not manifest_path.is_symlink():
         try:
-            parsed = share_cards.parse_manifest(manifest_path.read_bytes())
+            parsed = share_cards.parse_manifest(manifest_path.read_bytes(), workers=4)
         except (OSError, share_cards.ShareCardError) as exc:
             raise newsroom.NewsroomError(
                 f"cannot validate prior share-card manifest: {exc}"

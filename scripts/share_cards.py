@@ -20,7 +20,9 @@ import zlib
 from collections import OrderedDict
 from contextlib import contextmanager
 from contextvars import ContextVar
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from multiprocessing import get_context
 from pathlib import Path
 from threading import Lock
 from typing import Any, Iterator, Mapping, Sequence
@@ -624,6 +626,12 @@ def render_card(
         png = _render_png(spec, bytes.fromhex(spec_digest))
         if cache is not None:
             cache.put(spec_raw, png)
+    return _rendered_card(spec, spec_digest, png, site=site)
+
+
+def _rendered_card(
+    spec: dict[str, Any], spec_digest: str, png: bytes, *, site: str
+) -> RenderedCard:
     if png_dimensions(png) != (WIDTH, HEIGHT):
         raise ShareCardError("renderer emitted the wrong PNG dimensions")
     digest = hashlib.sha256(png).hexdigest()
@@ -637,6 +645,64 @@ def render_card(
         url=f"{site.rstrip('/')}/{path.as_posix()}",
         alt=_card_alt(spec),
     )
+
+
+def _render_png_worker(spec: Mapping[str, Any]) -> bytes:
+    # Never inherit a producer's memoized images into an independent worker.
+    token = _PNG_RENDER_CACHE.set(None)
+    try:
+        return render_card(spec).png
+    finally:
+        _PNG_RENDER_CACHE.reset(token)
+
+
+def render_cards(
+    values: Sequence[Mapping[str, Any]], *, workers: int = 4,
+    site: str = "https://palimpsest.info",
+) -> list[RenderedCard]:
+    """Reproduce a bounded batch in input order, using at most four workers.
+
+    Workers receive complete normalized specifications, never paths or previously
+    generated PNGs. Each invocation keeps its own independent reproduction; only
+    an existing invocation-local cache may satisfy an already rendered spec.
+    """
+    if type(workers) is not int or not 1 <= workers <= 4:
+        raise ValueError("PNG rendering requires one to four workers")
+    specs = [normalize_spec(value) for value in values]
+    keys = [_canonical_json(spec) for spec in specs]
+    cache = _PNG_RENDER_CACHE.get()
+    rendered: dict[bytes, bytes] = {}
+    missing: dict[bytes, dict[str, Any]] = {}
+    for key, spec in zip(keys, specs, strict=True):
+        if key in rendered or key in missing:
+            continue
+        png = cache.get(key) if cache is not None else None
+        if png is None:
+            missing[key] = spec
+        else:
+            rendered[key] = png
+    if workers == 1 or len(missing) < 64:
+        payloads = map(_render_png_worker, missing.values())
+        for key, png in zip(missing, payloads, strict=True):
+            rendered[key] = png
+            if cache is not None:
+                cache.put(key, png)
+    else:
+        # The explicit cap also bounds overlapping independent newsroom renders.
+        # map preserves result order and propagates child failures.
+        # Fresh processes avoid inheriting the newsroom's full archive/cache.
+        with ProcessPoolExecutor(
+            max_workers=workers, mp_context=get_context("spawn")
+        ) as executor:
+            payloads = executor.map(_render_png_worker, missing.values(), chunksize=8)
+            for key, png in zip(missing, payloads, strict=True):
+                rendered[key] = png
+                if cache is not None:
+                    cache.put(key, png)
+    return [
+        _rendered_card(spec, hashlib.sha256(key).hexdigest(), rendered[key], site=site)
+        for spec, key in zip(specs, keys, strict=True)
+    ]
 
 
 def _render_png(spec: Mapping[str, Any], seed: bytes) -> bytes:
@@ -762,7 +828,7 @@ def manifest_bytes(cards: Sequence[RenderedCard]) -> bytes:
 
 
 def validate_manifest_document(
-    value: object,
+    value: object, *, workers: int = 1,
 ) -> list[tuple[dict[str, Any], RenderedCard]]:
     """Re-render every manifest row and prove its path, spec, bytes, and digest."""
 
@@ -813,7 +879,8 @@ def validate_manifest_document(
             or re.fullmatch(r"[0-9a-f]{64}", row["spec_sha256"]) is None
         ):
             raise ShareCardError("share-card manifest identity is invalid")
-        card = render_card(row["spec"])
+    cards = render_cards([row["spec"] for row in rows], workers=workers)
+    for row, card in zip(rows, cards, strict=True):
         if (
             row["sha256"] != card.sha256
             or row["spec_sha256"] != card.spec_sha256
@@ -826,11 +893,13 @@ def validate_manifest_document(
     return validated
 
 
-def parse_manifest(raw: bytes) -> list[tuple[dict[str, Any], RenderedCard]]:
+def parse_manifest(
+    raw: bytes, *, workers: int = 1
+) -> list[tuple[dict[str, Any], RenderedCard]]:
     try:
         document = json.loads(raw)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ShareCardError("share-card manifest is invalid JSON") from exc
     if raw != _canonical_json(document, pretty=True):
         raise ShareCardError("share-card manifest is not canonical JSON")
-    return validate_manifest_document(document)
+    return validate_manifest_document(document, workers=workers)

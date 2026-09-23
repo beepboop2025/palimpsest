@@ -148,6 +148,7 @@ CRITICAL_PATHS = (
     "ops/railway/run-producer-restore",
     "ops/railway/static_server.py",
     "ops/railway/verify_continuous_release.py",
+    "ops/railway/verify_readonly_tree.py",
     "ops/railway/verify_rights_clean.py",
     "ops/systemd/palimpsest-continuity-guard.service",
     "ops/systemd/palimpsest-continuity-guard.timer",

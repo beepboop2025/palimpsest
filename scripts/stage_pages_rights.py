@@ -700,7 +700,7 @@ def _load_generated_share_cards(
         return {}
     raw = _read_bounded(manifest_path)
     try:
-        rows = share_cards.parse_manifest(raw)
+        rows = share_cards.parse_manifest(raw, workers=4)
     except share_cards.ShareCardError as exc:
         raise PagesRightsError(f"invalid generated share-card manifest: {exc}") from exc
     generated: dict[str, bytes] = {}
