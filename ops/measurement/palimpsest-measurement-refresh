@@ -284,8 +284,45 @@ promote_public_file() {
   mv -f "$temporary" "$destination" || return 1
 }
 
+peer_dependency_digest() {
+  local name="$1" readings="$2"
+  "$PYTHON_BIN" -I -S - "$name" "$readings" <<'PYDEPENDENCY'
+import hashlib
+import json
+from pathlib import Path
+import stat
+import sys
+
+name, readings = sys.argv[1:]
+relative = {
+    "peer-context": "ooni-gfw-latest.json",
+    "peer-context-rank": "peer-context-latest.json",
+}[name]
+path = Path(readings) / relative
+info = path.lstat()
+if not stat.S_ISREG(info.st_mode) or not 1 <= info.st_size <= 16 * 1024 * 1024:
+    raise SystemExit("peer dependency is not a bounded regular file")
+raw = path.read_bytes()
+document = json.loads(raw)
+if not isinstance(document, dict):
+    raise SystemExit("peer dependency is not a JSON object")
+if name == "peer-context" and not isinstance(document.get("top_blocked"), list):
+    raise SystemExit("OONI dependency lacks its host inventory")
+if name == "peer-context-rank" and document.get("schema_version") != "palimpsest-peer-context.v1":
+    raise SystemExit("peer dependency has the wrong schema")
+print(hashlib.sha256(raw).hexdigest())
+PYDEPENDENCY
+}
+
+peer_dependency_admitted() {
+  local name="$1" digest="$2" receipt="$STATE_ROOT/jobs/$1.input-sha256" admitted
+  [[ -f "$receipt" && ! -L "$receipt" ]] || return 1
+  admitted="$(cat "$receipt")" || return 1
+  [[ "$admitted" =~ ^[0-9a-f]{64}$ && "$admitted" == "$digest" ]]
+}
+
 promote_changed_readings() {
-  local marker="$1" name="$2" promoted=0 relative source_file filename
+  local marker="$1" name="$2" expected_dependency="${3:-}" promoted=0 relative source_file filename
   if [[ "$name" == generative-firewall ]]; then
     # This dedicated entrypoint retains data -> registry locks through every
     # replacement and is also the offline completed-candidate recovery path.
@@ -296,6 +333,16 @@ promote_changed_readings() {
   fi
   exec 8>"$DATA_LOCK_FILE" || return 1
   flock -x 8 || return 1
+  if [[ -n "$expected_dependency" ]]; then
+    # The derived output must still describe both the copied input it consumed
+    # and the current host input. A producer race rejects before any promotion.
+    if [[ "$(peer_dependency_digest "$name" "$checkout/readings")" != "$expected_dependency" \
+      || "$(peer_dependency_digest "$name" "$HOST_READINGS")" != "$expected_dependency" ]]; then
+      log "$name dependency changed before promotion; retaining last-good files" >&2
+      flock -u 8
+      return 1
+    fi
+  fi
   while IFS= read -r relative; do
     source_file="$checkout/$relative"
     [[ -f "$source_file" && "$source_file" -nt "$marker" ]] || continue
@@ -313,6 +360,15 @@ promote_changed_readings() {
       promoted=$((promoted + 1))
     done < <(find "$checkout/readings/anchors" -maxdepth 1 -type f -newer "$marker" -print0)
   fi
+  if [[ -n "$expected_dependency" && "$promoted" -gt 0 ]]; then
+    # Acknowledge only after the complete output group was promoted, while the
+    # data lock still binds the consumed source to those public bytes.
+    local dependency_receipt="$STATE_ROOT/jobs/$name.input-sha256"
+    local dependency_temporary="$STATE_ROOT/jobs/.$name.input-sha256.$$"
+    printf '%s\n' "$expected_dependency" >"$dependency_temporary" || return 1
+    chmod 0600 "$dependency_temporary" || return 1
+    mv -f "$dependency_temporary" "$dependency_receipt" || return 1
+  fi
   flock -u 8
   printf '%s\n' "$promoted"
 }
@@ -329,7 +385,7 @@ job_due() {
 }
 
 run_job() {
-  local name="$1" interval_minutes="$2" timeout_limit
+  local name="$1" interval_minutes="$2" timeout_limit cadence_due=0 dependency_due=0 dependency_digest=""
   shift 2
   case "$name" in
     generative-firewall)
@@ -338,13 +394,39 @@ run_job() {
       [[ "$MEASUREMENT_SCOPE" == regional-research ]] || return 0 ;;
     *) [[ "$MEASUREMENT_SCOPE" == core ]] || return 0 ;;
   esac
-  if ! job_due "$name" "$interval_minutes"; then
+  job_due "$name" "$interval_minutes" && cadence_due=1
+  if [[ "$name" == peer-context || "$name" == peer-context-rank ]]; then
+    if ! dependency_digest="$(peer_dependency_digest "$name" "$HOST_READINGS")"; then
+      failed=$((failed + 1))
+      log "$name dependency is unavailable; retaining last-good files" >&2
+      return 0
+    fi
+    if [[ "$name" == peer-context-rank ]] \
+      && ! peer_dependency_admitted peer-context "$(peer_dependency_digest peer-context "$HOST_READINGS")"; then
+      log "skip peer-context-rank; current OONI dependency is not admitted" >&2
+      return 0
+    fi
+    peer_dependency_admitted "$name" "$dependency_digest" || dependency_due=1
+  fi
+  if (( cadence_due == 0 && dependency_due == 0 )); then
     log "skip $name; cadence not due"
     return 0
   fi
 
   overlay_last_good
   overlay_private_state "$name"
+  if [[ -n "$dependency_digest" ]] \
+    && [[ "$(peer_dependency_digest "$name" "$checkout/readings")" != "$dependency_digest" ]]; then
+    failed=$((failed + 1))
+    log "$name dependency changed during capture; retrying next cycle" >&2
+    return 0
+  fi
+  if [[ "$name" == peer-context && "$cadence_due" == 0 ]]; then
+    # Input-triggered joins are offline. Keep the ordinary six-hour probe due
+    # clock separate so frequent OONI changes neither add probes nor defer them.
+    set -- "$PYTHON_BIN" -c \
+      'from scripts.peer_context_pull import main; result = main(probe_weiboscope=False); raise SystemExit(0 if isinstance(result, dict) else 1)'
+  fi
   if [[ "$name" == generative-firewall ]]; then
     (cd "$checkout"; "$PYTHON_BIN" -m scripts.verify_gfi_promotion --prepare-history \
       --host-readings "$HOST_READINGS" --data-lock "$DATA_LOCK_FILE" \
@@ -370,10 +452,17 @@ run_job() {
       retain_gfi_work=1
     fi
     promote_private_state "$name" "$marker"
-    promoted="$(promote_changed_readings "$marker" "$name")"
+    if ! promoted="$(promote_changed_readings "$marker" "$name" "$dependency_digest")"; then
+      [[ -n "$dependency_digest" ]] || return 1
+      failed=$((failed + 1))
+      log "$name promotion failed; input admission remains pending" >&2
+      return 0
+    fi
     if (( promoted > 0 )); then
       changed=$((changed + promoted))
-      date +%s >"$STATE_ROOT/jobs/$name.success"
+      if (( cadence_due == 1 )); then
+        date +%s >"$STATE_ROOT/jobs/$name.success"
+      fi
       log "refreshed $name; promoted $promoted file(s)"
       [[ "$name" != generative-firewall ]] || retain_gfi_work=0
     else
@@ -397,6 +486,9 @@ run_job silence-index 60 "$PYTHON_BIN" -m scripts.silence_index_pull
 run_job net4people 720 "$PYTHON_BIN" -m scripts.net4people_pull
 run_job public-deletion-ledgers 180 "$PYTHON_BIN" -m scripts.public_deletion_ledgers_pull
 run_job greatfire-context 720 "$PYTHON_BIN" -m scripts.greatfire_context_pull
+# Admit the source before its cached joins. The source retains its 90-minute
+# request guard; changed source bytes independently make derived peers due.
+run_job ooni-gfw 90 "$PYTHON_BIN" -m scripts.ooni_gfw_pull
 run_job peer-context 360 "$PYTHON_BIN" -m scripts.peer_context_pull
 # Cached warehouse analysis only; retain its distinct latest/history outputs.
 run_job peer-context-rank 360 "$PYTHON_BIN" -m scripts.peer_context_rank_pull
@@ -404,7 +496,6 @@ run_job research-corpus 720 "$PYTHON_BIN" -m scripts.research_corpus_ingest
 # A 90-minute guard on the hourly timer normally collects every two hours.
 # The former six-hour guard exceeded these datasets' five-hour freshness budget.
 # Existing query sets, request throttles, retry caps and abstention stay intact.
-run_job ooni-gfw 90 "$PYTHON_BIN" -m scripts.ooni_gfw_pull
 run_job in-path-interference 90 "$PYTHON_BIN" -m scripts.in_path_interference_pull
 run_job censored-planet 1440 "$PYTHON_BIN" -m scripts.censored_planet_pull
 run_job inside-view 360 "$PYTHON_BIN" -m scripts.inside_view_pull
