@@ -23,8 +23,31 @@ The usual hourly polling cadence is slower (12/day). Reading-based guarantees,
 detector calculations and every historical row remain unchanged; the new
 `readings_to_days_basis` metadata explains the current conversion.
 
-The peer-context ranker runs after the cached peer warehouse, at six-hour
-cadence. It reads existing GreatFire/OONI/CDT metadata and writes only the already
+OONI GFW collection precedes the cached peer warehouse, followed by its ranker.
+The peer probe and ranker retain their six-hour successful-run guards. A changed
+GFW input also triggers an offline peer refresh, and changed peer bytes trigger
+the ranker, even when their ordinary cadence is not due. These derived refreshes
+do not advance the six-hour success stamp or perform an extra Weiboscope probe.
+The OONI collector keeps its independent 90-minute guard and unchanged queries.
+
+Private `jobs/peer-context.input-sha256` and
+`jobs/peer-context-rank.input-sha256` receipts bind each derived output group to
+its exact input bytes. Promotion rechecks the captured and current host inputs
+under the existing data lock, then admits the digest only after all changed
+outputs are promoted. Missing, malformed, raced or failed inputs remain pending
+for a later cycle; the ranker waits for the current OONI input to be admitted by
+the peer builder. A host leaving the GFW inventory can therefore become an
+honest peer miss without rewriting source clocks, retained observations or
+history. The publisher's retained-live-coverage guard stays unchanged.
+
+This dependency correction is self-contained in the reviewed refresh helper.
+For a helper-only activation, hold its existing stable refresh lock while the
+service is inactive and install the exact reviewed helper atomically. Preserve
+the collector source marker, immutable source mount, timers and data lock inode.
+Release the installation lock before invoking the normal controller; do not
+hand-edit readings or success/input receipts to force recovery.
+
+The ranker reads existing GreatFire/OONI/CDT metadata and writes only the already
 published `peer-context-rank-latest.json` and append-only movement history.
 `config/public_data_catalog.json` declares this product a review rank, and
 `tests/test_publication_contract.py` registers those public metadata fields.
