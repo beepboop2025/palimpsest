@@ -109,6 +109,32 @@ restoration is re-proved. Immutable recovery receipts make this idempotent even
 if the helper dies after writing the recovery receipt but before journal
 consumption.
 
+### Recovery when Railway retains a failed newest attempt
+
+Railway may report a terminal, stopped `latestDeployment` while one earlier
+`activeDeployments` entry still serves the captured predecessor. Reconciliation,
+base rotation and predecessor capture select that one active deployment and
+retain its exact identity, image, topology and dual-origin manifest checks. A
+newer queued, building or running attempt, multiple active deployments, changed
+source attachment, inconsistent same-ID records, or invalid clock ordering
+still fails closed. Historical saved topology without `activeDeployments` must
+continue to prove a successful, singular `latestDeployment`.
+
+If an installed predecessor helper lacks this parser correction, do not replace
+its pinned executable or remove the DATA HOLD to bootstrap recovery. Fetch the
+exact reviewed public-main target, extract its reconciler and rotation-helper
+Git blobs to separate root-owned, mode-0755, content-addressed recovery paths,
+and verify each staged byte digest against that target. Run the staged
+reconciler with the existing private Railway environment. It must produce its
+ordinary immutable recovery receipt and consume the pending candidate and hold
+through its normal proof path. Then run the staged target rotation helper for
+that same exact public-main SHA. The rotation still validates the original
+installed artifact contract, host checkout, pin lineage, singular active
+predecessor and both origins before installing the complete target contract
+under its normal locks. Keep all timers enabled and retain the staged digests
+with the deployment evidence. This bootstrap does not authorize a different
+candidate, skipped proof, repeated upload, or manual journal deletion.
+
 `palimpsest-candidate-recovery.service` invokes this same root reconciler when
 the publisher fails with a pending candidate. Its five-minute persistent timer
 also covers a missed failure trigger or reboot. It abstains during continuity
