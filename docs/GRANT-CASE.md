@@ -2,12 +2,11 @@
 
 ## The case in one paragraph
 
-Palimpsest's founder began testing AI systems after observing Chinese and state-aligned
-language models change, withhold or replace answers when prompts criticised the Chinese
-Communist Party or asked about documented events. A screenshot could preserve one response;
-it could not establish a pattern or prove that an evaluator had fixed the questions first.
-Palimpsest turned that observation into a multilingual, control-bearing Generative Firewall
-evaluation and then into public infrastructure: exact-prompt preregistration, full-response
+Palimpsest evaluates Chinese and state-aligned language-model responses to declared
+questions about documented events and criticism of the Chinese Communist Party. A
+screenshot preserves one response but cannot establish a pattern or prove that an
+evaluator fixed the questions first. The Generative Firewall and registry provide
+multilingual comparisons with controls, exact-prompt preregistration, full-response
 commitments, tamper-evident run chains, explicit uncertainty, repeated-look-safe monitoring
 and a machine-readable ceiling on what the evidence can claim. Funding would complete the
 remaining human-validation and independent-replication layers rather than merely make the
@@ -18,8 +17,8 @@ dashboard larger.
 Palimpsest, Evidence Signal, and NarcoScope are the public-good house. A grant
 pays for observation, sealing, and public evidence. It does not buy financial
 authority, a named-list software seat, or a post on the Liquidity Lab morning
-channel. Liquidity Lab (Seiche, LiquiLens, Undertow) is a sibling software
-company with a separate invoice path. ScamShield triage, when funded, stays
+channel. Liquidity Lab (Seiche, LiquiLens, Undertow) is the related software
+product family with a separate invoice path. ScamShield triage, when funded, stays
 inside this house.
 
 ## Why this matters

@@ -27,20 +27,18 @@ primary interface to human knowledge, the ability to audit them, and to *prove t
 audit was not rewritten*, is missing infrastructure. This is a governance problem,
 not only a censorship one.
 
-## Why Palimpsest started doing AI evals
+## Evaluation scope
 
-The project began from a concrete observation: its founder tested Chinese and
-state-aligned language models on documented events and criticism of the Chinese
-Communist Party and saw answers change, disappear, or shift into official framing. A
-screenshot preserved one interaction, but it could not answer the questions a serious
-reviewer should ask: Were the prompts selected after seeing the outputs? Did the pattern
-survive a repeated sample? Did language or neutral controls change the result? Could the
-published record be revised later?
+Palimpsest evaluates Chinese and state-aligned language models on documented events and
+criticism of the Chinese Communist Party. A screenshot preserves one interaction but
+cannot establish whether prompts were selected after seeing the outputs, whether a
+pattern survived a repeated sample, whether language or neutral controls changed the
+result, or whether the published record was revised later.
 
-That observation became the Generative Firewall, and the weaknesses of a one-off audit
-became the requirements for the registry. The origin is intentionally scoped. It does
-not claim that every Chinese model behaves alike, infer a model maker's private motive,
-or turn one refusal into proof of a national policy. Recent independent work gives the
+The Generative Firewall and registry record declared tests, repeated measurements and
+evidence for those checks. Results do not establish that every Chinese model behaves
+alike, identify a model maker's private motive, or turn one refusal into proof of a
+national policy. Independent work gives the
 question external research context—for example, bilingual evaluations of political
 bias around Taiwan ([arXiv:2602.06371](https://arxiv.org/abs/2602.06371)) and audits of
 refusal and ideological reframing in China-origin vision-language models

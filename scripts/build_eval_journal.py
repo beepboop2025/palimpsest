@@ -166,7 +166,6 @@ def _index_json_ld(journal: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _article_json_ld(article: Mapping[str, Any]) -> dict[str, Any]:
-    author_type = "Person" if article["author"] == "Palimpsest's founder" else "Organization"
     citations = [f"{SITE}{item['url']}" for item in article["evidence"]]
     citations.extend(item["url"] for item in article["external_sources"])
     return {
@@ -182,7 +181,7 @@ def _article_json_ld(article: Mapping[str, Any]) -> dict[str, Any]:
                 "articleSection": "AI evaluation",
                 "datePublished": article["published_at"],
                 "dateModified": article["modified_at"],
-                "author": {"@type": author_type, "name": article["author"]},
+                "author": {"@type": "Organization", "name": article["author"]},
                 "publisher": {"@id": f"{SITE}/#organization"},
                 "isPartOf": {"@id": f"{SITE}/evals/"},
                 "mainEntityOfPage": article["url"],
@@ -259,7 +258,7 @@ def render_index(journal: Mapping[str, Any]) -> str:
       <h1 id="lead-title"><a href="/evals/{_h(lead['slug'])}/">{_h(lead['title'])}</a></h1>
       <p class="ej-lead__dek">{_h(lead['dek'])}</p>
       <p class="ej-lead__claim"><strong>Claim boundary</strong>{_h(lead['claim'])}</p>
-      <a class="ej-open" href="/evals/{_h(lead['slug'])}/">Read the founder's note <span>→</span></a>
+      <a class="ej-open" href="/evals/{_h(lead['slug'])}/">Read the evaluation method <span>→</span></a>
     </div>
     {_context(lead['live_context'])}
   </section>

@@ -109,13 +109,11 @@ Ongoing support pays for vantage points, archives, model credits and independent
 never buys a say in the research questions, methods, findings or publication schedule. Card
 checkout is handled on GitHub; Palimpsest does not collect or store donor card or bank details.
 
-The AI-evaluation work began with a specific observation. Palimpsest's founder tested Chinese
-and state-aligned language models on documented events and criticism of the Chinese Communist
-Party and saw answers change, disappear, or shift into official framing. A screenshot could
-capture one response but not a durable pattern. That gap became the Generative Firewall and then
-the registry: freeze the questions, retain the complete evidence, expose uncertainty, and make
-later revision detectable. This origin does not imply that all Chinese models behave alike or
-prove a model maker's motive; every claim stays scoped to its named panel, suite and timestamp.
+Palimpsest evaluates how Chinese and state-aligned language models respond to documented events
+and criticism of the Chinese Communist Party. The Generative Firewall and evaluation registry
+bind each result to declared questions, retained response evidence, uncertainty and detectable
+revisions. A screenshot alone cannot establish a repeatable pattern or a model maker's motive;
+every claim stays scoped to its named panel, suite and timestamp.
 
 ## Prove it yourself, in one command
 
