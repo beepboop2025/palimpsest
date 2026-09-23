@@ -10,6 +10,7 @@ import os
 import time
 import subprocess
 import sys
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -2355,3 +2356,73 @@ def test_tracked_service_exposes_only_the_base_repository_from_home() -> None:
     assert "MemoryDenyWriteExecute=true" in service
     assert "OnCalendar=*:0/5" in timer
     assert "Persistent=true" in timer
+
+
+def _with_failed_latest(topology: dict[str, Any], case: str) -> None:
+    """Current Railway shape: serving predecessor plus stopped snapshot failure."""
+    instance = topology["environments"]["edges"][0]["node"]["serviceInstances"]["edges"][0]["node"]
+    active = deepcopy(instance["latestDeployment"])
+    active.update(deploymentStopped=False, instances=[{"id": "one", "status": "RUNNING"}])
+    instance["source"] = {"image": None, "repo": None}
+    instance["activeDeployments"] = [active]
+    instance["latestDeployment"] = {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "status": "FAILED", "deploymentStopped": True, "instances": [],
+        "createdAt": (datetime.fromisoformat(active["createdAt"].replace("Z", "+00:00"))
+                      + timedelta(minutes=1)).isoformat().replace("+00:00", "Z"),
+        "meta": {"configErrors": ["Failed to create code snapshot."]},
+    }
+    if case == "multiple_active":
+        instance["activeDeployments"].append(deepcopy(active))
+    elif case == "wrong_active":
+        active["id"] = "66666666-6666-4666-8666-666666666666"
+    elif case == "wrong_image":
+        active["meta"]["imageDigest"] = "sha256:" + "a" * 64
+    elif case == "unproven_latest":
+        instance["latestDeployment"]["deploymentStopped"] = False
+
+
+@pytest.mark.parametrize("case", ["valid", "multiple_active", "wrong_active", "wrong_image", "unproven_latest"])
+def test_rollback_predecessor_uses_authenticated_active_identity(lineage: Fixture, case: str) -> None:
+    candidate = json.loads(Path(lineage.receipt["candidate"]["archive_path"]).read_bytes())
+    evidence = candidate["rollback_evidence"]
+    proof = evidence["topology"]
+    path = Path(proof["path"])
+    topology = json.loads(path.read_bytes())
+    _with_failed_latest(topology, case)
+    raw = _json_bytes(topology)
+    _write(path, raw, 0o600)
+    proof.update(sha256=_sha(raw), bytes=len(raw))
+
+    def validate():
+        watchdog._validate_rollback_evidence(
+            lineage.config, evidence, candidate_release_sha=candidate["release_sha"],
+            predecessor=candidate["predecessor"],
+        )
+    if case == "valid":
+        validate()
+    else:
+        with pytest.raises(watchdog.WatchdogError):
+            validate()
+
+
+@pytest.mark.parametrize("case", ["valid", "multiple_active", "wrong_active", "unproven_latest"])
+def test_data_hold_attempt_uses_exact_active_candidate(lineage: Fixture, case: str) -> None:
+    hold, attempt_path = _write_data_hold(lineage, attempted=True)
+    assert attempt_path is not None
+    attempt = json.loads(attempt_path.read_bytes())
+    path = Path(attempt["candidate_topology_path"])
+    topology = json.loads(path.read_bytes())
+    _with_failed_latest(topology, case)
+    raw = _json_bytes(topology)
+    _write(path, raw, 0o600)
+    attempt["topology_sha256"] = _sha(raw)
+    attempt_raw = _json_bytes(attempt)
+    _write(attempt_path, attempt_raw, 0o600)
+    hold["rollback"]["attempt_sha256"] = _sha(attempt_raw)
+    _write(lineage.config.data_hold, _json_bytes(hold), 0o640)
+    if case == "valid":
+        assert watchdog.validate_data_hold(lineage.config)["rollback_attempted"] is True
+    else:
+        with pytest.raises(watchdog.WatchdogError):
+            watchdog.validate_data_hold(lineage.config)

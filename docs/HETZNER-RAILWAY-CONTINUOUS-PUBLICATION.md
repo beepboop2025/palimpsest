@@ -113,12 +113,16 @@ consumption.
 
 Railway may report a terminal, stopped `latestDeployment` while one earlier
 `activeDeployments` entry still serves the captured predecessor. Reconciliation,
-base rotation and predecessor capture select that one active deployment and
-retain its exact identity, image, topology and dual-origin manifest checks. A
+base rotation, predecessor capture, the watchdog’s archived rotation and rollback
+proofs, and live analysis’s archived rotation reader select that one active
+deployment. They retain its exact identity, image, topology and dual-origin
+manifest checks. A
 newer queued, building or running attempt, multiple active deployments, changed
 source attachment, inconsistent same-ID records, or invalid clock ordering
 still fails closed. Historical saved topology without `activeDeployments` must
-continue to prove a successful, singular `latestDeployment`.
+continue to prove a successful, singular `latestDeployment`. This archived-evidence
+selection does not relax the post-submission check: the uniquely submitted new
+candidate must still be the latest deployment at the final publication check.
 
 If an installed predecessor helper lacks this parser correction, do not replace
 its pinned executable or remove the DATA HOLD to bootstrap recovery. Fetch the
