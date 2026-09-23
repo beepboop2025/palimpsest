@@ -1247,7 +1247,9 @@ def test_railway_container_is_non_root_and_bundle_stays_public_only() -> None:
     dockerfile = (RAILWAY / "Dockerfile.static").read_text(encoding="utf-8")
     assert "FROM python:3.12-slim@sha256:" in dockerfile
     assert "USER palimpsest" in dockerfile
-    assert "chmod -R a-w /site" in dockerfile
+    assert "chmod a-w /site" in dockerfile
+    assert "python -I /site/ops/railway/verify_readonly_tree.py --root /site" in dockerfile
+    assert "chmod -R" not in dockerfile
 
     builder = (RAILWAY / "build-static-bundle.sh").read_text(encoding="utf-8")
     assert "status --porcelain=v1 --untracked-files=all" in builder

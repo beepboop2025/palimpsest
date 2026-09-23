@@ -9,7 +9,11 @@ RUN groupadd --gid 10001 palimpsest \
 
 WORKDIR /site
 COPY --chown=palimpsest:palimpsest . .
-RUN chmod -R a-w /site
+# The publisher seals all copied files and directories before upload. COPY
+# preserves those modes; only WORKDIR's newly created root needs sealing.
+# Verify the complete copied tree without copying every layer inode up again.
+RUN chmod a-w /site \
+    && python -I /site/ops/railway/verify_readonly_tree.py --root /site
 
 USER palimpsest
 EXPOSE 3000
