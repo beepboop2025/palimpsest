@@ -70,6 +70,13 @@ performs that routing without merging the products’ evidence boundaries. Agent
 discover Palimpsest itself through its
 [AI catalog](https://palimpsest.info/.well-known/ai-catalog.json).
 
+For companion funding, bank and exit-liquidity research, the
+[free agent starter kit](https://liquilens.in/agents/) configures Seiche, LiquiLens
+and Undertow, with [Hermes](https://liquilens.in/agents/hermes/) and
+[OpenClaw](https://liquilens.in/agents/openclaw/) setup guides. Palimpsest is added
+separately through its China economy API guide above; the kit does not include its
+MCP connection or expand its publication rights.
+
 ## Follow Belt and Road evidence without flattening it
 
 The [Belt and Road Observatory](https://palimpsest.info/belt-and-road/) publishes a
