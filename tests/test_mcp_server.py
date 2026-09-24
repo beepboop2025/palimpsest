@@ -764,6 +764,56 @@ def test_valid_status_distinguishes_denied_cfets_from_allowed_but_empty_wdi():
     assert status["counts"]["published_records"] == 0
 
 
+def test_verified_rights_accept_lineage_filtered_newsroom_without_economic_values(
+    monkeypatch,
+):
+    document = _rights_document()
+    paths = set(document["quarantined_paths"])
+    paths.remove("readings/newsroom-latest.json")
+    paths.add("readings/restricted-economic-history.json")
+    document["quarantined_paths"] = sorted(paths)
+    document["counts"]["quarantined_artifacts"] = len(paths)
+    _stub_verified_rights(monkeypatch, raw=_canonical_rights_bytes(document))
+    fetched = []
+
+    def fetch(name):
+        fetched.append(name)
+        assert name == "newsroom"
+        return {"schema_version": "palimpsest-news.v1", "stories": []}
+
+    monkeypatch.setattr(mcp, "_fetch", fetch)
+    monkeypatch.setattr(
+        mcp,
+        "_fetch_economic_observations",
+        lambda: (_ for _ in ()).throw(AssertionError("denied ledger fetch")),
+    )
+    rights = mcp.economic_rights_status()
+    assert rights["status_artifact"]["integrity"] == "verified"
+    assert "readings/newsroom-latest.json" not in rights["quarantined_paths"]
+    assert mcp.tool_get_signal({"name": "newsroom"})["data"]["stories"] == []
+    economic = mcp.tool_query_economic_observations({})
+    assert economic["publication_allowed"] is False
+    assert economic["counts"]["published_records"] == 0
+    assert fetched == ["newsroom"]
+
+
+@pytest.mark.parametrize(
+    "missing_path",
+    ["readings/china-econ-latest.json", "readings/china-econ-observations.jsonl"],
+)
+def test_restored_newsroom_does_not_relax_required_economic_closure(missing_path):
+    document = _rights_document()
+    paths = set(document["quarantined_paths"])
+    paths.difference_update({"readings/newsroom-latest.json", missing_path})
+    paths.update({"readings/restricted-history-1.json", "readings/restricted-history-2.json"})
+    document["quarantined_paths"] = sorted(paths)
+    document["counts"]["quarantined_artifacts"] = len(paths)
+    with pytest.raises(mcp.EconomicLedgerError, match="affected lineage"):
+        mcp._parse_economic_rights_status(
+            _canonical_rights_bytes(document), checked_at=_RIGHTS_NOW
+        )
+
+
 @pytest.mark.parametrize(
     ("mutate", "message"),
     (

@@ -73,6 +73,11 @@ published `AnalysisReport` records and explicit `AbstentionReport` records; an a
 never promoted into a news article merely because it is available to the client. The underlying
 eligibility and lineage graph is separately available as the `evidence-mesh` signal.
 
+The newsroom follows the current verified publication-rights closure. A newsroom
+rebuilt without denied economic lineage can be read even while economic observations
+remain restricted. Missing or invalid rights evidence still blocks the newsroom,
+and every required economic endpoint must remain in the quarantine closure.
+
 `query_economic_observations` is the narrow analytical surface over the fixed
 [`manifest`](https://palimpsest.info/readings/china-econ-observations-latest.json) and
 [`JSONL ledger`](https://palimpsest.info/readings/china-econ-observations.jsonl). It accepts exact

@@ -176,8 +176,10 @@ ECON_RIGHTS_REQUIRED_QUARANTINE_PATHS = frozenset({
     "readings/newswire-latest.json",
     "readings/forecast-ledger-latest.json",
     "readings/investigations-latest.json",
-    "readings/newsroom-latest.json",
 })
+# A lineage-filtered newsroom can be published without denied economic values.
+# Its runtime availability follows the verified Pages closure; it remains in
+# ECON_RIGHTS_AFFECTED_SIGNALS so missing or invalid rights evidence blocks it.
 _ECON_RIGHTS_KNOWN_SOURCES = {
     "world_bank_wdi": {
         "configured_decision": "allow",
