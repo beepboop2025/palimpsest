@@ -325,14 +325,20 @@ def _verified_rights_payload() -> dict[str, object]:
 
 
 @pytest.mark.parametrize("restored_newsroom", [False, True])
+@pytest.mark.parametrize("restored_catalog", [False, True])
 def test_live_smoke_covers_native_rights_closure(
-    monkeypatch: pytest.MonkeyPatch, restored_newsroom: bool,
+    monkeypatch: pytest.MonkeyPatch, restored_newsroom: bool, restored_catalog: bool,
 ) -> None:
     rights = _verified_rights_payload()
     if restored_newsroom:
         rights["quarantined_paths"].remove("readings/newsroom-latest.json")
+    if restored_catalog:
+        rights["quarantined_paths"].remove("readings/research-catalog-latest.json")
 
     def fetch(name):
+        if restored_catalog and name == "evidence-catalog":
+            return {"schema": "palimpsest-research-catalog/v1", "metadata_only": True,
+                    "datasets": [{"id": "example", "values_included": False}]}
         assert restored_newsroom and name == "newsroom", "denied sources must not be fetched"
         return {"schema_version": "palimpsest-news.v1", "stories": []}
 
@@ -370,6 +376,7 @@ def test_live_smoke_covers_native_rights_closure(
         *[
             f"get_signal:{name}:" + (
                 "lineage-filtered" if name == "newsroom" and restored_newsroom
+                else "metadata-only" if name == "evidence-catalog" and restored_catalog
                 else "restricted"
             )
             for name in sorted(server.ECON_RIGHTS_AFFECTED_SIGNALS)
@@ -401,6 +408,20 @@ def test_smoke_rejects_unverified_restored_newsroom_payload(changes):
     }
     with pytest.raises(smoke.SmokeError, match="bounded published newsroom"):
         smoke._validate_restored_newsroom(body)
+
+
+@pytest.mark.parametrize("change", [
+    {"schema": "unexpected"}, {"metadata_only": False}, {"datasets": []},
+    {"datasets": [{"id": "x", "values_included": True}]},
+    {"datasets": [{"id": "x", "values_included": False, "observations": []}]},
+    {"datasets": [{"id": "x", "values_included": False, "artifacts": {"value": 1}}]},
+])
+def test_smoke_rejects_catalog_values_or_incompatible_metadata(change):
+    body = {"source_url": "https://www.palimpsest.info/readings/research-catalog-latest.json",
+            "data": {"schema": "palimpsest-research-catalog/v1", "metadata_only": True,
+                     "datasets": [{"id": "x", "values_included": False}], **change}}
+    with pytest.raises(smoke.SmokeError):
+        smoke._validate_restored_catalog(body)
 
 
 def test_live_smoke_accepts_only_monotonic_denied_coverage_growth() -> None:
