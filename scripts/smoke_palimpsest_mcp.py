@@ -40,6 +40,7 @@ _EXPECTED_AFFECTED_VIEWS = {
     "machine-analysis", "newsroom", "wire",
 }
 _NEWSROOM_PATH = "readings/newsroom-latest.json"
+_CATALOG_PATH = "readings/research-catalog-latest.json"
 
 
 class SmokeError(RuntimeError):
@@ -490,7 +491,7 @@ def _validate_rights_payload(
     if verified_mode:
         if not isinstance(paths, list) or paths != sorted(set(paths)):
             raise SmokeError("publication-rights quarantine closure is invalid")
-        required_paths = set(contract["affected_paths"]) - {_NEWSROOM_PATH}
+        required_paths = set(contract["affected_paths"]) - {_NEWSROOM_PATH, _CATALOG_PATH}
         if not required_paths.issubset(paths):
             raise SmokeError("publication-rights status omits a native MCP route")
         if counts["quarantined_artifacts"] < len(paths):
@@ -526,6 +527,37 @@ def _validate_restored_newsroom(body: dict[str, Any]) -> None:
         or not isinstance(data.get("stories"), list)
     ):
         raise SmokeError("restored newsroom is not the bounded published newsroom")
+
+
+def _validate_restored_catalog(body: dict[str, Any]) -> None:
+    """The replacement catalog publishes discovery metadata, never observations."""
+    data = body.get("data")
+    if (
+        body.get("source_url") != "https://www.palimpsest.info/" + _CATALOG_PATH
+        or "unavailable" in body
+        or body.get("status") == "restricted"
+        or not isinstance(data, dict)
+        or data.get("schema") != "palimpsest-research-catalog/v1"
+        or data.get("metadata_only") is not True
+        or not isinstance(data.get("datasets"), list)
+        or not data["datasets"]
+        or len(data["datasets"]) > 1000
+        or not all(
+            isinstance(row, dict) and isinstance(row.get("id"), str)
+            and row.get("values_included") is False
+            for row in data["datasets"]
+        )
+    ):
+        raise SmokeError("restored catalog is not bounded metadata without values")
+    stack = [data]
+    while stack:
+        value = stack.pop()
+        if isinstance(value, dict):
+            if {"observations", "value", "forecast", "direction", "score"}.intersection(value):
+                raise SmokeError("restored catalog contains observation fields")
+            stack.extend(value.values())
+        elif isinstance(value, list):
+            stack.extend(value)
 
 
 def rights_preflight(
@@ -699,6 +731,10 @@ def probe(
             rights_body["status_artifact"]["integrity"] == "verified"
             and _NEWSROOM_PATH not in rights_body["quarantined_paths"]
         )
+        restored_catalog = (
+            rights_body["status_artifact"]["integrity"] == "verified"
+            and _CATALOG_PATH not in rights_body["quarantined_paths"]
+        )
         calls.append("resources/read:china-economic-publication-rights")
 
         signals = _rpc_result(
@@ -731,6 +767,10 @@ def probe(
             if name == "newsroom" and restored_newsroom:
                 if not isinstance(row, dict) or row.get("status") == "restricted":
                     raise SmokeError("list_signals does not expose the restored newsroom")
+                continue
+            if name == "evidence-catalog" and restored_catalog:
+                if not isinstance(row, dict) or row.get("status") == "restricted":
+                    raise SmokeError("list_signals does not expose the metadata catalog")
                 continue
             if (
                 not isinstance(row, dict)
@@ -779,6 +819,11 @@ def probe(
             if name == "newsroom" and restored_newsroom:
                 _validate_restored_newsroom(structured)
                 calls.append("get_signal:newsroom:lineage-filtered")
+                next_id += 1
+                continue
+            if name == "evidence-catalog" and restored_catalog:
+                _validate_restored_catalog(structured)
+                calls.append("get_signal:evidence-catalog:metadata-only")
                 next_id += 1
                 continue
             if (
