@@ -7,7 +7,7 @@ import json
 import shutil
 import subprocess
 import textwrap
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import yaml
@@ -304,11 +304,20 @@ def test_rights_gate_preserves_the_clean_projection_byte_for_byte(tmp_path: Path
         destination = tmp_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / relative, destination)
+    # These copied inputs have their own source clocks. Publication must follow
+    # them instead of using a fixed date that predates the repository fixtures.
+    evaluation_clock = max(
+        datetime.fromisoformat(json.loads((tmp_path / relative).read_bytes())["generated_at"])
+        for relative in (
+            stage_pages_rights.NEWSWIRE_RELATIVE_PATH,
+            stage_pages_rights.CHINA_SITUATION_RELATIVE_PATH,
+        )
+    ) + timedelta(seconds=1)
     status = stage_pages_rights.stage_pages_tree(
         tmp_path,
         publication_sha="1" * 40,
-        evaluated_at=datetime(2026, 8, 28, tzinfo=UTC),
-        admission_at=datetime(2026, 8, 28, tzinfo=UTC),
+        evaluated_at=evaluation_clock,
+        admission_at=evaluation_clock,
     )
 
     assert status["status"] == "restricted"

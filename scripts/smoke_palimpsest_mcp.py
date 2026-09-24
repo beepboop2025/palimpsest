@@ -39,6 +39,7 @@ _EXPECTED_AFFECTED_VIEWS = {
     "economy", "editorial-readiness", "interconnection", "investigations",
     "machine-analysis", "newsroom", "wire",
 }
+_NEWSROOM_PATH = "readings/newsroom-latest.json"
 
 
 class SmokeError(RuntimeError):
@@ -489,7 +490,8 @@ def _validate_rights_payload(
     if verified_mode:
         if not isinstance(paths, list) or paths != sorted(set(paths)):
             raise SmokeError("publication-rights quarantine closure is invalid")
-        if not set(contract["affected_paths"]).issubset(paths):
+        required_paths = set(contract["affected_paths"]) - {_NEWSROOM_PATH}
+        if not required_paths.issubset(paths):
             raise SmokeError("publication-rights status omits a native MCP route")
         if counts["quarantined_artifacts"] < len(paths):
             raise SmokeError("MCP quarantine closure exceeds the Pages archive count")
@@ -510,6 +512,20 @@ def _validate_rights_payload(
             stack.extend(value.values())
         elif isinstance(value, list):
             stack.extend(value)
+
+
+def _validate_restored_newsroom(body: dict[str, Any]) -> None:
+    """Accept the bounded published newsroom only after verified rights admission."""
+    data = body.get("data")
+    if (
+        body.get("source_url") != "https://www.palimpsest.info/" + _NEWSROOM_PATH
+        or "unavailable" in body
+        or body.get("status") == "restricted"
+        or not isinstance(data, dict)
+        or data.get("schema_version") != "palimpsest-news.v1"
+        or not isinstance(data.get("stories"), list)
+    ):
+        raise SmokeError("restored newsroom is not the bounded published newsroom")
 
 
 def rights_preflight(
@@ -679,6 +695,10 @@ def probe(
             "integrity": rights_body.get("status_artifact", {}).get("integrity"),
             "rights_evaluated_at": rights_body.get("rights_evaluated_at"),
         }
+        restored_newsroom = (
+            rights_body["status_artifact"]["integrity"] == "verified"
+            and _NEWSROOM_PATH not in rights_body["quarantined_paths"]
+        )
         calls.append("resources/read:china-economic-publication-rights")
 
         signals = _rpc_result(
@@ -708,6 +728,10 @@ def probe(
         }
         for name in contract["affected_signals"]:
             row = by_signal.get(name)
+            if name == "newsroom" and restored_newsroom:
+                if not isinstance(row, dict) or row.get("status") == "restricted":
+                    raise SmokeError("list_signals does not expose the restored newsroom")
+                continue
             if (
                 not isinstance(row, dict)
                 or row.get("status") != "restricted"
@@ -752,6 +776,11 @@ def probe(
                 f"tools/call get_signal({name})",
             )
             structured = _tool_body(result, f"get_signal({name})")
+            if name == "newsroom" and restored_newsroom:
+                _validate_restored_newsroom(structured)
+                calls.append("get_signal:newsroom:lineage-filtered")
+                next_id += 1
+                continue
             if (
                 structured.get("status") != "restricted"
                 or structured.get("availability") != "unavailable"
@@ -779,6 +808,11 @@ def probe(
                 f"tools/call get_newsroom({view})",
             )
             structured = _tool_body(result, f"get_newsroom({view})")
+            if view == "newsroom" and restored_newsroom:
+                _validate_restored_newsroom(structured)
+                calls.append("get_newsroom:newsroom:lineage-filtered")
+                next_id += 1
+                continue
             if (
                 structured.get("status") != "restricted"
                 or structured.get("availability") != "unavailable"

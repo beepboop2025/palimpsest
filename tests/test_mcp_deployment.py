@@ -324,13 +324,20 @@ def _verified_rights_payload() -> dict[str, object]:
     }
 
 
+@pytest.mark.parametrize("restored_newsroom", [False, True])
 def test_live_smoke_covers_native_rights_closure(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, restored_newsroom: bool,
 ) -> None:
-    monkeypatch.setattr(server, "economic_rights_status", _verified_rights_payload)
-    monkeypatch.setattr(
-        server, "_fetch", lambda name: (_ for _ in ()).throw(AssertionError(name))
-    )
+    rights = _verified_rights_payload()
+    if restored_newsroom:
+        rights["quarantined_paths"].remove("readings/newsroom-latest.json")
+
+    def fetch(name):
+        assert restored_newsroom and name == "newsroom", "denied sources must not be fetched"
+        return {"schema_version": "palimpsest-news.v1", "stories": []}
+
+    monkeypatch.setattr(server, "_fetch", fetch)
+    monkeypatch.setattr(server, "economic_rights_status", lambda: rights)
     contract = smoke.load_contract(
         ROOT / "mcp/palimpsest_mcp.py",
         ROOT / "server.json",
@@ -361,15 +368,39 @@ def test_live_smoke_covers_native_rights_closure(
         "list_signals",
         "query_economic_observations:rights-status",
         *[
-            f"get_signal:{name}:restricted"
+            f"get_signal:{name}:" + (
+                "lineage-filtered" if name == "newsroom" and restored_newsroom
+                else "restricted"
+            )
             for name in sorted(server.ECON_RIGHTS_AFFECTED_SIGNALS)
         ],
         *[
-            f"get_newsroom:{view}:restricted"
+            f"get_newsroom:{view}:" + (
+                "lineage-filtered" if view == "newsroom" and restored_newsroom
+                else "restricted"
+            )
             for view in sorted(server.ECON_RIGHTS_AFFECTED_NEWSROOM_VIEWS)
         ],
         "whats_happening:rights-restricted",
     ]
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"unavailable": "source fetch failed"},
+        {"source_url": "https://unreviewed.example/newsroom.json"},
+        {"data": {"schema_version": "palimpsest-news.v1", "stories": None}},
+    ],
+)
+def test_smoke_rejects_unverified_restored_newsroom_payload(changes):
+    body = {
+        "source_url": "https://www.palimpsest.info/readings/newsroom-latest.json",
+        "data": {"schema_version": "palimpsest-news.v1", "stories": []},
+        **changes,
+    }
+    with pytest.raises(smoke.SmokeError, match="bounded published newsroom"):
+        smoke._validate_restored_newsroom(body)
 
 
 def test_live_smoke_accepts_only_monotonic_denied_coverage_growth() -> None:
