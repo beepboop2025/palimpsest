@@ -206,7 +206,7 @@ WORKSPACE_SECTIONS = (
         ("https://seiche.info/#RESEARCH/china/0", "China evidence → funding context"),
         ("https://seiche.info/#RESEARCH/regions/0", "Regional evidence → market research"),
         ("https://liquilens.in/start/", "Institution filings · LiquiLens"),
-        ("https://liquilens-undertow.com/app/#crypto", "Exit liquidity · Undertow"),
+        ("https://liquilens-undertow.com/markets/crypto/", "Exit liquidity · Undertow"),
     )),
     ("Data library", (
         ("/research/markets/", "All datasets"),
@@ -279,8 +279,13 @@ def render(current: str = "") -> str:
         '<div class="ps-workspace-masthead">',
         '<a class="ps-workspace-brand" href="/"><img src="/brand/palimpsest-icon.svg" width="28" height="28" alt="">'
         '<span><b>Palimpsest</b><small>China, economics and the public record</small></span></a>',
-        '<div class="ps-workspace-projects"><span>Shared research desk</span>'
-        '<a class="research-project-link" href="https://www.narcoscope.com/">NarcoScope <span aria-hidden="true">↗</span></a></div>',
+        '<div class="family-network" role="navigation" aria-label="Research products">'
+        '<a href="https://liquilens.in/">LiquiLens</a>'
+        '<a href="https://seiche.info/">Seiche</a>'
+        '<a href="https://liquilens-undertow.com/">Undertow</a>'
+        '<a href="/" aria-current="page">Palimpsest</a>'
+        '<a href="https://www.narcoscope.com/">NarcoScope</a></div>',
+        '<a class="family-api" href="/developers.html">API &amp; agents</a>',
         '</div>',
         '<button class="ps-workspace-toggle" type="button" aria-expanded="false" aria-controls="ps-workspace-navigation">'
         '<span>Browse research</span><span data-workspace-current>Palimpsest <b aria-hidden="true">⌄</b></span></button>',

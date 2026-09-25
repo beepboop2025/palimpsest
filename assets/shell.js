@@ -13,6 +13,26 @@
   "use strict";
 
   var RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function initFamilyMotion() {
+    [].forEach.call(document.querySelectorAll(".family-flow"), function (flow) {
+      var control = flow.querySelector("[data-motion-control]");
+      if (!control || control.hasAttribute("data-ready")) return;
+      control.setAttribute("data-ready", "");
+      var preference = matchMedia("(prefers-reduced-motion: reduce)");
+      var paused = false;
+      function update() {
+        var stopped = paused || preference.matches;
+        flow.setAttribute("data-paused", String(stopped));
+        control.setAttribute("aria-pressed", String(stopped));
+        control.disabled = preference.matches;
+        control.textContent = preference.matches ? "Reduced motion" : paused ? "Play motion" : "Pause motion";
+      }
+      control.addEventListener("click", function () { paused = !paused; update(); });
+      preference.addEventListener("change", update);
+      update();
+    });
+  }
   var NATIVE_TIMELINE = CSS.supports && CSS.supports("animation-timeline", "view()");
 
   function initWorkspaceNav() {
@@ -996,6 +1016,7 @@
   function init() {
     initWorkspaceNav();
     initNav();
+    initFamilyMotion();
     initStagger();
     initReveal();
     initPageShare();

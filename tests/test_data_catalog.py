@@ -11,6 +11,24 @@ from scripts import anchor_roots
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def test_daily_eval_derivatives_preserve_source_clock_and_detect_missed_runs(monkeypatch, tmp_path):
+    from datetime import timedelta
+    specs = {row['id']: row for row in json.loads(catalog.CONFIG.read_text())['datasets']}
+    source_time = datetime(2026, 9, 24, 8, tzinfo=timezone.utc)
+    monkeypatch.setattr(catalog, 'ROOT', tmp_path)
+    for name in ('eval-registry', 'eval-assurance', 'eval-journal'):
+        spec = specs[name]
+        assert spec['cadence'] == specs['generative-firewall']['cadence'] == 'P1D'
+        artifact = tmp_path / spec['latest']
+        artifact.parent.mkdir(exist_ok=True)
+        artifact.write_text(json.dumps({'generated_at': source_time.isoformat()}))
+        current = catalog._artifact_metadata(spec, now=source_time + timedelta(hours=18))
+        missed = catalog._artifact_metadata(spec, now=source_time + timedelta(days=3))
+        assert current['evidence_state'] == 'fresh'
+        assert missed['evidence_state'] == 'stale'
+        assert json.loads(artifact.read_text())['generated_at'] == source_time.isoformat()
+
+
 def test_catalog_is_unique_bounded_and_machine_discoverable():
     built, jsonld, package = catalog.build_catalog(
         now=datetime(2026, 8, 11, 12, tzinfo=timezone.utc)

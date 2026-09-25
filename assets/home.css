@@ -750,3 +750,12 @@ body.home .hm-relay__grid { grid-template-columns: 1fr 1fr; }
   body.home .hm-build-note, body.home .hm-boundaries { padding: 19px; }
   .hm-desk-grid > a { padding: 20px; }
 }
+
+/* Connect the family illustration to the source-backed desk below it. */
+body.home .hm-hero__grid { grid-template-areas: 'headline flow' 'details flow' 'proof proof'; }
+body.home .hm-family-flow { grid-area: flow; align-self: center; margin: 20px 0; }
+body.home .hm-proof { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); margin-top: 30px; }
+body.home .hm-proof__head { grid-column: 1 / -1; }
+body.home .hm-proof__ledger { border-top: 0; border-left: 1px solid var(--research-line); }
+@media (max-width: 1050px) { body.home .hm-hero__grid { grid-template-areas: 'headline' 'details' 'flow' 'proof'; } body.home .hm-family-flow { margin-inline: auto; } }
+@media (max-width: 760px) { body.home .hm-proof { grid-template-columns: 1fr; } body.home .hm-proof__ledger { border-left: 0; border-top: 1px solid var(--research-line); } }
