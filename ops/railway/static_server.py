@@ -506,6 +506,13 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
             "/mcp/",
         }:
             self.send_header("Cache-Control", "no-store")
+        elif path.endswith((".css", ".js", ".mjs")):
+            # These URLs are stable across releases, including CSS @imports.
+            # Revalidate before reuse so new HTML cannot inherit yesterday's
+            # navigation or data-loading code. Last-Modified still permits 304.
+            self.send_header(
+                "Cache-Control", "public, no-cache, max-age=0, must-revalidate"
+            )
         elif path.startswith("/assets/"):
             self.send_header(
                 "Cache-Control", "public, max-age=3600, stale-while-revalidate=86400"
