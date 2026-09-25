@@ -610,11 +610,32 @@ def _article_identity(article: Mapping[str, Any]) -> str:
 
 
 def _finish_article(
-    article: dict[str, Any], prior: Mapping[str, Any] | None
+    article: dict[str, Any], prior: Mapping[str, Any] | None,
+    *, publication_time: str | None = None,
 ) -> dict[str, Any]:
     article["article_id"] = _stable_id("evalarticle", article["slug"], 20)
-    if prior and prior.get("article_id") == article["article_id"]:
+    same_article = bool(prior and prior.get("article_id") == article["article_id"])
+    if same_article:
         article["published_at"] = prior["published_at"]
+    # Editorial revisions have a publication clock; the observation clock stays
+    # in the collection and its exact input receipts. A historical panel can
+    # therefore support a new revision without backdating the article itself.
+    ignored = {"revision_id", "previous_revision_id", "updated_at"}
+    unchanged = same_article and {
+        key: value for key, value in article.items() if key not in ignored
+    } == {key: value for key, value in prior.items() if key not in ignored}
+    if unchanged:
+        article["updated_at"] = prior["updated_at"]
+    elif publication_time is not None:
+        publication = _timestamp(publication_time, "publication_time")
+        clocks = [article["updated_at"], article["published_at"]]
+        if same_article:
+            clocks.append(prior["updated_at"])
+        if any(publication < _timestamp(clock, "article clock") for clock in clocks):
+            raise EvalArticleError("publication time predates article or measurement")
+        article["updated_at"] = publication_time
+        if not same_article:
+            article["published_at"] = publication_time
     article["previous_revision_id"] = None
     article["revision_id"] = _article_identity(article)
     if prior and prior.get("article_id") == article["article_id"]:
@@ -626,7 +647,8 @@ def _finish_article(
 
 
 def _control_article(
-    sources: Mapping[str, Any], prior: Mapping[str, Any] | None
+    sources: Mapping[str, Any], prior: Mapping[str, Any] | None,
+    *, publication_time: str | None = None,
 ) -> dict[str, Any]:
     reading = sources["reading"]
     models = _model_rows(reading)
@@ -1002,11 +1024,12 @@ def _control_article(
         },
         "disclosure": DISCLOSURE,
     }
-    return _finish_article(article, prior)
+    return _finish_article(article, prior, publication_time=publication_time)
 
 
 def _uncertainty_article(
-    sources: Mapping[str, Any], prior: Mapping[str, Any] | None
+    sources: Mapping[str, Any], prior: Mapping[str, Any] | None,
+    *, publication_time: str | None = None,
 ) -> dict[str, Any]:
     reading = sources["reading"]
     models = _model_rows(reading)
@@ -1210,11 +1233,12 @@ def _uncertainty_article(
         },
         "disclosure": DISCLOSURE,
     }
-    return _finish_article(article, prior)
+    return _finish_article(article, prior, publication_time=publication_time)
 
 
 def _drift_article(
-    sources: Mapping[str, Any], prior: Mapping[str, Any] | None
+    sources: Mapping[str, Any], prior: Mapping[str, Any] | None,
+    *, publication_time: str | None = None,
 ) -> dict[str, Any]:
     """Explain the latest adjacent-run transition without turning it into a trend."""
 
@@ -1468,11 +1492,12 @@ def _drift_article(
         },
         "disclosure": DISCLOSURE,
     }
-    return _finish_article(article, prior)
+    return _finish_article(article, prior, publication_time=publication_time)
 
 
 def _registry_article(
-    sources: Mapping[str, Any], prior: Mapping[str, Any] | None
+    sources: Mapping[str, Any], prior: Mapping[str, Any] | None,
+    *, publication_time: str | None = None,
 ) -> dict[str, Any]:
     """State exactly what the current verified registry can and cannot prove."""
 
@@ -1670,7 +1695,7 @@ def _registry_article(
         },
         "disclosure": DISCLOSURE,
     }
-    return _finish_article(article, prior)
+    return _finish_article(article, prior, publication_time=publication_time)
 
 
 def _prior_by_slug(prior: Mapping[str, Any] | None) -> dict[str, Mapping[str, Any]]:
@@ -1687,23 +1712,30 @@ def _prior_by_slug(prior: Mapping[str, Any] | None) -> dict[str, Mapping[str, An
 
 
 def build_collection(
-    sources: Mapping[str, Any], *, prior: Mapping[str, Any] | None = None
+    sources: Mapping[str, Any], *, prior: Mapping[str, Any] | None = None,
+    publication_time: str | None = None,
 ) -> dict[str, Any]:
     """Build the complete public journal collection from verified source bytes."""
 
+    if publication_time is not None:
+        _timestamp(publication_time, "publication_time")
     prior_articles = _prior_by_slug(prior)
     articles = [
         _control_article(
-            sources, prior_articles.get("before-reading-the-score-read-the-controls")
+            sources, prior_articles.get("before-reading-the-score-read-the-controls"),
+            publication_time=publication_time,
         ),
         _uncertainty_article(
-            sources, prior_articles.get("zero-observed-is-not-zero-uncertainty")
+            sources, prior_articles.get("zero-observed-is-not-zero-uncertainty"),
+            publication_time=publication_time,
         ),
         _drift_article(
-            sources, prior_articles.get("what-changed-in-the-latest-model-panel")
+            sources, prior_articles.get("what-changed-in-the-latest-model-panel"),
+            publication_time=publication_time,
         ),
         _registry_article(
-            sources, prior_articles.get("what-the-eval-registry-can-prove-today")
+            sources, prior_articles.get("what-the-eval-registry-can-prove-today"),
+            publication_time=publication_time,
         ),
     ]
     document = {
@@ -1973,8 +2005,9 @@ def load_prior(path: Path = OUTPUT_PATH) -> Mapping[str, Any] | None:
     return value
 
 
-def build(*, root: Path = ROOT, prior: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def build(*, root: Path = ROOT, prior: Mapping[str, Any] | None = None,
+          publication_time: str | None = None) -> dict[str, Any]:
     sources = load_sources(root=root)
     if prior is None:
         prior = load_prior(root / "readings" / OUTPUT_PATH.name)
-    return build_collection(sources, prior=prior)
+    return build_collection(sources, prior=prior, publication_time=publication_time)

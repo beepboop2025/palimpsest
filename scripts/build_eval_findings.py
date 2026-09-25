@@ -705,9 +705,10 @@ def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="validate and report generated drift")
+    parser.add_argument("--publication-time", help="editorial revision time; observation dates remain unchanged")
     args = parser.parse_args(list(argv) if argv is not None else None)
     try:
-        collection = eval_articles.build(root=ROOT)
+        collection = eval_articles.build(root=ROOT, publication_time=args.publication_time)
         outputs = build_outputs(collection)
         if args.check:
             drift = check(outputs)
