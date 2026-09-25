@@ -191,3 +191,7 @@ body.ps .leaflet-popup-content-wrapper, body.ps .leaflet-popup-tip { background:
 .ps-workspace-brand { flex-shrink: 0; }
 @media (min-width: 761px) and (max-width: 1100px) { .ps-workspace-brand small { max-width: 150px; font-size: .65rem; } .ps-workspace-masthead { gap: 12px; } }
 @media (max-width: 760px) { .ps-workspace-masthead .family-network { flex: 1 0 100%; margin: 0; } }
+
+/* Long verification messages must wrap inside the mobile evidence column. */
+body.ps .er-defs > div > * { min-width: 0; }
+body.ps .er-defs .er-chip { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
