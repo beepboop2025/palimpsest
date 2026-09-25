@@ -91,16 +91,14 @@ def test_home_rejects_restricted_success_responses_and_uses_fresh_public_feed():
     assert "document.publication_allowed === false" in script
     for schema in (
         "palimpsest-collector-health.v1",
-        "palimpsest-newswire.v1",
         "palimpsest.publication-freshness.v1",
     ):
         assert schema in script
     assert 'return read("/news/feed.json")' in script
-    assert 'read("/freshness", "palimpsest.publication-freshness.v1")' in script
+    assert 'read("/freshness", "palimpsest.publication-freshness.v1", true)' in script
     assert 'item._palimpsest.kind === "publisher_source_record"' in script
-    assert 'freshness.status !== "fresh"' in script
-    assert 'setText("[data-home-osint-summary]", "Counts unavailable")' in script
-    assert 'setText("[data-home-wire-summary]", "Current report count unavailable")' in script
+    assert 'setText("[data-home-osint-state]", "Assessment unavailable")' in script
+    assert 'setText("[data-home-wire-events]", "unavailable")' in script
 
 
 def test_home_public_document_and_feed_helpers_execute_fail_closed():
@@ -215,3 +213,108 @@ def test_service_worker_never_presents_an_old_journal_head_as_current():
     assert '"/journal/feed.json"' in worker
     assert '"/journal/feed.xml"' in worker
     assert "LIVE_JOURNAL_SYNDICATION.has(url.pathname)" in worker
+
+
+def test_publication_receipt_preserves_dated_counts_without_claiming_freshness():
+    node = shutil.which("node")
+    assert node is not None
+    harness = r"""
+const assert = require("node:assert/strict");
+const {publicationView, countPublicReports, collectorView} = require(process.argv[1]);
+const now = Date.parse("2026-09-25T05:30:00Z");
+const receipt = {
+  schema_version: "palimpsest.publication-freshness.v1", status: "fresh",
+  checked_at: "2026-09-25T05:30:00Z", source_commit: "a".repeat(40), tree_sha256: "b".repeat(64),
+  clocks: {publication: {status: "fresh", generated_at: "2026-09-25T05:20:00Z"},
+           wire: {status: "fresh", generated_at: "2026-09-25T05:15:00Z"}}
+};
+assert.equal(publicationView(receipt, now).state, "live");
+const board = {schema_version: "palimpsest-collector-health.v1", generated_at: "2026-09-25T04:00:00Z",
+  summary: {n_datasets: 98, by_state: {fresh:49, stale:5, gated:28, partial:2, warming_up:14}}};
+assert.equal(collectorView(board, now).state, "delayed");
+assert.equal(collectorView(board, now).fresh, 49);
+board.generated_at = "2026-09-25T05:25:00Z";
+assert.equal(collectorView(board, now).state, "live");
+board.summary.by_state.fresh = 99;
+assert.throws(() => collectorView(board, now));
+const delayed = structuredClone(receipt);
+delayed.status = "stale";
+delayed.clocks.wire = {status: "stale", generated_at: "2026-09-25T04:05:02Z"};
+delayed.rights = {publication_allowed: false, mode: "rights-suppressed"};
+assert.equal(publicationView(delayed, now).state, "delayed");
+assert.equal(publicationView(delayed, now).asOf, "2026-09-25 04:05 UTC");
+const claimedFresh = structuredClone(delayed);
+claimedFresh.status = "fresh"; claimedFresh.clocks.wire.status = "fresh";
+assert.equal(publicationView(claimedFresh, now).state, "delayed");
+for (const mutate of [
+  r => {r.checked_at = "2026-09-25T04:00:00Z";},
+  r => {r.checked_at = "2026-09-25T06:00:00Z";},
+  r => {r.clocks.wire.generated_at = "2026-09-25T06:00:00Z";},
+  r => {r.clocks.wire.generated_at = "bad";},
+  r => {r.schema_version = "wrong";},
+  r => {r.source_commit = "unknown";},
+  r => {r.status = "restricted";}
+]) {
+  const invalid = structuredClone(receipt); mutate(invalid);
+  assert.throws(() => publicationView(invalid, now));
+}
+assert.throws(() => countPublicReports({publication_allowed: false,
+  version: "https://jsonfeed.org/version/1.1", items: [{_palimpsest: {kind: "publisher_source_record"}}]}));
+"""
+    subprocess.run([node, "-e", harness, str(ROOT / "assets/home.js")], check=True, capture_output=True, text=True)
+
+
+def test_home_refresh_handles_503_network_loss_and_release_changes():
+    node = shutil.which("node")
+    assert node is not None
+    harness = r"""
+const assert = require("node:assert/strict");
+const vm = require("node:vm");
+const fs = require("node:fs");
+const nodes = new Map();
+const get = key => {if (!nodes.has(key)) nodes.set(key, {textContent: "", setAttribute(k,v){this[k]=v;}}); return nodes.get(key);};
+const now = Date.now();
+const receipt = {
+  schema_version: "palimpsest.publication-freshness.v1", status: "stale",
+  checked_at: new Date(now).toISOString(), source_commit: "a".repeat(40), tree_sha256: "b".repeat(64),
+  clocks: {publication: {status: "stale", generated_at: new Date(now-7200000).toISOString()},
+           wire: {status: "stale", generated_at: new Date(now-7300000).toISOString()}}
+};
+const feed = {version: "https://jsonfeed.org/version/1.1", items: [
+  {_palimpsest: {kind: "publisher_source_record"}}, {_palimpsest: {kind: "publisher_source_record"}},
+  {_palimpsest: {kind: "instrument_measurement"}}
+]};
+let tick, visibility, offline = false, feedReads = 0, switching = false, checks = 0;
+const document = {hidden: false, querySelectorAll: key => [get(key)], addEventListener(event, fn){visibility=fn;}};
+const context = {document, setInterval(fn, ms){assert.equal(ms, 60000); tick=fn;}, fetch: async url => {
+  if (offline) throw Error("offline");
+  if (url === "/freshness") {
+    checks++;
+    const data = structuredClone(receipt);
+    if (switching) data.tree_sha256 = String(checks % 2 ? "c" : "d").repeat(64);
+    return {ok: false, status: 503, json: async () => data};
+  }
+  if (url === "/news/feed.json") {feedReads++; return {ok:true,status:200,json:async()=>feed};}
+  return {ok:false,status:503,json:async()=>({})};
+}};
+vm.runInNewContext(fs.readFileSync(process.argv[1], "utf8"), context);
+const settle = () => new Promise(resolve => setImmediate(resolve));
+(async () => {
+  await settle();
+  assert.equal(get("[data-home-wire-events]").textContent, "2");
+  assert.equal(get("[data-home-wire]")["data-feed-state"], "delayed");
+  assert.match(get("[data-home-wire-source-state]").textContent, /As of .*UTC.*Update pending/);
+  assert.equal(feedReads, 1);
+  tick(); await settle(); assert.equal(feedReads, 1, "unchanged publication fetched again");
+  offline=true; tick(); await settle();
+  assert.equal(get("[data-home-wire-events]").textContent, "2");
+  assert.match(get("[data-home-wire-source-state]").textContent, /Freshness check unavailable/);
+  offline=false; switching=true; tick(); await settle();
+  assert.equal(get("[data-home-wire-events]").textContent, "2");
+  assert.equal(get("[data-home-wire]")["data-feed-state"], "delayed");
+  document.hidden=true; const before=checks; tick(); await settle(); assert.equal(checks,before);
+  document.hidden=false; switching=false; visibility(); await settle();
+  assert.match(get("[data-home-wire-source-state]").textContent, /Update pending/);
+})().catch(error => {console.error(error); process.exitCode=1;});
+"""
+    subprocess.run([node, "-e", harness, str(ROOT / "assets/home.js")], check=True, capture_output=True, text=True)
