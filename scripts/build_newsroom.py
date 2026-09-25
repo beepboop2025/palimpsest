@@ -5508,7 +5508,6 @@ def render_economic_page(
                 "dateModified": pulse["generated_at"],
                 "url": f"{SITE}/readings/china-economic-pulse-latest.json",
                 "creator": _dataset_organization(),
-                "image": (share_card.url if share_card is not None else OG_IMAGE),
             },
             image_url=share_card.url if share_card is not None else OG_IMAGE,
             image_alt=(
