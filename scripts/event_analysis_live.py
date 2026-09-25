@@ -16,6 +16,7 @@ from core import event_analysis
 from core import live_paths
 from core import newswire as newswire_model
 from core import peer_context as peer_context_model
+from core.publication_feed import analysis_feed_for_publication
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -74,6 +75,11 @@ def main(argv: list[str] | None = None) -> int:
     newswire_model.validate_newswire_document(wire)
     readings = live_paths.resolve_readings_dir(preferred=args.readings)
     feed = _load_feed(args.feed or (readings / "newsroom-latest.json"))
+    allow_missing_collectors = feed is None
+    if feed is not None:
+        # Rights-only notices have no measured value, input digest, or clock.
+        # Apply the same projection used by the published situation desk.
+        feed, allow_missing_collectors = analysis_feed_for_publication(feed)
     peer_path = readings / "peer-context-latest.json"
     peer = peer_context_model.load_peer_document(peer_path) if peer_path.is_file() else None
     analyses = event_analysis.build_event_analyses(
@@ -84,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         corroboration=event_analysis.load_optional_corroboration(readings),
         peer_warehouses=event_analysis.load_optional_peer_warehouses(readings),
         peer=peer,
-        allow_missing_collectors=feed is None,
+        allow_missing_collectors=allow_missing_collectors,
         archive_refresh_status=live_paths.load_archive_refresh_status(),
     )
     bundle = {

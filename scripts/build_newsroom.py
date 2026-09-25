@@ -44,6 +44,7 @@ from core import peer_context as peer_context_model
 from core import investigations as investigations_model
 from core import machine_investigations as machine_investigations_model
 from core import newsroom
+from core import publication_feed
 from core import newswire as newswire_model
 from core import telegram_watch as telegram_watch_model
 from core.live_paths import (
@@ -112,18 +113,9 @@ _PUBLIC_VALUE_WITHHELD_SHARE_CARDS = {
 # or summarize, the denied ChinaMoney/CFETS value families.  A public policy
 # denial therefore projects the complete set to availability-only records
 # before any downstream representation is built.
-_RIGHTS_SAFE_PROJECTION_LABELS = {
-    "board-alarm": "Board alarm",
-    "event-flags": "Event flags",
-    "coverage-guard": "Coverage guard",
-    "forecast-ledger": "Forecast ledger",
-    "cross-layer": "Cross-layer comparison",
-    "china-econ": "China money-market benchmarks",
-    "cny-fix-gap": "Yuan-fix comparison",
-    "data-darkness": "Official-data availability",
-}
+_RIGHTS_SAFE_PROJECTION_LABELS = publication_feed.SIGNAL_LABELS
 _RIGHTS_SAFE_PROJECTION_SIGNAL_IDS = frozenset(_RIGHTS_SAFE_PROJECTION_LABELS)
-_REQUIRED_PUBLIC_VALUE_SOURCE_IDS = frozenset({"cfets_benchmarks", "chinamoney"})
+_REQUIRED_PUBLIC_VALUE_SOURCE_IDS = publication_feed.REQUIRED_SOURCE_IDS
 _PUBLIC_RIGHTS_EVIDENCE_URL = f"{SITE}/readings/china-publication-rights-latest.json"
 _PUBLIC_RIGHTS_EVIDENCE_FILENAME = "china-publication-rights-latest.json"
 
@@ -1168,43 +1160,7 @@ def _china_public_values_denied(
     because the renderer ran again later.
     """
 
-    try:
-        decision_clock = _parse_time(publication_at)
-        policy = newswire_model.strict_json_loads(
-            policy_path.read_bytes(), label=str(policy_path)
-        )
-        if (
-            type(policy) is not dict
-            or policy.get("schema_version")
-            != "palimpsest.china-economic-source-policy.v1"
-            or type(policy.get("sources")) is not list
-        ):
-            return True
-        decisions: dict[str, Mapping[str, Any]] = {}
-        for row in policy["sources"]:
-            if type(row) is not dict or type(row.get("source_id")) is not str:
-                return True
-            source_id = row["source_id"]
-            if source_id in decisions:
-                return True
-            decisions[source_id] = row
-        for source_id in _REQUIRED_PUBLIC_VALUE_SOURCE_IDS:
-            row = decisions.get(source_id)
-            if (
-                row is None
-                or row.get("decision") != "allow"
-                or row.get("values_allowed") is not True
-                or type(row.get("reviewed_at")) is not str
-                or type(row.get("expires_at")) is not str
-            ):
-                return True
-            reviewed_at = _parse_time(row["reviewed_at"])
-            expires_at = _parse_time(row["expires_at"])
-            if not reviewed_at <= decision_clock < expires_at:
-                return True
-    except (KeyError, OSError, TypeError, ValueError, newsroom.NewsroomError):
-        return True
-    return False
+    return publication_feed.public_values_denied(publication_at, policy_path=policy_path)
 
 
 def _rights_safe_story(
@@ -1319,27 +1275,7 @@ def _rights_safe_newsroom_feed(feed: Mapping[str, Any]) -> dict[str, Any]:
 def _rights_safe_analysis_feed(feed: Mapping[str, Any]) -> dict[str, Any]:
     """Remove unavailable placeholders from cross-record analytical context."""
 
-    safe = copy.deepcopy(feed)
-    safe["stories"] = [
-        story
-        for story in safe["stories"]
-        if story["signal_id"] not in _RIGHTS_SAFE_PROJECTION_SIGNAL_IDS
-    ]
-    safe["n_stories"] = len(safe["stories"])
-    counts = {
-        status: sum(story["status"] == status for story in safe["stories"])
-        for status in ("live", "degraded", "stale", "missing", "corrupt")
-    }
-    safe["coverage"].update(
-        {
-            "total": len(safe["stories"]),
-            "reporting": counts["live"] + counts["degraded"] + counts["stale"],
-            "live": counts["live"],
-            "status": "degraded",
-            "counts": counts,
-        }
-    )
-    return safe
+    return publication_feed.rights_safe_analysis_feed(feed)
 
 
 def _deduplicated_tags(values: Sequence[str]) -> list[str]:
