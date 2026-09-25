@@ -1209,12 +1209,23 @@ def test_server_never_caches_mutable_evidence_lake_pair(
             assert response.status == 200
             assert response.headers["Cache-Control"] == "no-store"
 
-        with urllib.request.urlopen(
-            base + "/assets/evidence-lake-metrics.js", timeout=5
-        ) as response:
-            assert response.status == 200
-            assert response.headers["Cache-Control"] == (
-                "public, max-age=3600, stale-while-revalidate=86400"
+        for asset in ("evidence-lake-metrics.js", "evidence-lake-metrics.css"):
+            with urllib.request.urlopen(
+                base + "/assets/" + asset + "?release=current", timeout=5
+            ) as response:
+                assert response.status == 200
+                assert response.headers["Cache-Control"] == (
+                    "public, no-cache, max-age=0, must-revalidate"
+                )
+                modified = response.headers["Last-Modified"]
+            with pytest.raises(urllib.error.HTTPError) as unchanged:
+                urllib.request.urlopen(urllib.request.Request(
+                    base + "/assets/" + asset,
+                    headers={"If-Modified-Since": modified},
+                ), timeout=5)
+            assert unchanged.value.code == 304
+            assert unchanged.value.headers["Cache-Control"] == (
+                "public, no-cache, max-age=0, must-revalidate"
             )
     finally:
         server.shutdown()
