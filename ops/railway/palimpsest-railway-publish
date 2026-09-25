@@ -4193,8 +4193,14 @@ overlay_monotonic_readings_ledger() {
     && cmp -n "$source_bytes" "$source" "$destination"; then
     log "retained the target readings-ledger over its host strict prefix"
   else
-    log "readings ledger overlay diverges from the reviewed target chain" >&2
-    return 1
+    # The September 25 local build fork is retained as exact public audit
+    # evidence. Only its pinned bytes and the reviewed live-chain extension
+    # can be admitted; unknown divergence still stops publication.
+    if ! (cd "$checkout" && PYTHONPATH="$checkout" "$PYTHON_BIN" -B \
+      -m scripts.admit_publication_ledger --host "$source" --target "$destination"); then
+      log "readings ledger overlay diverges from the reviewed target chain" >&2
+      return 1
+    fi
   fi
 }
 
