@@ -171,7 +171,7 @@ def publication_inputs(config):
 def git(repo, args, *, maximum=legacy.MAX_LEDGER_BYTES, allowed_failure=False):
     env = {"PATH": "/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_NO_LAZY_FETCH": "1", "GIT_NO_REPLACE_OBJECTS": "1", "GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0", "LC_ALL": "C"}
     with tempfile.TemporaryFile() as output:
-        result = subprocess.run(["git", "--no-optional-locks", "-c", "core.hooksPath=/dev/null", "-c", "protocol.allow=never", "-c", "protocol.file.allow=always", "--git-dir=" + str(repo), *args], env=env, stdout=output, stderr=subprocess.DEVNULL, timeout=120, check=False)
+        result = subprocess.run(["git", "--no-optional-locks", "-c", "core.hooksPath=/dev/null", "-c", "protocol.allow=never", "-c", "protocol.file.allow=always", "--git-dir=" + str(repo), *args], env=env, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.DEVNULL, timeout=120, check=False)
         if result.returncode and not allowed_failure:
             raise legacy.SyncFailure("git-proof-failed")
         require(output.tell() <= maximum, "git-output-too-large")

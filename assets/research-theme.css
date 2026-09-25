@@ -1,25 +1,26 @@
-/* Shared NarcoScope / Palimpsest research interface, version 1. */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap');
+/* Shared family research tokens. Keep identical in Palimpsest assets. */
 :root {
   color-scheme: dark;
-  --research-bg: #090f18;
-  --research-surface: #111c2b;
-  --research-raised: #18283c;
-  --research-hover: #20334c;
-  --research-line: #30435b;
-  --research-line-subtle: #22334a;
-  --research-text: #e4edf8;
-  --research-secondary: #a8b8cc;
-  --research-muted: #8c9fb7;
-  --research-blue: #89b4ff;
-  --research-amber: #e3b878;
-  --research-green: #7ed3c3;
-  --research-red: #f19d9c;
-  --research-font: 'IBM Plex Sans', system-ui, sans-serif;
+  --research-bg: #090a0c;
+  --research-surface: #121417;
+  --research-raised: #1b1e23;
+  --research-hover: #242830;
+  --research-line: #30343b;
+  --research-line-subtle: #24282e;
+  --research-text: #f1f2f4;
+  --research-secondary: #b6bbc3;
+  --research-muted: #a6abb3;
+  --research-blue: #abc7ff;
+  --research-amber: #ebc58d;
+  --research-green: #92d3bd;
+  --research-red: #f1a3a3;
+  --research-accent: var(--research-green);
+  --research-font: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --research-radius: 8px;
 }
 html { background: var(--research-bg); }
-body { background: var(--research-bg); color: var(--research-text); }
+body { background: var(--research-bg); color: var(--research-text); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+body.ps { --research-accent: var(--research-amber); }
 ::selection { background: #355b8b; color: #ffffff; }
 :focus-visible { outline: 2px solid var(--research-blue); outline-offset: 4px; }
 input, select, textarea, button { font: inherit; }
@@ -27,4 +28,31 @@ input, select, textarea { color-scheme: dark; }
 .research-project-link { display: inline-flex; align-items: center; gap: .5rem; color: var(--research-secondary); font: 500 .85rem/1.4 var(--research-font); text-decoration: none; padding: .5rem .7rem; border: 1px solid var(--research-line); border-radius: 6px; }
 .research-project-link:hover { color: var(--research-text); background: var(--research-raised); text-decoration: none; }
 .research-project-link::before { content: ''; width: .45rem; height: .45rem; border-radius: 50%; background: var(--research-green); }
+.family-network { display: flex; align-items: center; gap: 3px; padding: 4px; margin: 0 auto; min-width: 0; border: 1px solid var(--research-line); background: var(--research-surface); border-radius: 9px; }
+.family-network a { padding: 9px 12px; color: var(--research-muted); white-space: nowrap; text-decoration: none; font: 500 12px/1.4 var(--research-font); border-radius: 5px; transition: background 160ms, color 160ms; }
+.family-network a:hover, .family-network a[aria-current="page"] { color: var(--research-text); background: var(--research-raised); }
+.family-network a[aria-current="page"] { box-shadow: inset 0 -2px var(--research-accent); }
+.family-api { color: var(--research-accent); font: 400 12px/1.4 var(--research-font); text-decoration: none; white-space: nowrap; }
+.family-site-header { box-sizing: border-box; display: flex; align-items: center; gap: 24px; width: min(1440px, 100%); min-height: 105px; margin: 0 auto; padding: 18px 28px; border-bottom: 1px solid var(--research-line); }
+.family-site-brand { flex: 0 0 auto; color: var(--research-text); text-decoration: none; font-family: var(--research-font); }
+.family-site-brand b { display: block; font-size: 23px; font-weight: 550; line-height: 1.4; letter-spacing: -.035em; }
+.family-site-brand small { display: block; color: var(--research-secondary); font-size: 12px; line-height: 1.5; }
+.family-site-header .family-api { flex: 0 0 auto; }
+@media (max-width: 980px) { .family-site-header { gap: 14px; } .family-site-brand small { font-size: 10px; max-width: 160px; } }
+@media (max-width: 760px) { .family-site-header { flex-wrap: wrap; padding: 16px; } .family-site-header .family-api { margin-left: auto; } .family-site-header .family-network { flex: 1 0 100%; } }
+.family-flow { min-width: 0; width: 100%; max-width: 560px; color: var(--research-accent); }
+.family-flow svg { width: 100%; display: block; }
+.family-flow path { fill: none; stroke: currentColor; stroke-width: .7; opacity: .24; }
+.family-flow path.family-flow-current { stroke-width: 1; opacity: .7; stroke-dasharray: 2 98; animation: family-current 11s linear infinite; }
+.family-flow rect { fill: var(--research-bg); stroke: var(--research-line); stroke-width: .8; }
+.family-flow text { fill: var(--research-text); font: 500 19px var(--research-font); letter-spacing: -.5px; }
+.family-flow text.family-flow-caption { fill: var(--research-muted); font: 400 9px var(--research-font); letter-spacing: 0; }
+.family-flow-controls { display: flex; justify-content: space-between; gap: 12px; color: var(--research-muted); font: 400 10px/1.5 var(--research-font); }
+.family-flow-controls button { padding: 7px 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.family-flow-controls button:hover { color: var(--research-accent); }
+.family-flow[data-paused="true"] .family-flow-current { animation-play-state: paused; }
+@keyframes family-current { to { stroke-dashoffset: -100; } }
+@media (max-width: 1050px) { .family-network a { padding: 8px 9px; font-size: 11px; } }
+@media (max-width: 760px) { .family-network { order: 3; width: 100%; overflow-x: auto; scrollbar-width: thin; } .family-network a { flex: 1 0 auto; text-align: center; padding: 9px 10px; } .family-flow { max-width: 500px; margin: 8px auto 0; } }
+@media (prefers-reduced-motion: reduce) { .family-flow-current { animation: none !important; } .family-network a { transition: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }

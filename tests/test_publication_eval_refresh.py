@@ -14,7 +14,7 @@ import pytest
 PUBLISHER = Path(__file__).resolve().parents[1] / "ops/railway/palimpsest-railway-publish"
 
 
-@pytest.mark.parametrize("failure", [None, "assurance", "assurance-check", "journal", "journal-check"])
+@pytest.mark.parametrize("failure", [None, "assurance", "assurance-check", "findings", "findings-check", "journal", "journal-check"])
 def test_eval_gate_failure_prevents_catalog_and_sealing(tmp_path, failure):
     source = PUBLISHER.read_text()
     start = source.index('"$PYTHON_BIN" -m scripts.build_eval_assurance\n')
@@ -27,7 +27,7 @@ def test_eval_gate_failure_prevents_catalog_and_sealing(tmp_path, failure):
         "with open(os.environ['CALL_LOG'], 'a') as stream:\n"
         "    stream.write(json.dumps(args) + '\\n')\n"
         "module = args[1] if args[:1] == ['-m'] else ''\n"
-        "name = {'scripts.build_eval_assurance':'assurance', 'scripts.build_eval_journal':'journal'}.get(module, '')\n"
+        "name = {'scripts.build_eval_assurance':'assurance', 'scripts.build_eval_findings':'findings', 'scripts.build_eval_journal':'journal'}.get(module, '')\n"
         "if '--check' in args: name += '-check'\n"
         "if name and name == os.environ.get('FAIL_STEP'): sys.exit(23)\n"
     )
@@ -46,15 +46,18 @@ def test_eval_gate_failure_prevents_catalog_and_sealing(tmp_path, failure):
         assert all("scripts.build_data_catalog" not in row and "scripts/seal_readings.py" not in row for row in calls)
     else:
         assert result.returncode == 0, result.stderr
-        assert calls[:6] == [
+        assert calls[:8] == [
             ["-m", "scripts.build_eval_assurance"],
             ["-m", "scripts.build_eval_assurance", "--check"],
+            ["-m", "scripts.build_eval_findings"],
+            ["-m", "scripts.build_eval_findings", "--check"],
             ["-m", "scripts.sync_nav"],
             ["-m", "scripts.sync_nav", "--check"],
             ["-m", "scripts.build_eval_journal"],
             ["-m", "scripts.build_eval_journal", "--check"],
         ]
         assert calls[-1] == ["scripts/seal_readings.py", "--check"]
+        assert ["-m", "scripts.build_public_data_catalog", "--now", "2026-09-14T08:24:21Z"] in calls
 
 
 def test_host_overlay_preserves_reviewed_registry_html_and_live_json(tmp_path):

@@ -398,12 +398,25 @@ def test_manifest_builder_excludes_only_the_root_release_manifest(
     nested.write_bytes(b"nested manifest is content\n")
     (root / "index.html").write_bytes(b"index\n")
     monkeypatch.setattr(manifest_builder, "CRITICAL_PATHS", ())
+    # A valid publication always declares its structured evidence catalogs,
+    # even when this fixture has no dynamic measurement distributions.
+    documents = {
+        "newsroom-latest.json": {"schema_version": "palimpsest-news.v1", "stories": []},
+        "public-data-catalog-latest.json": {"datasets": []},
+        "research-catalog-latest.json": {"datasets": []},
+    }
+    (root / "readings").mkdir()
+    document_bytes = 0
+    for name, value in documents.items():
+        raw = (json.dumps(value, sort_keys=True) + "\n").encode()
+        (root / "readings" / name).write_bytes(raw)
+        document_bytes += len(raw)
 
     first = manifest_builder.build_manifest(root, SOURCE, "2026-08-27T05:16:18Z")
-    assert first["file_count"] == 2
+    assert first["file_count"] == 2 + len(documents)
     assert first["total_bytes"] == len(b"nested manifest is content\n") + len(
         b"index\n"
-    )
+    ) + document_bytes
 
     nested.write_bytes(b"X" + b"nested manifest is content\n"[1:])
     second = manifest_builder.build_manifest(root, SOURCE, "2026-08-27T05:16:18Z")

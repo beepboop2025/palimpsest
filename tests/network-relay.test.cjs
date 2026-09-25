@@ -77,7 +77,7 @@ for (const [name, mutate] of Object.entries({
 }
 
 test('foreign, credential-bearing and unrelated dossier URLs are rejected before fetching', async () => {
-  for (const url of ['https://example.org/x', 'https://user@www.narcoscope.com/news/' + slug + '.dossier.json', '/news/other.dossier.json']) {
+  for (const url of ['https://example.org/x', 'https://user' + '@' + 'www.narcoscope.com/news/' + slug + '.dossier.json', '/news/other.dossier.json']) {
     const out = await run({ articles: [{ ...article(), dossierUrl: url }] });
     assert.equal(out.state, 'dated-fallback');
     assert.equal(out.requests.length, 1);

@@ -129,6 +129,9 @@ _ALLOWED = {
     "optional POST accepts only credential-free public-DNS HTTPS, caps payload/response "
     "bytes and suppresses URL-bearing errors. safe_fetch rejects the loopback endpoint, "
     "while importing application code would defeat this watchdog's independent boundary.",
+    "ops/osint-sync/railway_osint_sync.py": "Standalone host synchronizer reads four bounded publication artifacts from two fixed first-party HTTPS origins. "
+    "Redirects and other URLs are refused; exact release-manifest bytes and append-only ledger proofs are required. "
+    "It intentionally remains independent of the application package and its fetch runtime.",
     "ops/osint-sync/public_osint_sync.py": "Immutable host bundle GET of the one fixed first-party palimpsest.info OSINT object; "
     "production refuses authority overrides, redirects are disabled, the response is "
     "capped at 4 MiB, and its bytes must exactly match the fetched Git blob plus verified "

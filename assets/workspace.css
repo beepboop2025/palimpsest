@@ -1,6 +1,6 @@
 /* Shared research desk. Imported by shell.css so generators inherit one shell. */
 :root, body.ps {
-  --ps-nav-h: 68px !important;
+  --ps-nav-h: 105px !important;
   --tk-void: var(--research-bg) !important;
   --tk-surface-1: var(--research-surface) !important;
   --tk-surface-2: var(--research-raised) !important;
@@ -23,9 +23,9 @@
 html { background: var(--research-bg) !important; }
 body.ps {
   box-sizing: border-box;
-  max-width: 1800px;
+  max-width: 1440px;
   margin: 0 auto !important;
-  padding: 84px 24px 24px 260px !important;
+  padding: 121px 28px 24px 260px !important;
   background: var(--research-bg) !important;
   color: var(--research-text) !important;
   color-scheme: dark !important;
@@ -55,14 +55,14 @@ body.ps .ps-workspace {
   font-family: var(--research-font) !important;
 }
 body.ps .ps-workspace::before { display: none !important; }
-.ps-workspace-masthead { max-width: 1800px; margin: auto; height: 68px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.ps-workspace-masthead { max-width: 1440px; margin: auto; min-height: 105px; padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .ps-workspace-brand { display: flex; align-items: center; gap: 10px; color: var(--research-text) !important; text-decoration: none; }
 .ps-workspace-brand img { flex-shrink: 0; }
 .ps-workspace-brand b { display: block; font: 600 1.35rem/1.2 var(--research-font); letter-spacing: -.035em; }
 .ps-workspace-brand small { display: block; color: var(--research-secondary); font: 400 .75rem/1.4 var(--research-font); margin-top: 3px; }
 .ps-workspace-projects { display: flex; align-items: center; gap: 18px; }
 .ps-workspace-projects > span { font-size: .76rem; color: var(--research-muted); }
-.ps-workspace-panel { position: fixed; top: 88px; left: max(24px, calc((100vw - 1800px) / 2 + 24px)); width: 216px; max-height: calc(100dvh - 110px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-right: 10px; background: var(--research-bg); }
+.ps-workspace-panel { position: fixed; top: 125px; left: max(28px, calc((100vw - 1440px) / 2 + 28px)); width: 216px; max-height: calc(100dvh - 147px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-right: 10px; background: var(--research-bg); }
 .ps-workspace-search { display: grid; gap: 8px; margin-bottom: 19px; font: 400 .78rem/1.4 var(--research-font); color: var(--research-secondary); }
 .ps-workspace-search input { display: block; width: 100%; min-width: 0; min-height: 38px; padding: 9px 10px; border: 1px solid var(--research-line); border-radius: 6px; font: 400 .78rem/1.4 var(--research-font); }
 .ps-workspace-section { padding: 0; margin: 0 0 17px; border: 0; }
@@ -152,11 +152,11 @@ body.ps .leaflet-popup-content-wrapper, body.ps .leaflet-popup-tip { background:
   body.ps .eo-cases { grid-template-columns: minmax(0, 1fr); }
   body.ps .bri-context-grid { grid-template-columns: 1fr 1fr; }
 }
-@media (max-width: 700px) {
+@media (max-width: 760px) {
   :root, body.ps { --ps-nav-h: 0px !important; }
   body.ps { padding: 0 14px 20px !important; }
   body.ps .ps-workspace { position: relative !important; inset: auto !important; height: auto !important; width: calc(100% + 28px); margin: 0 -14px 12px; border: 0 !important; }
-  .ps-workspace-masthead { height: 73px; padding: 0 14px; gap: 10px; border-bottom: 1px solid var(--research-line-subtle); }
+  .ps-workspace-masthead { min-height: 120px; padding: 16px 14px; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--research-line-subtle); }
   .ps-workspace-brand { gap: 8px; }
   .ps-workspace-brand b { font-size: 1.2rem; }
   .ps-workspace-brand small { max-width: 190px; font-size: .64rem; }
@@ -186,3 +186,8 @@ body.ps .leaflet-popup-content-wrapper, body.ps .leaflet-popup-tip { background:
   body.ps { padding: 0 !important; }
   .ps-workspace { display: none !important; }
 }
+
+.ps-workspace-masthead .family-api { margin-left: auto; }
+.ps-workspace-brand { flex-shrink: 0; }
+@media (min-width: 761px) and (max-width: 1100px) { .ps-workspace-brand small { max-width: 150px; font-size: .65rem; } .ps-workspace-masthead { gap: 12px; } }
+@media (max-width: 760px) { .ps-workspace-masthead .family-network { flex: 1 0 100%; margin: 0; } }

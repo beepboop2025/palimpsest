@@ -15,6 +15,7 @@ class PageParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.hrefs: list[str] = []
+        self.navigation: list[dict[str, str | None]] = []
         self.ids: list[str] = []
         self.canonicals: list[str] = []
         self.stylesheets: list[str] = []
@@ -25,6 +26,8 @@ class PageParser(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
+        if tag == "nav":
+            self.navigation.append(values)
         if values.get("id"):
             self.ids.append(str(values["id"]))
         if tag == "a" and values.get("href"):
@@ -109,7 +112,9 @@ def test_every_page_has_compact_versioned_head_real_nav_and_unique_ids():
             '<meta name="palimpsest:schema-version" content="palimpsest-china-index.v1">'
             in page
         )
-        assert '<nav class="ps-nav" aria-label="Primary">' in page
+        primary = [nav for nav in parsed.navigation if nav.get("aria-label") == "Primary"]
+        assert len(primary) == 1
+        assert {"ps-nav", "ps-workspace"} <= set(primary[0].get("class", "").split())
         assert '<nav class="cn-local" aria-label="China Observatory">' in page
         assert '<main id="main" class="cn-main">' in page
         assert '<link rel="stylesheet" href="/assets/china.css">' in page

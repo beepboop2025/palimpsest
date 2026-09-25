@@ -1598,8 +1598,7 @@ cleanup_release_private_state() {
               || [[ "$(stat -c '%u:%g:%a:%h' "$continuity_file" 2>/dev/null)" \
                 != "${current_uid}:${current_gid}:500:1" ]] \
               || { [[ -n "${CONTINUITY_GUARD_SHA256:-}" ]] \
-                && [[ "$(sha256sum "$continuity_file" 2>/dev/null \
-                  | awk '{print $1}')" != "$CONTINUITY_GUARD_SHA256" ]]; }; then
+                && [[ "$(sha256sum "$continuity_file" 2>/dev/null | awk '{print $1}')" != "$CONTINUITY_GUARD_SHA256" ]]; }; then
             printf 'continuity bootstrap file failed cleanup authentication\n' >&2
             cleanup_rc=1
           elif ! rm -f -- "$continuity_file"; then
@@ -1619,10 +1618,8 @@ cleanup_release_private_state() {
     if ! continuity_bootstrap_remove_fence; then
       printf 'failed to remove continuity guard bootstrap fence\n' >&2
       cleanup_rc=1
-    elif [[ "$(systemctl is-enabled \
-        palimpsest-continuity-guard.timer)" != enabled ]] \
-        || [[ "$(systemctl is-active \
-          palimpsest-continuity-guard.timer)" != active ]]; then
+    elif [[ "$(systemctl is-enabled palimpsest-continuity-guard.timer)" != enabled ]] \
+        || [[ "$(systemctl is-active palimpsest-continuity-guard.timer)" != active ]]; then
       printf 'continuity guard timer changed during bootstrap abort\n' >&2
       cleanup_rc=1
     elif ! sudo systemctl start palimpsest-continuity-guard.service; then

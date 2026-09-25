@@ -286,7 +286,11 @@ def test_live_event_analysis_reads_the_same_timer_wire() -> None:
     assert "/etc/palimpsest/deployed-commit" in unit
     assert "NoExecPaths=/tmp /var/tmp /var/lib/palimpsest/newswire" in unit
     assert "ReadWritePaths=/var/lib/palimpsest/newswire" in unit
-    assert "IPAddressDeny=any" in unit
+    # The current wrapper refreshes the source wire before local analysis.
+    assert "--refresh-wire" in unit
+    assert "--wire-lock /var/lib/palimpsest/newswire/newswire.lock" in unit
+    assert "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6" in unit
+    assert "ProtectSystem=strict" in unit
     assert "CapabilityBoundingSet=\n" in unit
     assert "OnSuccess=" not in unit
 

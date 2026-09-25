@@ -130,11 +130,22 @@ def _synthetic_cgtn_wire():
     )
 
 
+def _published_event_analyses(wire, feed, **kwargs):
+    # Committed newsroom bytes are a public projection. Follow the production
+    # adapter so rights-only notices cannot become measured collector evidence.
+    analysis_feed, allow_missing = (
+        china_situation_builder._analysis_feed_for_publication(feed)
+    )
+    return event_analysis.build_event_analyses(
+        wire, analysis_feed, allow_missing_collectors=allow_missing, **kwargs
+    )
+
+
 @pytest.fixture(scope="module")
 def inputs():
     wire = json.loads((ROOT / "readings/newswire-latest.json").read_text())
     feed = json.loads((ROOT / "readings/newsroom-latest.json").read_text())
-    analyses = event_analysis.build_event_analyses(wire, feed)
+    analyses = _published_event_analyses(wire, feed)
     return wire, feed, analyses
 
 
@@ -373,7 +384,12 @@ def test_measurements_are_exact_event_analysis_context_and_remain_topic_only(
     assert situation["coverage"]["events_with_measurement_context"] > 0
     assert situation["coverage"]["measurement_context_rows"] > 0
     for event_id, row in rows.items():
-        expected = analyses[event_id]["collector_context"]
+        # Availability placeholders carry no observed source date and are not
+        # measurements; every dated collector row must still match exactly.
+        expected = [
+            item for item in analyses[event_id]["collector_context"]
+            if item["source_timestamp"] is not None
+        ]
         assert [item["signal_id"] for item in row["measurement_context"]] == [
             item["signal_id"] for item in expected
         ]
@@ -401,7 +417,7 @@ def test_situation_is_deterministic_and_changes_with_bound_measurement(inputs):
     )
     story["claims"][0]["statement"] += " Revised normalized measurement."
     story["claim_fingerprint"] = "sha256:" + "b" * 64
-    changed_analyses = event_analysis.build_event_analyses(wire, changed_feed)
+    changed_analyses = _published_event_analyses(wire, changed_feed)
     changed = china_situation.build_china_situation(wire, changed_analyses)
 
     by_event = {row["event_id"]: row for row in first["situations"]}
@@ -673,7 +689,7 @@ def test_situation_copies_named_key_interconnection_without_mixing_peer_sentence
     wire, feed, _analyses = inputs
     official = _load_fixture("official-first-seen-warehouse.json")
     greatfire = _load_fixture("greatfire-warehouse.json")
-    analyses = event_analysis.build_event_analyses(
+    analyses = _published_event_analyses(
         wire,
         feed,
         peer_warehouses=_warehouses(

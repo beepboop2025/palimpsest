@@ -4446,6 +4446,10 @@ if (( bri_build_status != 0 || situation_build_status != 0 )); then
 fi
 "$PYTHON_BIN" -m scripts.build_eval_assurance
 "$PYTHON_BIN" -m scripts.build_eval_assurance --check
+# Rebuild findings from their sealed panel; the renderer preserves its actual
+# measurement date and cannot turn a gated or old panel into a new observation.
+"$PYTHON_BIN" -m scripts.build_eval_findings
+"$PYTHON_BIN" -m scripts.build_eval_findings --check
 # Finalize cited HTML before the journal records its exact content receipts.
 "$PYTHON_BIN" -m scripts.sync_nav
 "$PYTHON_BIN" -m scripts.sync_nav --check
@@ -4453,10 +4457,15 @@ fi
 "$PYTHON_BIN" -m scripts.build_eval_journal --check
 "$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"
 "$PYTHON_BIN" -m scripts.build_data_catalog --check
-"$PYTHON_BIN" -m scripts.build_public_data_catalog
+"$PYTHON_BIN" -m scripts.build_public_data_catalog --now "$aggregate_clock"
+# Public catalog generation also writes collector-health. Refresh the atlas's
+# metadata against those final bytes using the same publication clock.
+"$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"
+"$PYTHON_BIN" -m scripts.build_data_catalog --check
 "$PYTHON_BIN" -m scripts.sync_nav
 "$PYTHON_BIN" -m scripts.sync_nav --check
 # Later builders must not invalidate a citation before the reading is sealed.
+"$PYTHON_BIN" -m scripts.build_eval_findings --check
 "$PYTHON_BIN" -m scripts.build_eval_journal --check
 "$PYTHON_BIN" scripts/seal_readings.py
 "$PYTHON_BIN" scripts/seal_readings.py --check

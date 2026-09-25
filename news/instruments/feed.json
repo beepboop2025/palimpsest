@@ -1,9 +1,9 @@
 {
   "version": "https://jsonfeed.org/version/1.1",
-  "title": "Palimpsest instrument measurements",
+  "title": "Palimpsest instrument records",
   "home_page_url": "https://palimpsest.info/news/#instruments",
   "feed_url": "https://palimpsest.info/news/instruments/feed.json",
-  "description": "Only Palimpsest's own current instrument measurements, with a result, source receipt, freshness state and limitation attached.",
+  "description": "1 Palimpsest measurements and 38 explicit no-result availability notices, each with a receipt, edition-time state and limitation attached.",
   "language": "en",
   "authors": [
     {
@@ -13,161 +13,171 @@
   ],
   "items": [
     {
-      "id": "palimpsest-news:board-alarm:sha256:809745538a5564dde9507b767f41e52e56944a63318e4afc8cce34c0027cf23f",
+      "id": "palimpsest-news:board-alarm:sha256:b68ababaa70540b85933d24f5a68f022dab6c0074f02c8b881f8817e507d5cca",
       "url": "https://palimpsest.info/news/board-alarm/",
-      "external_url": "https://palimpsest.info/readings/board-alarm-latest.json",
-      "title": "[Palimpsest measurement] No signal clears the board's historical-elevation threshold",
-      "summary": "Palimpsest measurement. The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: no signal exceeds its own history beyond what chance explains. 39 of 39 configured sources report; 6 are live. Health qualifiers: 2 degraded, 31 stale. The board-wide e-value is 1.18; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
-      "date_published": "2026-08-30T07:32:12Z",
-      "date_modified": "2026-08-30T07:32:12Z",
+      "external_url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "title": "[Palimpsest availability] Board alarm: public value unavailable",
+      "summary": "Palimpsest availability notice. This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Board alarm because public value publication is restricted by the active source policy.\n\nLimit: Current finding withheld: public value publication is restricted Availability is not a zero, a normal reading, or evidence of direction.\n\nEvidence: https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "date_published": "2026-08-30T07:32:14Z",
+      "date_modified": "2026-08-30T07:32:14Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "The Board",
         "board-alarm",
-        "live"
+        "degraded"
       ],
       "attachments": [
         {
-          "url": "https://palimpsest.info/readings/board-alarm-latest.json",
+          "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
           "mime_type": "application/json",
-          "title": "board-alarm-latest.json",
-          "size_in_bytes": 8275
+          "title": "china-publication-rights-latest.json"
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
-        "revision_id": "storyv-525a661de0a7ff2cb061f9a5",
-        "verification_status": "palimpsest_measurement"
+        "kind": "instrument_availability",
+        "revision_id": "storyv-237f49757d3af34152ca756f",
+        "signal_id": "board-alarm",
+        "publication_disposition": "rights-restricted-availability-v1",
+        "value_state": "withheld",
+        "verification_status": "public_value_unavailable"
       }
     },
     {
-      "id": "palimpsest-news:event-flags:sha256:5af033e30b8af4e5c97495fda63a2af2d5aac110a9bf7e84b5fc07099c3fe125",
+      "id": "palimpsest-news:event-flags:sha256:f87dfcf4775541f4e338e3d9cfae62d09636b9b217cbac7d51bdeb01579a51da",
       "url": "https://palimpsest.info/news/event-flags/",
-      "external_url": "https://palimpsest.info/readings/event-flags-latest.json",
-      "title": "[Palimpsest measurement] 1 of 15 configured signals are reporting to the event board",
-      "summary": "Palimpsest measurement. The event layer keeps non-reporting and stale series visible instead of reading absence as calm.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: 1 signals are reporting out of 15 configured signals in the current event-flags reading.\n\nLimit: Each detector is calibrated to its own history, so equal event values do not imply equal wall-clock rarity.\n\nEvidence: https://palimpsest.info/readings/event-flags-latest.json",
-      "date_published": "2026-08-30T07:32:12Z",
-      "date_modified": "2026-08-30T07:32:12Z",
+      "external_url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "title": "[Palimpsest availability] Event flags: public value unavailable",
+      "summary": "Palimpsest availability notice. This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Event flags because public value publication is restricted by the active source policy.\n\nLimit: Current finding withheld: public value publication is restricted Availability is not a zero, a normal reading, or evidence of direction.\n\nEvidence: https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "date_published": "2026-08-30T07:32:14Z",
+      "date_modified": "2026-08-30T07:32:14Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "The Board",
         "event-flags",
-        "live"
+        "degraded"
       ],
       "attachments": [
         {
-          "url": "https://palimpsest.info/readings/event-flags-latest.json",
+          "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
           "mime_type": "application/json",
-          "title": "event-flags-latest.json",
-          "size_in_bytes": 5861
+          "title": "china-publication-rights-latest.json"
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
-        "revision_id": "storyv-e2a756161f97a5c8fb20924e",
-        "verification_status": "palimpsest_measurement"
+        "kind": "instrument_availability",
+        "revision_id": "storyv-2a75116d89e0e967fd06f5c0",
+        "signal_id": "event-flags",
+        "publication_disposition": "rights-restricted-availability-v1",
+        "value_state": "withheld",
+        "verification_status": "public_value_unavailable"
       }
     },
     {
-      "id": "palimpsest-news:coverage-guard:sha256:00ce2857f7b3d161951c22846e1b4ef3ffb18ed26b896aad05369cf445534aa3",
+      "id": "palimpsest-news:coverage-guard:sha256:de11055e5a8c701b9ad01c67dcf76cd2c0fe299577c94318cab7b0b9bded3290",
       "url": "https://palimpsest.info/news/coverage-guard/",
-      "external_url": "https://palimpsest.info/readings/coverage-guard-latest.json",
-      "title": "[Palimpsest measurement] Coverage changes confound 0 current signal",
-      "summary": "Palimpsest measurement. The guard withholds a censorship interpretation when movement can be explained by a changing measurement base.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current coverage audit marks 0 signal as confounded by its measurement coverage.\n\nLimit: A coverage-confounded signal is inconclusive about substantive change, not evidence that no change occurred.\n\nEvidence: https://palimpsest.info/readings/coverage-guard-latest.json",
-      "date_published": "2026-08-30T07:32:12Z",
-      "date_modified": "2026-08-30T07:32:12Z",
+      "external_url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "title": "[Palimpsest availability] Coverage guard: public value unavailable",
+      "summary": "Palimpsest availability notice. This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Coverage guard because public value publication is restricted by the active source policy.\n\nLimit: Current finding withheld: public value publication is restricted Availability is not a zero, a normal reading, or evidence of direction.\n\nEvidence: https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "date_published": "2026-08-30T07:32:14Z",
+      "date_modified": "2026-08-30T07:32:14Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "The Board",
         "coverage-guard",
-        "live"
+        "degraded"
       ],
       "attachments": [
         {
-          "url": "https://palimpsest.info/readings/coverage-guard-latest.json",
+          "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
           "mime_type": "application/json",
-          "title": "coverage-guard-latest.json",
-          "size_in_bytes": 4327
+          "title": "china-publication-rights-latest.json"
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
-        "revision_id": "storyv-37b0617780e447119634f427",
-        "verification_status": "palimpsest_measurement"
+        "kind": "instrument_availability",
+        "revision_id": "storyv-34ac5c24f0ca7816ea51c2b1",
+        "signal_id": "coverage-guard",
+        "publication_disposition": "rights-restricted-availability-v1",
+        "value_state": "withheld",
+        "verification_status": "public_value_unavailable"
       }
     },
     {
-      "id": "palimpsest-news:forecast-ledger:sha256:d5d1947e597c598efee43ff304845c9f3e7c41dd2436ce8b654e31a3f1d4bb7d",
+      "id": "palimpsest-news:forecast-ledger:sha256:17faf13baa988b683d6f6a3d565f44baf9d663765d6e743b5de4ce0238d60e20",
       "url": "https://palimpsest.info/news/forecast-ledger/",
-      "external_url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
-      "title": "[Palimpsest measurement] Forecast bands covered 84.4% of 1,606 scored readings",
-      "summary": "Palimpsest measurement. Prequential scoring shows whether the observatory's uncertainty bands remain calibrated over time.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Empirical forecast coverage is 84.4% across 1,606 scored forecasts.\n\nLimit: Calibration describes aggregate historical coverage and does not guarantee that any one next reading falls inside its band.\n\nEvidence: https://palimpsest.info/readings/forecast-ledger-latest.json",
-      "date_published": "2026-08-30T07:32:12Z",
-      "date_modified": "2026-08-30T07:32:12Z",
+      "external_url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "title": "[Palimpsest availability] Forecast ledger: public value unavailable",
+      "summary": "Palimpsest availability notice. This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Forecast ledger because public value publication is restricted by the active source policy.\n\nLimit: Current finding withheld: public value publication is restricted Availability is not a zero, a normal reading, or evidence of direction.\n\nEvidence: https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "date_published": "2026-08-30T07:32:14Z",
+      "date_modified": "2026-08-30T07:32:14Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "The Board",
         "forecast-ledger",
-        "live"
+        "degraded"
       ],
       "attachments": [
         {
-          "url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
+          "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
           "mime_type": "application/json",
-          "title": "forecast-ledger-latest.json",
-          "size_in_bytes": 13969
+          "title": "china-publication-rights-latest.json"
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
-        "revision_id": "storyv-b96c244246ebd38fc6335bc4",
-        "verification_status": "palimpsest_measurement"
+        "kind": "instrument_availability",
+        "revision_id": "storyv-b8a52fe1b4692c2aa05d8ff7",
+        "signal_id": "forecast-ledger",
+        "publication_disposition": "rights-restricted-availability-v1",
+        "value_state": "withheld",
+        "verification_status": "public_value_unavailable"
       }
     },
     {
-      "id": "palimpsest-news:cross-layer:sha256:0f13b88ae8d9b076d69bf7a966d1b5bb3e51b6b80b8928661aba7a7996d0f4fc",
+      "id": "palimpsest-news:cross-layer:sha256:ec80769884d9b0b3202b89f75902538d9fad1e60bb02171f1fded20aeed33320",
       "url": "https://palimpsest.info/news/cross-layer-lead-lag/",
-      "external_url": "https://palimpsest.info/readings/cross-layer-latest.json",
-      "title": "[Palimpsest measurement] 0 cross-layer relationships are confirmed across 9 eligible tests",
-      "summary": "Palimpsest measurement. Pairs enter testing only after enough overlapping history exists; an empty test set is a warm-up state, not a null result.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: 0 cross-layer pairs are confirmed among 9 pairs with enough shared history to test.\n\nLimit: Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another.\n\nEvidence: https://palimpsest.info/readings/cross-layer-latest.json",
-      "date_published": "2026-08-30T07:32:12Z",
-      "date_modified": "2026-08-30T07:32:12Z",
+      "external_url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "title": "[Palimpsest availability] Cross-layer comparison: public value unavailable",
+      "summary": "Palimpsest availability notice. This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Cross-layer comparison because public value publication is restricted by the active source policy.\n\nLimit: Current finding withheld: public value publication is restricted Availability is not a zero, a normal reading, or evidence of direction.\n\nEvidence: https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "date_published": "2026-08-30T07:32:14Z",
+      "date_modified": "2026-08-30T07:32:14Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "The Board",
         "cross-layer",
-        "live"
+        "degraded"
       ],
       "attachments": [
         {
-          "url": "https://palimpsest.info/readings/cross-layer-latest.json",
+          "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
           "mime_type": "application/json",
-          "title": "cross-layer-latest.json",
-          "size_in_bytes": 10602
+          "title": "china-publication-rights-latest.json"
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
-        "revision_id": "storyv-b334eff544d8c7a20f78daf3",
-        "verification_status": "palimpsest_measurement"
+        "kind": "instrument_availability",
+        "revision_id": "storyv-e2013794d5b410e82ec0fe73",
+        "signal_id": "cross-layer",
+        "publication_disposition": "rights-restricted-availability-v1",
+        "value_state": "withheld",
+        "verification_status": "public_value_unavailable"
       }
     },
     {
       "id": "palimpsest-news:ddti:sha256:d5db3d20835b2ee7052df01b54094eb84f4f4388b984bd0c758eb1ea1be303e4",
       "url": "https://palimpsest.info/news/deletion-directive-term-index/",
       "external_url": "https://palimpsest.info/readings/ddti-latest.json",
-      "title": "[Palimpsest measurement] Deletion-directive term index: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Deletion-directive term index because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index reflects documented and collected directives; it is not a census of every censored term.\n\nEvidence: https://palimpsest.info/readings/ddti-latest.json",
+      "title": "[Palimpsest availability] Deletion-directive term index: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Deletion-directive term index because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index reflects documented and collected directives; it is not a census of every censored term.\n\nEvidence: https://palimpsest.info/readings/ddti-latest.json",
       "date_published": "2026-08-24T04:07:05Z",
       "date_modified": "2026-08-24T04:07:05Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Attention and Narrative",
         "ddti",
         "stale"
@@ -181,22 +191,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-f788fcd22696e9a19d98a455",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:gdelt:sha256:57c23684e5c7ca3ca7239e4f355eb1aa8c30b2e60d6c11fec75d281addb1ba3b",
       "url": "https://palimpsest.info/news/global-coverage-cross-signal/",
       "external_url": "https://palimpsest.info/readings/gdelt-latest.json",
-      "title": "[Palimpsest measurement] Global coverage cross-signal: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Global coverage cross-signal because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed GDELT coverage varies by language and publisher; absence from its index is not proof that a topic received no coverage.\n\nEvidence: https://palimpsest.info/readings/gdelt-latest.json",
+      "title": "[Palimpsest availability] Global coverage cross-signal: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Global coverage cross-signal because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed GDELT coverage varies by language and publisher; absence from its index is not proof that a topic received no coverage.\n\nEvidence: https://palimpsest.info/readings/gdelt-latest.json",
       "date_published": "2026-08-24T02:17:50Z",
       "date_modified": "2026-08-24T02:17:50Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Attention and Narrative",
         "gdelt",
         "stale"
@@ -210,22 +220,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-962e5a14c169a2a09c8f44bd",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:weibo-hotsearch:sha256:fbbd796714a27d8701bf89d250b4dc110fa7b57d5d236815f0693f5547448d69",
       "url": "https://palimpsest.info/news/weibo-hot-search-join/",
       "external_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
-      "title": "[Palimpsest measurement] Weibo hot-search join: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Weibo hot-search join because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The hot-search board is a curated and censored surface, so it is only a proxy for domestic attention.\n\nEvidence: https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+      "title": "[Palimpsest availability] Weibo hot-search join: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Weibo hot-search join because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The hot-search board is a curated and censored surface, so it is only a proxy for domestic attention.\n\nEvidence: https://palimpsest.info/readings/weibo-hotsearch-latest.json",
       "date_published": "2026-08-24T05:55:38Z",
       "date_modified": "2026-08-24T05:55:38Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Attention and Narrative",
         "weibo-hotsearch",
         "stale"
@@ -239,22 +249,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-ba293dc2677346e1dd67c7d7",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:silence-index:sha256:dd0cef3624285bdb741fadf4ad138ac30cc90a95d271c28721e470c25febbfee",
       "url": "https://palimpsest.info/news/silence-index/",
       "external_url": "https://palimpsest.info/readings/silence-index-latest.json",
-      "title": "[Palimpsest measurement] Silence index: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Silence index because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Domestic absence can reflect disinterest or incomplete proxy coverage; topics without required corroboration abstain.\n\nEvidence: https://palimpsest.info/readings/silence-index-latest.json",
+      "title": "[Palimpsest availability] Silence index: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Silence index because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Domestic absence can reflect disinterest or incomplete proxy coverage; topics without required corroboration abstain.\n\nEvidence: https://palimpsest.info/readings/silence-index-latest.json",
       "date_published": "2026-08-24T15:19:03Z",
       "date_modified": "2026-08-24T15:19:03Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Attention and Narrative",
         "silence-index",
         "stale"
@@ -268,9 +278,9 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-bf255d00d95bc14d67343938",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
@@ -306,13 +316,13 @@
       "id": "palimpsest-news:net4people:sha256:abccaa300a424567a425dc68e858f3846ba02470d1d1bdb97759a4f93fa9e700",
       "url": "https://palimpsest.info/news/community-blocking-log/",
       "external_url": "https://palimpsest.info/readings/net4people-latest.json",
-      "title": "[Palimpsest measurement] Community blocking log: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Community blocking log because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Community reports are self-selected qualitative observations and do not estimate population prevalence.\n\nEvidence: https://palimpsest.info/readings/net4people-latest.json",
+      "title": "[Palimpsest availability] Community blocking log: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Community blocking log because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Community reports are self-selected qualitative observations and do not estimate population prevalence.\n\nEvidence: https://palimpsest.info/readings/net4people-latest.json",
       "date_published": "2026-08-24T02:10:22Z",
       "date_modified": "2026-08-24T02:10:22Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Attention and Narrative",
         "net4people",
         "stale"
@@ -326,22 +336,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-fea24b5000d4dd10f0c209f4",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:public-deletion-ledgers:sha256:670f74d33c22e664b9cd74d929b665cb479d28b318998ead2d8cb1ecc78c1429",
       "url": "https://palimpsest.info/news/public-deletion-ledgers/",
       "external_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
-      "title": "[Palimpsest measurement] Public deletion ledgers: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Public deletion ledgers because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A missing ledger file is an abstention, not proof that nothing was deleted. Reachability of a public RSS feed is not a census of Chinese-language deletions.\n\nEvidence: https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+      "title": "[Palimpsest availability] Public deletion ledgers: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Public deletion ledgers because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A missing ledger file is an abstention, not proof that nothing was deleted. Reachability of a public RSS feed is not a census of Chinese-language deletions.\n\nEvidence: https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
       "date_published": "2026-08-23T23:08:00Z",
       "date_modified": "2026-08-23T23:08:00Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Attention and Narrative",
         "public-deletion-ledgers",
         "stale"
@@ -355,22 +365,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-9eae20d8d2f0b48f0972666e",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:undertext:sha256:4bd4edc49218e2e302a6d81d19577f713b49ca2341a10bd6bc8150a3064abd38",
       "url": "https://palimpsest.info/news/undertext-differential-fusion/",
       "external_url": "https://palimpsest.info/readings/undertext-latest.json",
-      "title": "[Palimpsest measurement] UNDERTEXT differential fusion: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for UNDERTEXT differential fusion because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Fusion inherits the limits of its inputs; archive-status rows are not relabelled as deletions, and optional Wikipedia live surfaces stay gated.\n\nEvidence: https://palimpsest.info/readings/undertext-latest.json",
+      "title": "[Palimpsest availability] UNDERTEXT differential fusion: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for UNDERTEXT differential fusion because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Fusion inherits the limits of its inputs; archive-status rows are not relabelled as deletions, and optional Wikipedia live surfaces stay gated.\n\nEvidence: https://palimpsest.info/readings/undertext-latest.json",
       "date_published": "2026-08-25T00:57:18Z",
       "date_modified": "2026-08-25T00:57:18Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Attention and Narrative",
         "undertext",
         "stale"
@@ -384,22 +394,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-7012c13c9d617b5bc97c939f",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:research-corpus:sha256:2cc56faef84aa4fce7145c798d57f60772dc13c2d5d529d7b82e9e27d9368c08",
       "url": "https://palimpsest.info/news/research-corpus-metadata/",
       "external_url": "https://palimpsest.info/readings/research-corpus-latest.json",
-      "title": "[Palimpsest measurement] Research-corpus metadata: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Research-corpus metadata because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A commit cursor change is not a claim about why the repository moved, and unpublished notice bodies cannot be inferred from the metadata.\n\nEvidence: https://palimpsest.info/readings/research-corpus-latest.json",
+      "title": "[Palimpsest availability] Research-corpus metadata: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Research-corpus metadata because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A commit cursor change is not a claim about why the repository moved, and unpublished notice bodies cannot be inferred from the metadata.\n\nEvidence: https://palimpsest.info/readings/research-corpus-latest.json",
       "date_published": "2026-08-24T02:11:10Z",
       "date_modified": "2026-08-24T02:11:10Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Attention and Narrative",
         "research-corpus",
         "stale"
@@ -413,22 +423,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-05d15d613557f7dd490afa4e",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:peer-context:sha256:390f4ecae19ce16f52553a3c134b1eaf29cbca0171069ce17b474fdb7d160f4b",
       "url": "https://palimpsest.info/news/attributed-peer-context/",
       "external_url": "https://palimpsest.info/readings/peer-context-latest.json",
-      "title": "[Palimpsest measurement] Attributed peer-context warehouse: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Attributed peer-context warehouse because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator.\n\nEvidence: https://palimpsest.info/readings/peer-context-latest.json",
+      "title": "[Palimpsest availability] Attributed peer-context warehouse: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Attributed peer-context warehouse because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator.\n\nEvidence: https://palimpsest.info/readings/peer-context-latest.json",
       "date_published": "2026-08-25T00:48:00Z",
       "date_modified": "2026-08-25T00:48:00Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Attention and Narrative",
         "peer-context",
         "stale"
@@ -442,22 +452,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-916317020cef707ad08c7d17",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:ooni-gfw:sha256:43c4497197f2c28f46200962e6303ca9471b1b648f8d27b1a4df53ade8a04d53",
       "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
       "external_url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
-      "title": "[Palimpsest measurement] OONI Great Firewall index: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for OONI Great Firewall index because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Volunteer-probe coverage is uneven across place, network and test family; anomalies are not all attributable to censorship.\n\nEvidence: https://palimpsest.info/readings/ooni-gfw-latest.json",
+      "title": "[Palimpsest availability] OONI Great Firewall index: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for OONI Great Firewall index because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Volunteer-probe coverage is uneven across place, network and test family; anomalies are not all attributable to censorship.\n\nEvidence: https://palimpsest.info/readings/ooni-gfw-latest.json",
       "date_published": "2026-08-24T02:00:59Z",
       "date_modified": "2026-08-24T02:00:59Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Network and Circumvention",
         "ooni-gfw",
         "stale"
@@ -471,22 +481,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-ec08d0d96b7a62207837424f",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:in-path-interference:sha256:974c8960488008a4b61e75f7e82272cc54fdd6051ff2007ab7cefab303e8976c",
       "url": "https://palimpsest.info/news/in-path-interference/",
       "external_url": "https://palimpsest.info/readings/in-path-interference-latest.json",
-      "title": "[Palimpsest measurement] In-path interference: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for In-path interference because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories.\n\nEvidence: https://palimpsest.info/readings/in-path-interference-latest.json",
+      "title": "[Palimpsest availability] In-path interference: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for In-path interference because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories.\n\nEvidence: https://palimpsest.info/readings/in-path-interference-latest.json",
       "date_published": "2026-08-24T02:07:57Z",
       "date_modified": "2026-08-24T02:07:57Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Network and Circumvention",
         "in-path-interference",
         "stale"
@@ -500,22 +510,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-9a89d322da5a07c06a21c78c",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:censored-planet:sha256:be8e581e5b3419cecac55f6c6a7e610858608c1321175ac0872607cfc11cf672",
       "url": "https://palimpsest.info/news/censored-planet-china-interference/",
       "external_url": "https://palimpsest.info/readings/censored-planet-latest.json",
-      "title": "[Palimpsest measurement] Censored Planet: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Censored Planet because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The remote-scan denominator and method differ from OONI's anomaly index, so their percentages are not interchangeable.\n\nEvidence: https://palimpsest.info/readings/censored-planet-latest.json",
+      "title": "[Palimpsest availability] Censored Planet: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Censored Planet because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The remote-scan denominator and method differ from OONI's anomaly index, so their percentages are not interchangeable.\n\nEvidence: https://palimpsest.info/readings/censored-planet-latest.json",
       "date_published": "2026-08-24T06:07:17Z",
       "date_modified": "2026-08-24T06:07:17Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Network and Circumvention",
         "censored-planet",
         "stale"
@@ -529,22 +539,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-99b01e6a453ee5300e8924e5",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:inside-view:sha256:265148c2e70552bc56461531e24395d874bc3ace215ab616f4ace08924e6169a",
       "url": "https://palimpsest.info/news/inside-china-view/",
       "external_url": "https://palimpsest.info/readings/inside-view-latest.json",
-      "title": "[Palimpsest measurement] Inside-China view: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Inside-China view because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The volunteer panel is small and availability varies by region; it does not represent every mainland network.\n\nEvidence: https://palimpsest.info/readings/inside-view-latest.json",
+      "title": "[Palimpsest availability] Inside-China view: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Inside-China view because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The volunteer panel is small and availability varies by region; it does not represent every mainland network.\n\nEvidence: https://palimpsest.info/readings/inside-view-latest.json",
       "date_published": "2026-08-24T02:10:02Z",
       "date_modified": "2026-08-24T02:10:02Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Network and Circumvention",
         "inside-view",
         "stale"
@@ -558,22 +568,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-36fa1a21d936ba42455e8775",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:ioda-outages:sha256:ce9cb005f7cc7684ac2f071347ba75e46f619b8dccbca573a36835a010040bfc",
       "url": "https://palimpsest.info/news/ioda-china-outage-monitor/",
       "external_url": "https://palimpsest.info/readings/ioda-outages-latest.json",
-      "title": "[Palimpsest measurement] IODA outage monitor: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for IODA outage monitor because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed No firing instrument means no detected country-scale outage in this window, not proof that all local networks were reachable.\n\nEvidence: https://palimpsest.info/readings/ioda-outages-latest.json",
+      "title": "[Palimpsest availability] IODA outage monitor: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for IODA outage monitor because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed No firing instrument means no detected country-scale outage in this window, not proof that all local networks were reachable.\n\nEvidence: https://palimpsest.info/readings/ioda-outages-latest.json",
       "date_published": "2026-08-24T02:04:27Z",
       "date_modified": "2026-08-24T02:04:27Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Network and Circumvention",
         "ioda-outages",
         "stale"
@@ -587,22 +597,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-1db036255d229c979c450623",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:circumvention-demand:sha256:00dfc560aa65139f926d54d86d3af1f37c6dea9823fdfb299e4be6c293810408",
       "url": "https://palimpsest.info/news/circumvention-demand/",
       "external_url": "https://palimpsest.info/readings/circumvention-demand-latest.json",
-      "title": "[Palimpsest measurement] Circumvention demand: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Circumvention demand because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Bridge-user values are privacy-preserving estimates and should not be read as exact people or devices.\n\nEvidence: https://palimpsest.info/readings/circumvention-demand-latest.json",
+      "title": "[Palimpsest availability] Circumvention demand: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Circumvention demand because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Bridge-user values are privacy-preserving estimates and should not be read as exact people or devices.\n\nEvidence: https://palimpsest.info/readings/circumvention-demand-latest.json",
       "date_published": "2026-08-24T05:52:26Z",
       "date_modified": "2026-08-24T05:52:26Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Network and Circumvention",
         "circumvention-demand",
         "stale"
@@ -616,22 +626,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-c8756c2ed9cf57426c33fa74",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:vantage-fusion:sha256:3bf74c883d9e155c273561206f59661639e0085cd11f521183c6167ef599cc21",
       "url": "https://palimpsest.info/news/network-vantage-fusion/",
       "external_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
-      "title": "[Palimpsest measurement] Network vantage fusion: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Network vantage fusion because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic.\n\nEvidence: https://palimpsest.info/readings/vantage-fusion-latest.json",
+      "title": "[Palimpsest availability] Network vantage fusion: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Network vantage fusion because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic.\n\nEvidence: https://palimpsest.info/readings/vantage-fusion-latest.json",
       "date_published": "2026-08-24T02:27:09Z",
       "date_modified": "2026-08-24T02:27:09Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Network and Circumvention",
         "vantage-fusion",
         "stale"
@@ -645,22 +655,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-5110bc64380432c806b20681",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:bleedthrough:sha256:491da606cfd905f6d8d7e1debefc95cfd3be2cee2d7bd824cb5358109324b168",
       "url": "https://palimpsest.info/news/bleedthrough-injector-tomography/",
       "external_url": "https://palimpsest.info/readings/bleedthrough-latest.json",
-      "title": "[Palimpsest measurement] Bleedthrough injector tomography: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Bleedthrough injector tomography because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed This optional active-probe layer is deployment-controlled; absence must never be converted into a zero or calm reading.\n\nEvidence: https://palimpsest.info/readings/bleedthrough-latest.json",
+      "title": "[Palimpsest availability] Bleedthrough injector tomography: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Bleedthrough injector tomography because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed This optional active-probe layer is deployment-controlled; absence must never be converted into a zero or calm reading.\n\nEvidence: https://palimpsest.info/readings/bleedthrough-latest.json",
       "date_published": "2026-08-25T00:57:18Z",
       "date_modified": "2026-08-25T00:57:18Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Network and Circumvention",
         "bleedthrough",
         "stale"
@@ -674,22 +684,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-356eab8fe14cfe8cc3f5fba9",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:greatfire-context:sha256:b3454f495a8be309e4212ca1f602e4a34b54992e80667f291c519ce5a3576a88",
       "url": "https://palimpsest.info/news/greatfire-attributed-verdicts/",
       "external_url": "https://palimpsest.info/readings/greatfire-context-latest.json",
-      "title": "[Palimpsest measurement] GreatFire attributed verdicts: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for GreatFire attributed verdicts because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive.\n\nEvidence: https://palimpsest.info/readings/greatfire-context-latest.json",
+      "title": "[Palimpsest availability] GreatFire attributed verdicts: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for GreatFire attributed verdicts because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive.\n\nEvidence: https://palimpsest.info/readings/greatfire-context-latest.json",
       "date_published": "2026-08-25T00:33:10Z",
       "date_modified": "2026-08-25T00:33:10Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Network and Circumvention",
         "greatfire-context",
         "stale"
@@ -703,22 +713,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-48ed89da4d2393dbb3d46f87",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:erasure-observatory:sha256:1c6cd70ba85e39aba97153aac522b9d9ab1cf37bd3d04bb88509862dee62ce13",
       "url": "https://palimpsest.info/news/erasure-observatory/",
       "external_url": "https://palimpsest.info/readings/erasure-observatory-latest.json",
-      "title": "[Palimpsest measurement] Erasure observatory: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Erasure observatory because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index combines heterogeneous erasure layers and indicates co-movement, not a count of deleted items.\n\nEvidence: https://palimpsest.info/readings/erasure-observatory-latest.json",
+      "title": "[Palimpsest availability] Erasure observatory: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Erasure observatory because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index combines heterogeneous erasure layers and indicates co-movement, not a count of deleted items.\n\nEvidence: https://palimpsest.info/readings/erasure-observatory-latest.json",
       "date_published": "2026-08-24T06:31:11Z",
       "date_modified": "2026-08-24T06:31:11Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Erasure and Distribution",
         "erasure-observatory",
         "stale"
@@ -732,22 +742,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-7214f2a890a520f0ada843b7",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:wayback:sha256:b0b0efafe664875621c84cd697854aa98fdf004f100685c26e62303b561043d2",
       "url": "https://palimpsest.info/news/wayback-reconstruction/",
       "external_url": "https://palimpsest.info/readings/wayback-latest.json",
-      "title": "[Palimpsest measurement] Wayback reconstruction: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Wayback reconstruction because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Archive coverage is incomplete; an unwitnessed URL cannot support a deletion or mutation claim.\n\nEvidence: https://palimpsest.info/readings/wayback-latest.json",
+      "title": "[Palimpsest availability] Wayback reconstruction: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Wayback reconstruction because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Archive coverage is incomplete; an unwitnessed URL cannot support a deletion or mutation claim.\n\nEvidence: https://palimpsest.info/readings/wayback-latest.json",
       "date_published": "2026-08-24T15:58:43Z",
       "date_modified": "2026-08-24T15:58:43Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Erasure and Distribution",
         "wayback",
         "stale"
@@ -761,22 +771,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-3e52248ed6a19a70a0d30c60",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:baike-redaction:sha256:45290c3fc34242b7728a8985ce32e037e068894d6425e1516d0bc01c90d56036",
       "url": "https://palimpsest.info/news/baike-redaction/",
       "external_url": "https://palimpsest.info/readings/baike-redaction-latest.json",
-      "title": "[Palimpsest measurement] Baike redaction: no current finding",
-      "summary": "Palimpsest measurement. The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Baike redaction because the source status is degraded.\n\nLimit: Current finding withheld: optional collector is disabled pending authorized access; no current Baike measurement is claimed Without authorized live revision history, lexical comparisons cannot identify when or by whom text changed.\n\nEvidence: https://palimpsest.info/readings/baike-redaction-latest.json",
+      "title": "[Palimpsest availability] Baike redaction: no current finding",
+      "summary": "Palimpsest availability notice. The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Baike redaction because the source status is degraded.\n\nLimit: Current finding withheld: optional collector is disabled pending authorized access; no current Baike measurement is claimed Without authorized live revision history, lexical comparisons cannot identify when or by whom text changed.\n\nEvidence: https://palimpsest.info/readings/baike-redaction-latest.json",
       "date_published": "2026-07-30T20:31:16Z",
       "date_modified": "2026-07-30T20:31:16Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Erasure and Distribution",
         "baike-redaction",
         "degraded"
@@ -790,22 +800,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-c3f85235ab9b0ce69d1cefb1",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:github-refuge:sha256:6fa24b3b529ea744c5b3e3b66eb40c8601996a9977070aaf321eaae149c2da7a",
       "url": "https://palimpsest.info/news/github-refuge-watch/",
       "external_url": "https://palimpsest.info/readings/github-refuge-latest.json",
-      "title": "[Palimpsest measurement] GitHub refuge watch: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for GitHub refuge watch because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Repository metadata can show public pressure or disappearance but cannot establish the actor or motive behind a change.\n\nEvidence: https://palimpsest.info/readings/github-refuge-latest.json",
+      "title": "[Palimpsest availability] GitHub refuge watch: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for GitHub refuge watch because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Repository metadata can show public pressure or disappearance but cannot establish the actor or motive behind a change.\n\nEvidence: https://palimpsest.info/readings/github-refuge-latest.json",
       "date_published": "2026-08-24T02:10:18Z",
       "date_modified": "2026-08-24T02:10:18Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Erasure and Distribution",
         "github-refuge",
         "stale"
@@ -819,22 +829,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-a603ed51696d7dc167787045",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:app-storefront:sha256:d95182b2690009263eda945789650c258cfbbec17cbc06790877268da2f03c88",
       "url": "https://palimpsest.info/news/app-storefront-panel/",
       "external_url": "https://palimpsest.info/readings/app-storefront-latest.json",
-      "title": "[Palimpsest measurement] App Storefront panel: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for App Storefront panel because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A fixed app panel is transparent but not representative of the entire App Store catalogue.\n\nEvidence: https://palimpsest.info/readings/app-storefront-latest.json",
+      "title": "[Palimpsest availability] App Storefront panel: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for App Storefront panel because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A fixed app panel is transparent but not representative of the entire App Store catalogue.\n\nEvidence: https://palimpsest.info/readings/app-storefront-latest.json",
       "date_published": "2026-08-24T02:13:36Z",
       "date_modified": "2026-08-24T02:13:36Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Erasure and Distribution",
         "app-storefront",
         "stale"
@@ -848,22 +858,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-35e8ca1b84b4cd0efb920895",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:apple-censorship:sha256:16c18cebfa01d95308379b71231821c5c1dda160cf53ed1d3761655c788bf0a5",
       "url": "https://palimpsest.info/news/apple-censorship-corpus/",
       "external_url": "https://palimpsest.info/readings/apple-censorship-latest.json",
-      "title": "[Palimpsest measurement] AppleCensorship corpus: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for AppleCensorship corpus because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Storefront unavailability can have policy, licensing, commercial or technical causes; the percentage alone does not identify cause.\n\nEvidence: https://palimpsest.info/readings/apple-censorship-latest.json",
+      "title": "[Palimpsest availability] AppleCensorship corpus: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for AppleCensorship corpus because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Storefront unavailability can have policy, licensing, commercial or technical causes; the percentage alone does not identify cause.\n\nEvidence: https://palimpsest.info/readings/apple-censorship-latest.json",
       "date_published": "2026-08-24T06:06:32Z",
       "date_modified": "2026-08-24T06:06:32Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Erasure and Distribution",
         "apple-censorship",
         "stale"
@@ -877,22 +887,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-a304eb5482c8020972fdcd46",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:baike-public-snapshot:sha256:0f8fe35d47cba08cb1365f2b19099d4a1c3890fd7c4ad14506f41c9e1bcf521e",
       "url": "https://palimpsest.info/news/baike-public-snapshot/",
       "external_url": "https://palimpsest.info/readings/baike-public-snapshot-latest.json",
-      "title": "[Palimpsest measurement] Baike public snapshot: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Baike public snapshot because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites.\n\nEvidence: https://palimpsest.info/readings/baike-public-snapshot-latest.json",
+      "title": "[Palimpsest availability] Baike public snapshot: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Baike public snapshot because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites.\n\nEvidence: https://palimpsest.info/readings/baike-public-snapshot-latest.json",
       "date_published": "2026-08-24T04:52:24Z",
       "date_modified": "2026-08-24T04:52:24Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Erasure and Distribution",
         "baike-public-snapshot",
         "stale"
@@ -906,80 +916,84 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-110942c3e8ebffec7c278ad5",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
-      "id": "palimpsest-news:china-econ:sha256:1d91487d1aeb7b0e73f9ee6c5b3a260275fc73cc426a0f287505c815d68b3de1",
+      "id": "palimpsest-news:china-econ:sha256:4bc46bce1fabf0968ad38c7817d812f90a879765b9ebda4c69bb3d6892c421f2",
       "url": "https://palimpsest.info/news/china-money-market-benchmarks/",
-      "external_url": "https://palimpsest.info/readings/china-econ-latest.json",
-      "title": "[Palimpsest measurement] China money-market benchmarks: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for China money-market benchmarks because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Official benchmark levels are state-published inputs; interpreting policy requires relationships and history, not one level.\n\nEvidence: https://palimpsest.info/readings/china-econ-latest.json",
-      "date_published": "2026-08-23T01:47:39Z",
-      "date_modified": "2026-08-23T01:47:39Z",
+      "external_url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "title": "[Palimpsest availability] China money-market benchmarks: public value unavailable",
+      "summary": "Palimpsest availability notice. This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for China money-market benchmarks because public value publication is restricted by the active source policy.\n\nLimit: Current finding withheld: public value publication is restricted Availability is not a zero, a normal reading, or evidence of direction.\n\nEvidence: https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "date_published": "2026-08-30T07:32:14Z",
+      "date_modified": "2026-08-30T07:32:14Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Economic Undertext",
         "china-econ",
-        "stale"
+        "degraded"
       ],
       "attachments": [
         {
-          "url": "https://palimpsest.info/readings/china-econ-latest.json",
+          "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
           "mime_type": "application/json",
-          "title": "china-econ-latest.json",
-          "size_in_bytes": 739
+          "title": "china-publication-rights-latest.json"
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
-        "revision_id": "storyv-516ae80107b1043c3836847e",
-        "verification_status": "palimpsest_measurement"
+        "kind": "instrument_availability",
+        "revision_id": "storyv-854c2f8d8ce996933b144c3c",
+        "signal_id": "china-econ",
+        "publication_disposition": "rights-restricted-availability-v1",
+        "value_state": "withheld",
+        "verification_status": "public_value_unavailable"
       }
     },
     {
-      "id": "palimpsest-news:cny-fix-gap:sha256:f0054990170a4e2ad21ecb3bd7acf2d3290d0ce72dc1d9f3081fa19bd76c41b7",
+      "id": "palimpsest-news:cny-fix-gap:sha256:fbbfca9454b0ad579c0bce837edfaa3df5e1b1b16311a62731b6f235a70d777f",
       "url": "https://palimpsest.info/news/cny-fix-gap/",
-      "external_url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
-      "title": "[Palimpsest measurement] CNY fix gap: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for CNY fix gap because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The comparison is onshore and same-day but not simultaneous; it is economic context, not direct evidence of censorship.\n\nEvidence: https://palimpsest.info/readings/cny-fix-gap-latest.json",
-      "date_published": "2026-08-23T17:27:00Z",
-      "date_modified": "2026-08-23T17:27:00Z",
+      "external_url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "title": "[Palimpsest availability] Yuan-fix comparison: public value unavailable",
+      "summary": "Palimpsest availability notice. This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Yuan-fix comparison because public value publication is restricted by the active source policy.\n\nLimit: Current finding withheld: public value publication is restricted Availability is not a zero, a normal reading, or evidence of direction.\n\nEvidence: https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "date_published": "2026-08-30T07:32:14Z",
+      "date_modified": "2026-08-30T07:32:14Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Economic Undertext",
         "cny-fix-gap",
-        "stale"
+        "degraded"
       ],
       "attachments": [
         {
-          "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
+          "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
           "mime_type": "application/json",
-          "title": "cny-fix-gap-latest.json",
-          "size_in_bytes": 1434
+          "title": "china-publication-rights-latest.json"
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
-        "revision_id": "storyv-568d39405edfcab2d734b2e8",
-        "verification_status": "palimpsest_measurement"
+        "kind": "instrument_availability",
+        "revision_id": "storyv-e056158d3b66027bffe0c052",
+        "signal_id": "cny-fix-gap",
+        "publication_disposition": "rights-restricted-availability-v1",
+        "value_state": "withheld",
+        "verification_status": "public_value_unavailable"
       }
     },
     {
       "id": "palimpsest-news:stock-connect:sha256:57f0a7152f3893cc9f1af7e026e6f05c0441403bf3875299c50f79240482e88e",
       "url": "https://palimpsest.info/news/stock-connect/",
       "external_url": "https://palimpsest.info/readings/stock-connect-latest.json",
-      "title": "[Palimpsest measurement] Stock Connect: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Stock Connect because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed HKEX no longer publishes the northbound buy-sell split, so no northbound net flow is inferred.\n\nEvidence: https://palimpsest.info/readings/stock-connect-latest.json",
+      "title": "[Palimpsest availability] Stock Connect: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Stock Connect because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed HKEX no longer publishes the northbound buy-sell split, so no northbound net flow is inferred.\n\nEvidence: https://palimpsest.info/readings/stock-connect-latest.json",
       "date_published": "2026-08-21T14:03:19Z",
       "date_modified": "2026-08-21T14:03:19Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Economic Undertext",
         "stock-connect",
         "stale"
@@ -993,51 +1007,53 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-7c21aeb7cc8bc5da36d65f88",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
-      "id": "palimpsest-news:data-darkness:sha256:0b041b3529018c1ffc1dc78c1516d4244abbe9831be11cc783f6a7111f3bc7a6",
+      "id": "palimpsest-news:data-darkness:sha256:6f34e7260bd405cf4a683b688f596fe29170f3208d9a585bb57846958e2fd35d",
       "url": "https://palimpsest.info/news/official-data-darkness/",
-      "external_url": "https://palimpsest.info/readings/data-darkness-latest.json",
-      "title": "[Palimpsest measurement] Official-data darkness: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Official-data darkness because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Publication delay, calendar changes and collection failure can resemble withholding; per-series state is required for interpretation.\n\nEvidence: https://palimpsest.info/readings/data-darkness-latest.json",
-      "date_published": "2026-08-23T10:32:44Z",
-      "date_modified": "2026-08-23T10:32:44Z",
+      "external_url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "title": "[Palimpsest availability] Official-data availability: public value unavailable",
+      "summary": "Palimpsest availability notice. This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Official-data availability because public value publication is restricted by the active source policy.\n\nLimit: Current finding withheld: public value publication is restricted Availability is not a zero, a normal reading, or evidence of direction.\n\nEvidence: https://palimpsest.info/readings/china-publication-rights-latest.json",
+      "date_published": "2026-08-30T07:32:14Z",
+      "date_modified": "2026-08-30T07:32:14Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Economic Undertext",
         "data-darkness",
-        "stale"
+        "degraded"
       ],
       "attachments": [
         {
-          "url": "https://palimpsest.info/readings/data-darkness-latest.json",
+          "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
           "mime_type": "application/json",
-          "title": "data-darkness-latest.json",
-          "size_in_bytes": 3882
+          "title": "china-publication-rights-latest.json"
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
-        "revision_id": "storyv-d35b428fd7daa486f3800d4c",
-        "verification_status": "palimpsest_measurement"
+        "kind": "instrument_availability",
+        "revision_id": "storyv-a7b196f11b2e2d637e48a65b",
+        "signal_id": "data-darkness",
+        "publication_disposition": "rights-restricted-availability-v1",
+        "value_state": "withheld",
+        "verification_status": "public_value_unavailable"
       }
     },
     {
       "id": "palimpsest-news:believability:sha256:7adfd5f89d69f6f7aa86f6737ad2e35ed89a810eb2c7f17f3d5373c19e7a8863",
       "url": "https://palimpsest.info/news/believability-read/",
       "external_url": "https://palimpsest.info/readings/believability-latest.json",
-      "title": "[Palimpsest measurement] Believability read: no current finding",
-      "summary": "Palimpsest measurement. The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Believability read because the source status is degraded.\n\nLimit: Current finding withheld: upstream status is abstain A divergence outside the historical band shows a relationship moved; it does not by itself establish fabrication.\n\nEvidence: https://palimpsest.info/readings/believability-latest.json",
+      "title": "[Palimpsest availability] Believability read: no current finding",
+      "summary": "Palimpsest availability notice. The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Believability read because the source status is degraded.\n\nLimit: Current finding withheld: upstream status is abstain A divergence outside the historical band shows a relationship moved; it does not by itself establish fabrication.\n\nEvidence: https://palimpsest.info/readings/believability-latest.json",
       "date_published": "2026-08-18T07:23:09Z",
       "date_modified": "2026-08-18T07:23:09Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Economic Undertext",
         "believability",
         "degraded"
@@ -1051,22 +1067,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-51de754cf356ac0dcec34537",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:generative-firewall:sha256:0bfa3b14c7c791752ef73fc9b37fd6e3bd1d1630a585f16a73ef961d77358116",
       "url": "https://palimpsest.info/news/generative-firewall-index/",
       "external_url": "https://palimpsest.info/readings/latest.json",
-      "title": "[Palimpsest measurement] Generative Firewall Index: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Generative Firewall Index because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index describes a fixed prompt-and-model evaluation grid; it does not generalize to every prompt, language or deployment route.\n\nEvidence: https://palimpsest.info/readings/latest.json",
+      "title": "[Palimpsest availability] Generative Firewall Index: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Generative Firewall Index because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index describes a fixed prompt-and-model evaluation grid; it does not generalize to every prompt, language or deployment route.\n\nEvidence: https://palimpsest.info/readings/latest.json",
       "date_published": "2026-08-23T08:02:43Z",
       "date_modified": "2026-08-23T08:02:43Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Generative Firewall",
         "generative-firewall",
         "stale"
@@ -1080,22 +1096,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-fb9e32bed7c14eba1d54405d",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:anchors:sha256:07714d3d014babd2730fe80391db82a00a1df81bc4cd55c0f0533c73dcb6fdef",
       "url": "https://palimpsest.info/news/integrity-anchors/",
       "external_url": "https://palimpsest.info/readings/anchors-latest.json",
-      "title": "[Palimpsest measurement] Integrity anchors: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Integrity anchors because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim.\n\nEvidence: https://palimpsest.info/readings/anchors-latest.json",
+      "title": "[Palimpsest availability] Integrity anchors: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Integrity anchors because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim.\n\nEvidence: https://palimpsest.info/readings/anchors-latest.json",
       "date_published": "2026-08-24T16:50:02Z",
       "date_modified": "2026-08-24T16:50:02Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Integrity and Witnessing",
         "anchors",
         "stale"
@@ -1109,22 +1125,22 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-c14aa7c75c4c8f9b8709fc1d",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     },
     {
       "id": "palimpsest-news:nemesis:sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "external_url": "https://palimpsest.info/readings/nemesis-latest.json",
-      "title": "[Palimpsest measurement] Private runtime bridge: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Private runtime bridge because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed This deployment-dependent export supplies analytical leads, not independently verified public-source findings.\n\nEvidence: https://palimpsest.info/readings/nemesis-latest.json",
+      "title": "[Palimpsest availability] Private runtime bridge: no current finding",
+      "summary": "Palimpsest availability notice. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST AVAILABILITY\n\nAvailability: No current finding is published for Private runtime bridge because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed This deployment-dependent export supplies analytical leads, not independently verified public-source findings.\n\nEvidence: https://palimpsest.info/readings/nemesis-latest.json",
       "date_published": "2026-08-26T07:14:16Z",
       "date_modified": "2026-08-26T07:14:16Z",
       "tags": [
-        "palimpsest-measurement",
+        "palimpsest-availability",
         "Intelligence Bridge",
         "nemesis",
         "stale"
@@ -1138,9 +1154,9 @@
         }
       ],
       "_palimpsest": {
-        "kind": "instrument_measurement",
+        "kind": "instrument_availability",
         "revision_id": "storyv-2051a24d18fcc359a60b2630",
-        "verification_status": "palimpsest_measurement"
+        "verification_status": "current_result_unavailable"
       }
     }
   ]

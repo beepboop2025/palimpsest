@@ -215,7 +215,7 @@ def test_forgery_inside_one_asn_is_not_published_as_blocked():
     create, collect = _stub_asn(TRUTH, [(45090, ["4.36.66.178"]),
                                         (45090, ["64.33.88.161"]),
                                         (45090, ["203.161.230.171"])])
-    o = observe_domain(CENSORED, create=create, collect=collect)
+    o = observe_domain(CENSORED, create=create, collect=collect, resolve=_fake_owner)
     v = regional_divergence(o)
     assert v["verdict"] == "SINGLE_OPERATOR"
     assert "45090" in v["detail"]
@@ -224,7 +224,7 @@ def test_forgery_inside_one_asn_is_not_published_as_blocked():
 def test_forgery_across_two_asns_is_uniform_blocked():
     create, collect = _stub_asn(TRUTH, [(45090, ["4.36.66.178"]),
                                         (37963, ["64.33.88.161"])])
-    o = observe_domain(CENSORED, create=create, collect=collect)
+    o = observe_domain(CENSORED, create=create, collect=collect, resolve=_fake_owner)
     assert regional_divergence(o)["verdict"] == "UNIFORM_BLOCKED"
 
 
@@ -232,7 +232,7 @@ def test_a_regional_split_still_reports_regional_within_one_asn():
     """The single-operator guard applies to unanimous forgery. A split is
     informative regardless of ASN width and must not be suppressed."""
     create, collect = _stub_asn(TRUTH, [(45090, ["4.36.66.178"]), (45090, TRUTH)])
-    o = observe_domain(CENSORED, create=create, collect=collect)
+    o = observe_domain(CENSORED, create=create, collect=collect, resolve=_fake_owner)
     assert regional_divergence(o)["verdict"] == "REGIONAL"
 
 

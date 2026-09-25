@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from core import event_analysis
+from scripts import build_china_situation as china_situation_builder
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -170,7 +171,10 @@ def inputs():
 @pytest.fixture(scope="module")
 def analyses(inputs):
     wire, feed = inputs
-    return event_analysis.build_event_analyses(wire, feed)
+    analysis_feed, allow_missing = china_situation_builder._analysis_feed_for_publication(feed)
+    return event_analysis.build_event_analyses(
+        wire, analysis_feed, allow_missing_collectors=allow_missing
+    )
 
 
 def test_every_wire_event_gets_exactly_one_content_addressed_assessment(
