@@ -49,8 +49,8 @@ def test_eval_gate_failure_prevents_catalog_and_sealing(tmp_path, failure):
         assert calls[:8] == [
             ["-m", "scripts.build_eval_assurance"],
             ["-m", "scripts.build_eval_assurance", "--check"],
-            ["-m", "scripts.build_eval_findings"],
-            ["-m", "scripts.build_eval_findings", "--check"],
+            ["-m", "scripts.build_eval_findings", "--publication-time", "2026-09-14T08:24:21Z"],
+            ["-m", "scripts.build_eval_findings", "--check", "--publication-time", "2026-09-14T08:24:21Z"],
             ["-m", "scripts.sync_nav"],
             ["-m", "scripts.sync_nav", "--check"],
             ["-m", "scripts.build_eval_journal"],

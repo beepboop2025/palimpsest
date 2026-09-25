@@ -190,6 +190,44 @@ def test_builder_is_stable_and_links_a_changed_revision():
     assert new_article["published_at"] == old_article["published_at"]
 
 
+def test_editorial_revision_keeps_historical_measurement_clock():
+    sources = _sources_with_failed_prior()
+    before = copy.deepcopy(sources)
+    first = eval_articles.build_collection(
+        sources, prior={}, publication_time="2026-09-24T08:00:00Z"
+    )
+    changed_sources = copy.deepcopy(sources)
+    changed_sources["previous_failed_full_sweep"]["models"]["mistralai/mistral-nemo"]["arm_refusal_rate_pct"] = 3.1
+    changed = eval_articles.build_collection(
+        changed_sources, prior=first, publication_time="2026-09-25T06:30:00Z"
+    )
+    old_article = _article(first, "before-reading-the-score-read-the-controls")
+    new_article = _article(changed, "before-reading-the-score-read-the-controls")
+    assert changed["generated_at"] == sources["reading"]["generated_at"]
+    assert changed["input_receipts"] == first["input_receipts"]
+    assert new_article["published_at"] == old_article["published_at"]
+    assert new_article["updated_at"] == "2026-09-25T06:30:00Z"
+    assert new_article["previous_revision_id"] == old_article["revision_id"]
+    assert sources == before
+    assert eval_articles.build_collection(
+        changed_sources, prior=changed, publication_time="2026-09-26T06:30:00Z"
+    ) == changed
+
+
+def test_publication_clock_cannot_backdate_a_changed_article():
+    sources = _sources_with_failed_prior()
+    first = eval_articles.build_collection(
+        sources, prior={}, publication_time="2026-09-24T08:00:00Z"
+    )
+    sources["previous_failed_full_sweep"]["models"]["mistralai/mistral-nemo"]["arm_refusal_rate_pct"] = 3.1
+    with pytest.raises(eval_articles.EvalArticleError, match="publication time predates"):
+        eval_articles.build_collection(
+            sources, prior=first, publication_time="2026-09-23T08:00:00Z"
+        )
+    with pytest.raises(eval_articles.EvalArticleError, match="publication time predates"):
+        eval_articles.build_collection(sources, prior={}, publication_time="2000-01-01T00:00:00Z")
+
+
 def test_clean_nearest_sweep_does_not_hide_the_latest_failed_sweep():
     sources = _sources_with_failed_prior()
 
