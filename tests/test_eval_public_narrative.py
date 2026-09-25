@@ -12,7 +12,7 @@ def _text(relative: str) -> str:
     return (ROOT / relative).read_text(encoding="utf-8")
 
 
-def test_founder_origin_is_visible_on_the_main_eval_and_funding_surfaces():
+def test_evaluation_method_is_visible_on_the_main_eval_and_funding_surfaces():
     for relative in (
         "index.html",
         "fund.html",
@@ -20,8 +20,8 @@ def test_founder_origin_is_visible_on_the_main_eval_and_funding_surfaces():
         "readings/eval-registry.html",
     ):
         text = _text(relative).lower()
-        assert "founder" in text, relative
-        assert "chinese communist party" in text, relative
+        assert "palimpsest" in text and "declared" in text, relative
+        assert "/readings/eval-assurance-latest.json" in text, relative
         assert "screenshot" in text, relative
 
 
@@ -58,7 +58,7 @@ def test_core_eval_copy_does_not_turn_observation_into_motive_or_population_clai
             assert claim not in text, f"{relative}: {claim}"
 
 
-def test_homepage_structured_data_remains_valid_and_carries_the_scoped_origin():
+def test_homepage_structured_data_remains_valid_and_carries_evaluation_limits():
     html = _text("index.html")
     blocks = re.findall(
         r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
@@ -71,8 +71,9 @@ def test_homepage_structured_data_remains_valid_and_carries_the_scoped_origin():
     answers = " ".join(
         item["acceptedAnswer"]["text"] for item in faq["mainEntity"]
     ).lower()
-    assert "chinese communist party" in answers
-    assert "does not prove motive" in answers
+    assert "declared prompts, languages and controls" in answers
+    assert "tested models and dates" in answers
+    assert "does not establish a pattern or motive" in answers
 
 
 def test_grant_case_exposes_falsifiers_and_the_current_claim_ceiling():

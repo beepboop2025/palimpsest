@@ -150,8 +150,17 @@ def build_public_catalog(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--now", help="Timezone-aware publication clock for deterministic replay")
     args = parser.parse_args(argv)
-    now = datetime.now(timezone.utc)
+    now = atlas._utc_now()
+    if args.now is not None:
+        try:
+            now = datetime.fromisoformat(args.now.replace("Z", "+00:00"))
+        except ValueError:
+            parser.error("--now must be a valid ISO-8601 timestamp")
+        if now.tzinfo is None or now.utcoffset() is None:
+            parser.error("--now must include a timezone")
+        now = now.astimezone(timezone.utc)
     scan_cache: dict[tuple, bool] = {}
     catalog = build_public_catalog(now=now, _scan_cache=scan_cache)
     from processors.collector_health import build_health

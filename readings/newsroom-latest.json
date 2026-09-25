@@ -2,7 +2,7 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: no signal exceeds its own history beyond what chance explains. 39 of 39 configured sources report; 6 are live. Health qualifiers: 2 degraded, 31 stale.",
+  "headline": "Public-value availability is restricted under source policy",
   "url": "https://palimpsest.info/news/",
   "generated_at": "2026-08-30T07:32:14Z",
   "n_stories": 39,
@@ -13,12 +13,12 @@
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 6,
+    "live": 1,
     "status": "degraded",
     "counts": {
-      "live": 6,
-      "degraded": 2,
-      "stale": 31,
+      "live": 1,
+      "degraded": 10,
+      "stale": 28,
       "missing": 0,
       "corrupt": 0
     }
@@ -79,20 +79,20 @@
       "slug": "board-alarm",
       "url": "https://palimpsest.info/news/board-alarm/",
       "signal_id": "board-alarm",
-      "headline": "No signal clears the board's historical-elevation threshold",
-      "dek": "The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
+      "headline": "Board alarm: public value unavailable",
+      "dek": "This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
       "section": "command",
       "order": 1,
       "type": "analysis",
       "priority": "lead",
-      "status": "live",
-      "published_at": "2026-08-30T07:32:12Z",
-      "modified_at": "2026-08-30T07:32:12Z",
-      "claim_fingerprint": "sha256:809745538a5564dde9507b767f41e52e56944a63318e4afc8cce34c0027cf23f",
+      "status": "degraded",
+      "published_at": "2026-08-30T07:32:14Z",
+      "modified_at": "2026-08-30T07:32:14Z",
+      "claim_fingerprint": "sha256:b68ababaa70540b85933d24f5a68f022dab6c0074f02c8b881f8817e507d5cca",
       "metric": {
-        "label": "board e-value",
-        "value": 1.18,
-        "unit": "e-value",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -100,25 +100,26 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "Upstream board reports: no signal exceeds its own history beyond what chance explains. 39 of 39 configured sources report; 6 are live. Health qualifiers: 2 degraded, 31 stale. The board-wide e-value is 1.18; the predeclared board alarm threshold is 20."
+          "type": "availability",
+          "statement": "No current finding is published for Board alarm because public value publication is restricted by the active source policy."
         }
       ],
       "evidence": {
-        "url": "https://palimpsest.info/readings/board-alarm-latest.json",
+        "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
         "input": {
           "filename": "board-alarm-latest.json",
-          "sha256": "009552238ba179c38f0938cdd458cd72af21a8c3f87fc145aaa897315b3b90ec",
-          "bytes": 8275
+          "sha256": null,
+          "bytes": null
         },
-        "source_timestamp": "2026-08-30T07:32:12Z"
+        "source_timestamp": null
       },
       "method": {
-        "summary": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
-        "version": null
+        "summary": "Availability-only public projection under the active China economic source policy",
+        "version": 1
       },
       "limitations": [
-        "A merged e-value measures evidence against no change; it does not identify a common cause for co-movement."
+        "Current finding withheld: public value publication is restricted",
+        "Availability is not a zero, a normal reading, or evidence of direction."
       ],
       "related_signal_ids": [
         "event-flags",
@@ -131,46 +132,47 @@
       "slug": "event-flags",
       "url": "https://palimpsest.info/news/event-flags/",
       "signal_id": "event-flags",
-      "headline": "1 of 15 configured signals are reporting to the event board",
-      "dek": "The event layer keeps non-reporting and stale series visible instead of reading absence as calm.",
+      "headline": "Event flags: public value unavailable",
+      "dek": "This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
       "section": "command",
       "order": 2,
       "type": "methodology",
       "priority": "high",
-      "status": "live",
-      "published_at": "2026-08-30T07:32:12Z",
-      "modified_at": "2026-08-30T07:32:12Z",
-      "claim_fingerprint": "sha256:5af033e30b8af4e5c97495fda63a2af2d5aac110a9bf7e84b5fc07099c3fe125",
+      "status": "degraded",
+      "published_at": "2026-08-30T07:32:14Z",
+      "modified_at": "2026-08-30T07:32:14Z",
+      "claim_fingerprint": "sha256:f87dfcf4775541f4e338e3d9cfae62d09636b9b217cbac7d51bdeb01579a51da",
       "metric": {
-        "label": "signals reporting",
-        "value": 1,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "signals configured",
-          "value": 15
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "1 signals are reporting out of 15 configured signals in the current event-flags reading."
+          "type": "availability",
+          "statement": "No current finding is published for Event flags because public value publication is restricted by the active source policy."
         }
       ],
       "evidence": {
-        "url": "https://palimpsest.info/readings/event-flags-latest.json",
+        "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
         "input": {
           "filename": "event-flags-latest.json",
-          "sha256": "c2d44f6fdaa35898aa56b0061b1fabe07b0b40def1f78e511fcb0b0859c75f04",
-          "bytes": 5861
+          "sha256": null,
+          "bytes": null
         },
-        "source_timestamp": "2026-08-30T07:32:12Z"
+        "source_timestamp": null
       },
       "method": {
-        "summary": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
-        "version": null
+        "summary": "Availability-only public projection under the active China economic source policy",
+        "version": 1
       },
       "limitations": [
-        "Each detector is calibrated to its own history, so equal event values do not imply equal wall-clock rarity."
+        "Current finding withheld: public value publication is restricted",
+        "Availability is not a zero, a normal reading, or evidence of direction."
       ],
       "related_signal_ids": [
         "board-alarm",
@@ -183,20 +185,20 @@
       "slug": "coverage-guard",
       "url": "https://palimpsest.info/news/coverage-guard/",
       "signal_id": "coverage-guard",
-      "headline": "Coverage changes confound 0 current signal",
-      "dek": "The guard withholds a censorship interpretation when movement can be explained by a changing measurement base.",
+      "headline": "Coverage guard: public value unavailable",
+      "dek": "This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
       "section": "command",
       "order": 3,
       "type": "methodology",
       "priority": "high",
-      "status": "live",
-      "published_at": "2026-08-30T07:32:12Z",
-      "modified_at": "2026-08-30T07:32:12Z",
-      "claim_fingerprint": "sha256:00ce2857f7b3d161951c22846e1b4ef3ffb18ed26b896aad05369cf445534aa3",
+      "status": "degraded",
+      "published_at": "2026-08-30T07:32:14Z",
+      "modified_at": "2026-08-30T07:32:14Z",
+      "claim_fingerprint": "sha256:de11055e5a8c701b9ad01c67dcf76cd2c0fe299577c94318cab7b0b9bded3290",
       "metric": {
-        "label": "confounded signals",
-        "value": 0,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -204,25 +206,26 @@
       },
       "claims": [
         {
-          "type": "method",
-          "statement": "The current coverage audit marks 0 signal as confounded by its measurement coverage."
+          "type": "availability",
+          "statement": "No current finding is published for Coverage guard because public value publication is restricted by the active source policy."
         }
       ],
       "evidence": {
-        "url": "https://palimpsest.info/readings/coverage-guard-latest.json",
+        "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
         "input": {
           "filename": "coverage-guard-latest.json",
-          "sha256": "287abe9b2b5d7038bdaeb102e89573687d3ef927b7db373a192ed04a60167c3c",
-          "bytes": 4327
+          "sha256": null,
+          "bytes": null
         },
-        "source_timestamp": "2026-08-30T07:32:12Z"
+        "source_timestamp": null
       },
       "method": {
-        "summary": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
-        "version": null
+        "summary": "Availability-only public projection under the active China economic source policy",
+        "version": 1
       },
       "limitations": [
-        "A coverage-confounded signal is inconclusive about substantive change, not evidence that no change occurred."
+        "Current finding withheld: public value publication is restricted",
+        "Availability is not a zero, a normal reading, or evidence of direction."
       ],
       "related_signal_ids": [
         "board-alarm",
@@ -235,46 +238,47 @@
       "slug": "forecast-ledger",
       "url": "https://palimpsest.info/news/forecast-ledger/",
       "signal_id": "forecast-ledger",
-      "headline": "Forecast bands covered 84.4% of 1,606 scored readings",
-      "dek": "Prequential scoring shows whether the observatory's uncertainty bands remain calibrated over time.",
+      "headline": "Forecast ledger: public value unavailable",
+      "dek": "This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
       "section": "command",
       "order": 4,
       "type": "methodology",
       "priority": "standard",
-      "status": "live",
-      "published_at": "2026-08-30T07:32:12Z",
-      "modified_at": "2026-08-30T07:32:12Z",
-      "claim_fingerprint": "sha256:d5d1947e597c598efee43ff304845c9f3e7c41dd2436ce8b654e31a3f1d4bb7d",
+      "status": "degraded",
+      "published_at": "2026-08-30T07:32:14Z",
+      "modified_at": "2026-08-30T07:32:14Z",
+      "claim_fingerprint": "sha256:17faf13baa988b683d6f6a3d565f44baf9d663765d6e743b5de4ce0238d60e20",
       "metric": {
-        "label": "empirical coverage",
-        "value": 0.844,
-        "unit": "ratio",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "forecasts",
-          "value": 1606
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "method",
-          "statement": "Empirical forecast coverage is 84.4% across 1,606 scored forecasts."
+          "type": "availability",
+          "statement": "No current finding is published for Forecast ledger because public value publication is restricted by the active source policy."
         }
       ],
       "evidence": {
-        "url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
+        "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
         "input": {
           "filename": "forecast-ledger-latest.json",
-          "sha256": "92dd686d31a4e373b86f2dbc7165a78a9e31c5c1ba7ede6b0cd946ac2fc68bd8",
-          "bytes": 13969
+          "sha256": null,
+          "bytes": null
         },
-        "source_timestamp": "2026-08-30T07:32:12Z"
+        "source_timestamp": null
       },
       "method": {
-        "summary": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
-        "version": null
+        "summary": "Availability-only public projection under the active China economic source policy",
+        "version": 1
       },
       "limitations": [
-        "Calibration describes aggregate historical coverage and does not guarantee that any one next reading falls inside its band."
+        "Current finding withheld: public value publication is restricted",
+        "Availability is not a zero, a normal reading, or evidence of direction."
       ],
       "related_signal_ids": [
         "event-flags",
@@ -286,46 +290,47 @@
       "slug": "cross-layer-lead-lag",
       "url": "https://palimpsest.info/news/cross-layer-lead-lag/",
       "signal_id": "cross-layer",
-      "headline": "0 cross-layer relationships are confirmed across 9 eligible tests",
-      "dek": "Pairs enter testing only after enough overlapping history exists; an empty test set is a warm-up state, not a null result.",
+      "headline": "Cross-layer comparison: public value unavailable",
+      "dek": "This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
       "section": "command",
       "order": 5,
       "type": "methodology",
       "priority": "background",
-      "status": "live",
-      "published_at": "2026-08-30T07:32:12Z",
-      "modified_at": "2026-08-30T07:32:12Z",
-      "claim_fingerprint": "sha256:0f13b88ae8d9b076d69bf7a966d1b5bb3e51b6b80b8928661aba7a7996d0f4fc",
+      "status": "degraded",
+      "published_at": "2026-08-30T07:32:14Z",
+      "modified_at": "2026-08-30T07:32:14Z",
+      "claim_fingerprint": "sha256:ec80769884d9b0b3202b89f75902538d9fad1e60bb02171f1fded20aeed33320",
       "metric": {
-        "label": "confirmed pairs",
-        "value": 0,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "pairs tested",
-          "value": 9
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "method",
-          "statement": "0 cross-layer pairs are confirmed among 9 pairs with enough shared history to test."
+          "type": "availability",
+          "statement": "No current finding is published for Cross-layer comparison because public value publication is restricted by the active source policy."
         }
       ],
       "evidence": {
-        "url": "https://palimpsest.info/readings/cross-layer-latest.json",
+        "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
         "input": {
           "filename": "cross-layer-latest.json",
-          "sha256": "047af6063df77ce866635a85494e1e151d400d70f865b2a410ba416c887af12d",
-          "bytes": 10602
+          "sha256": null,
+          "bytes": null
         },
-        "source_timestamp": "2026-08-30T07:32:12Z"
+        "source_timestamp": null
       },
       "method": {
-        "summary": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
+        "summary": "Availability-only public projection under the active China economic source policy",
         "version": 1
       },
       "limitations": [
-        "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another."
+        "Current finding withheld: public value publication is restricted",
+        "Availability is not a zero, a normal reading, or evidence of direction."
       ],
       "related_signal_ids": [
         "forecast-ledger",
@@ -1713,16 +1718,16 @@
       "slug": "china-money-market-benchmarks",
       "url": "https://palimpsest.info/news/china-money-market-benchmarks/",
       "signal_id": "china-econ",
-      "headline": "China money-market benchmarks: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "China money-market benchmarks: public value unavailable",
+      "dek": "This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
       "section": "economy",
       "order": 1,
       "type": "measurement",
       "priority": "standard",
-      "status": "stale",
-      "published_at": "2026-08-23T01:47:39Z",
-      "modified_at": "2026-08-23T01:47:39Z",
-      "claim_fingerprint": "sha256:1d91487d1aeb7b0e73f9ee6c5b3a260275fc73cc426a0f287505c815d68b3de1",
+      "status": "degraded",
+      "published_at": "2026-08-30T07:32:14Z",
+      "modified_at": "2026-08-30T07:32:14Z",
+      "claim_fingerprint": "sha256:4bc46bce1fabf0968ad38c7817d812f90a879765b9ebda4c69bb3d6892c421f2",
       "metric": {
         "label": null,
         "value": null,
@@ -1735,25 +1740,25 @@
       "claims": [
         {
           "type": "availability",
-          "statement": "No current finding is published for China money-market benchmarks because the source status is stale."
+          "statement": "No current finding is published for China money-market benchmarks because public value publication is restricted by the active source policy."
         }
       ],
       "evidence": {
-        "url": "https://palimpsest.info/readings/china-econ-latest.json",
+        "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
         "input": {
           "filename": "china-econ-latest.json",
-          "sha256": "e3ac508c1fee7acedfe03405f9cd757957b99ec4ad9227be8edea28aac3aa579",
-          "bytes": 739
+          "sha256": null,
+          "bytes": null
         },
-        "source_timestamp": "2026-08-23T01:47:39Z"
+        "source_timestamp": null
       },
       "method": {
-        "summary": "See the complete embedded upstream payload and its raw feed",
-        "version": 3
+        "summary": "Availability-only public projection under the active China economic source policy",
+        "version": 1
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
-        "Official benchmark levels are state-published inputs; interpreting policy requires relationships and history, not one level."
+        "Current finding withheld: public value publication is restricted",
+        "Availability is not a zero, a normal reading, or evidence of direction."
       ],
       "related_signal_ids": [
         "cny-fix-gap",
@@ -1767,16 +1772,16 @@
       "slug": "cny-fix-gap",
       "url": "https://palimpsest.info/news/cny-fix-gap/",
       "signal_id": "cny-fix-gap",
-      "headline": "CNY fix gap: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "Yuan-fix comparison: public value unavailable",
+      "dek": "This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
       "section": "economy",
       "order": 2,
       "type": "measurement",
       "priority": "high",
-      "status": "stale",
-      "published_at": "2026-08-23T17:27:00Z",
-      "modified_at": "2026-08-23T17:27:00Z",
-      "claim_fingerprint": "sha256:f0054990170a4e2ad21ecb3bd7acf2d3290d0ce72dc1d9f3081fa19bd76c41b7",
+      "status": "degraded",
+      "published_at": "2026-08-30T07:32:14Z",
+      "modified_at": "2026-08-30T07:32:14Z",
+      "claim_fingerprint": "sha256:fbbfca9454b0ad579c0bce837edfaa3df5e1b1b16311a62731b6f235a70d777f",
       "metric": {
         "label": null,
         "value": null,
@@ -1789,25 +1794,25 @@
       "claims": [
         {
           "type": "availability",
-          "statement": "No current finding is published for CNY fix gap because the source status is stale."
+          "statement": "No current finding is published for Yuan-fix comparison because public value publication is restricted by the active source policy."
         }
       ],
       "evidence": {
-        "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
+        "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
         "input": {
           "filename": "cny-fix-gap-latest.json",
-          "sha256": "8a2114ec59b319bf7bcced76520f59786e4cff226af29854f4f2bf719f1123b8",
-          "bytes": 1434
+          "sha256": null,
+          "bytes": null
         },
-        "source_timestamp": "2026-08-23T17:27:00Z"
+        "source_timestamp": null
       },
       "method": {
-        "summary": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
+        "summary": "Availability-only public projection under the active China economic source policy",
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
-        "The comparison is onshore and same-day but not simultaneous; it is economic context, not direct evidence of censorship."
+        "Current finding withheld: public value publication is restricted",
+        "Availability is not a zero, a normal reading, or evidence of direction."
       ],
       "related_signal_ids": [
         "china-econ",
@@ -1872,16 +1877,16 @@
       "slug": "official-data-darkness",
       "url": "https://palimpsest.info/news/official-data-darkness/",
       "signal_id": "data-darkness",
-      "headline": "Official-data darkness: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "Official-data availability: public value unavailable",
+      "dek": "This route remains available, but its current result is withheld until the source policy records an effective public-value grant.",
       "section": "economy",
       "order": 4,
       "type": "analysis",
       "priority": "high",
-      "status": "stale",
-      "published_at": "2026-08-23T10:32:44Z",
-      "modified_at": "2026-08-23T10:32:44Z",
-      "claim_fingerprint": "sha256:0b041b3529018c1ffc1dc78c1516d4244abbe9831be11cc783f6a7111f3bc7a6",
+      "status": "degraded",
+      "published_at": "2026-08-30T07:32:14Z",
+      "modified_at": "2026-08-30T07:32:14Z",
+      "claim_fingerprint": "sha256:6f34e7260bd405cf4a683b688f596fe29170f3208d9a585bb57846958e2fd35d",
       "metric": {
         "label": null,
         "value": null,
@@ -1894,25 +1899,25 @@
       "claims": [
         {
           "type": "availability",
-          "statement": "No current finding is published for Official-data darkness because the source status is stale."
+          "statement": "No current finding is published for Official-data availability because public value publication is restricted by the active source policy."
         }
       ],
       "evidence": {
-        "url": "https://palimpsest.info/readings/data-darkness-latest.json",
+        "url": "https://palimpsest.info/readings/china-publication-rights-latest.json",
         "input": {
           "filename": "data-darkness-latest.json",
-          "sha256": "28966221cc28b86763a0d977559f3992bc6401ad120881aa4f13b169286a03de",
-          "bytes": 3882
+          "sha256": null,
+          "bytes": null
         },
-        "source_timestamp": "2026-08-23T10:32:44Z"
+        "source_timestamp": null
       },
       "method": {
-        "summary": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
+        "summary": "Availability-only public projection under the active China economic source policy",
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
-        "Publication delay, calendar changes and collection failure can resemble withholding; per-series state is required for interpretation."
+        "Current finding withheld: public value publication is restricted",
+        "Availability is not a zero, a normal reading, or evidence of direction."
       ],
       "related_signal_ids": [
         "china-econ",

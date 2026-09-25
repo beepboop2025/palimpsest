@@ -98,7 +98,12 @@ _SINKS = re.compile(
 #   build_pages_binary_allowlist.py: invokes only absolute /usr/bin/git with a
 #   fixed ls-files argv to enumerate the local publication tree. Stdin is
 #   closed, replacement objects are disabled, and no evidence bytes enter argv.
+#   railway_osint_sync.py: fixed Git object/bundle operations run without a shell
+#   in a private proof repository. Hooks, replacement objects and network Git
+#   transports are disabled; argv uses validated object IDs and controlled local
+#   paths, stdin is closed, output is bounded, and credentials are not inherited.
 _ALLOWED = {
+    ("ops/osint-sync/railway_osint_sync.py", "subprocess."),
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
     ("ops/mcp-deploy/verify_release.py", "subprocess."),

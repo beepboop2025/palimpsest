@@ -827,8 +827,10 @@ def test_hetzner_services_are_unprivileged_local_only_and_state_separated():
         assert "ExecStartPre=/usr/bin/cmp -s" in service
         assert "/etc/palimpsest/deployed-commit" in service
         if service is context_service:
-            assert "archive-news-context.last-attempt.json" in service
-            assert "revision_pin" in service
+            assert "ExecStartPre=/usr/bin/python3 -B /usr/local/libexec/palimpsest-common-crawl/current/record-context-attempt.py" in service
+            attempt = (ROOT / "ops/common-crawl/record-context-attempt.py").read_text()
+            assert "archive-news-context.last-attempt.json" in attempt
+            assert "revision_pin" in attempt
         assert "RequiresMountsFor=/var/lib/palimpsest/common-crawl" in service
         assert "ProtectSystem=strict" in service
         assert "ProtectHome=true" in service

@@ -4457,7 +4457,7 @@ fi
 "$PYTHON_BIN" -m scripts.build_eval_journal --check
 "$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"
 "$PYTHON_BIN" -m scripts.build_data_catalog --check
-"$PYTHON_BIN" -m scripts.build_public_data_catalog
+"$PYTHON_BIN" -m scripts.build_public_data_catalog --now "$aggregate_clock"
 # Public catalog generation also writes collector-health. Refresh the atlas's
 # metadata against those final bytes using the same publication clock.
 "$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"

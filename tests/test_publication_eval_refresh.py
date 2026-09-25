@@ -57,6 +57,7 @@ def test_eval_gate_failure_prevents_catalog_and_sealing(tmp_path, failure):
             ["-m", "scripts.build_eval_journal", "--check"],
         ]
         assert calls[-1] == ["scripts/seal_readings.py", "--check"]
+        assert ["-m", "scripts.build_public_data_catalog", "--now", "2026-09-14T08:24:21Z"] in calls
 
 
 def test_host_overlay_preserves_reviewed_registry_html_and_live_json(tmp_path):

@@ -748,6 +748,9 @@ EXCLUDED_LATEST_FILES = frozenset(
         "china-external-accounts-latest.json",
         "china-economic-analysis-latest.json",
         "connected-research-latest.json",
+        # Discovery catalogs describe existing feeds; they are not new signals.
+        "research-catalog-latest.json",
+        "public-data-catalog-latest.json",
         "regional-economic-context-latest.json",
         "regional-research-wire-latest.json",
         "china-article-stream-latest.json",

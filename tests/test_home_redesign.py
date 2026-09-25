@@ -38,7 +38,8 @@ def test_home_has_one_heading_and_clear_publication_routes():
     for route in ("/china/evidence/", "/china/economy/", "/research/markets/", "/research/connected/"):
         assert f'href="{route}"' in page
     assert "Not a newspaper" in page
-    assert "AI assistance, named" in page
+    assert "Evidence and review" in page
+    assert "machine-authored text and human review" in page
     assert 'id="main"' in page
     assert 'class="ps home"' in page
     assert 'rel="icon" type="image/svg+xml"' in page

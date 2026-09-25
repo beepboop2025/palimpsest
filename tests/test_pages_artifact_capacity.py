@@ -6,7 +6,7 @@ import json
 import os
 import subprocess
 import tarfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -20,7 +20,12 @@ EVENT = "event-" + "a" * 24
 CURRENT_ANALYSIS = "analysisv-" + "b" * 24
 OLD_ANALYSIS = "analysisv-" + "c" * 24
 EVENT_REVISION = "eventv-" + "d" * 24
-RIGHTS_CLOCK = datetime(2026, 8, 26, 0, 0, tzinfo=UTC)
+# Evaluate the unchanged committed fixture bytes at a deterministic time after
+# both aggregates exist. A refreshed fixture must never require backdating data.
+RIGHTS_CLOCK = max(
+    datetime.fromisoformat(json.loads((capacity.ROOT / path).read_bytes())["generated_at"].replace("Z", "+00:00"))
+    for path in (pages_rights.NEWSWIRE_RELATIVE_PATH, pages_rights.CHINA_SITUATION_RELATIVE_PATH)
+) + timedelta(minutes=1)
 
 
 def _git(repo: Path, *arguments: str) -> str:
