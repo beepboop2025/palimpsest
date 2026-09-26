@@ -233,7 +233,7 @@ def test_fetch_rejects_unapproved_urls_before_open(monkeypatch):
             adapter.fetch_public(url, "a" * 40)
 
 
-def successor(f, *, ledger=None, predecessor=True):
+def successor(f, *, ledger=None, predecessor=True, extra_files=None):
     """Publish an independently generated branch from the same source base."""
     prior = (f["config"].publication / "latest-success.json").read_bytes()
     prior_receipt = json.loads(prior)
@@ -246,6 +246,10 @@ def successor(f, *, ledger=None, predecessor=True):
     value["signals"][0]["value"] = 1.25
     fixtures._git(f["source"], "checkout", "-B", "next-edition", f["base_sha"])
     ledger = ledger or fixtures._append_seal(f["first_ledger"], value, 1)
+    for name, raw in (extra_files or {}).items():
+        path = f["source"] / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
     release = fixtures._write_publication(f["source"], value, ledger, "next independent publication")
     f["second_artifact"] = (f["source"] / legacy.OSINT_REPOSITORY_PATH).read_bytes()
     f["second_ledger"] = ledger
@@ -259,7 +263,7 @@ def successor(f, *, ledger=None, predecessor=True):
     manifest_raw = public["payloads"][legacy.PUBLIC_MANIFEST_URL]
     manifest_path = f["config"].publication / "release-manifests" / (release + ".json")
     manifest_path.write_bytes(manifest_raw)
-    receipt = dict(prior_receipt, release_sha=release, recorded_at="2026-08-14T01:25:00Z")
+    receipt = dict(prior_receipt, base_sha=f["base_sha"], release_sha=release, recorded_at="2026-08-14T01:25:00Z")
     receipt["release_bundle"] = {k: v for k, v in metadata.items() if k != "status"}
     receipt["release_bundle"].update(metadata_path=str(bundle.with_suffix(".json")), metadata_sha256=legacy._sha256(bundle.with_suffix(".json").read_bytes()))
     receipt["live_manifest"] = {"path": str(manifest_path), "bytes": len(manifest_raw), "sha256": legacy._sha256(manifest_raw), **{k: public["manifest"][k] for k in ("tree_sha256", "file_count", "total_bytes")}}
@@ -333,6 +337,75 @@ def test_publication_branch_cannot_rewrite_source_base_ledger(tmp_path):
     successor(f, ledger=fixtures._append_seal(wrong_base, next_value, 1))
     before = snapshot(f)
     with pytest.raises(legacy.SyncFailure, match="candidate-base-ledger-prefix-invalid"):
+        adapter.synchronize(f["config"], fetcher=f["fetch"])
+    assert snapshot(f) == before
+
+
+def admitted_successor(tmp_path, monkeypatch, tamper=None):
+    """A real bundled release retains two valid branches and a fixed repair."""
+    f = build(tmp_path)
+    adapter.synchronize(f["config"], fetcher=f["fetch"])
+    source_commit = f["base_sha"]
+    host = f["second_ledger"]
+    fork_doc = json.loads(f["second_artifact"])
+    fork_doc["signals"][0]["value"] = 777
+    fork = fixtures._append_seal(f["first_ledger"], fork_doc, 1)
+    fixtures._git(f["source"], "checkout", "-B", "reviewed-build", source_commit)
+    f["base_sha"] = fixtures._write_publication(f["source"], fork_doc, fork, "reviewed build fork")
+    spec = {"target_sha256": legacy._sha256(fork), "target_entries": 2,
+            "host_prefix_sha256": legacy._sha256(host), "host_prefix_entries": 2,
+            "common_entries": 1, "source_commit": source_commit}
+    monkeypatch.setattr(adapter, "REVIEWED_FORK", spec)
+    host_tip = json.loads(host.splitlines()[-1])
+    proof = {"schema": "palimpsest.publication-ledger-admission.v1",
+             "method": "retain-exact-collector-chain-and-archive-reviewed-build-fork",
+             "historical_records_rewritten": False, "derived_readings_require_final_sealing": True,
+             "reviewed_source_commit": source_commit, "common_prefix_entries": 1,
+             "archived_build_chain": {"path": adapter.BUILD_FORK_PATH, "sha256": legacy._sha256(fork),
+                                      "entries": 2, "head": json.loads(fork.splitlines()[-1])["entry_hash"]},
+             "retained_collector_chain": {"entries": 2, "sha256": legacy._sha256(host),
+                                          "head": host_tip["entry_hash"], "latest_record_at": host_tip["ts"],
+                                          "reviewed_prefix_entries": 2, "reviewed_prefix_sha256": legacy._sha256(host)}}
+    if tamper == "receipt": proof["retained_collector_chain"]["sha256"] = "0" * 64
+    if tamper == "rewrite": proof["historical_records_rewritten"] = True
+    if tamper == "unknown-fork": spec["target_sha256"] = "0" * 64
+    if tamper == "wrong-collector": spec["host_prefix_sha256"] = "0" * 64
+    value = json.loads(f["second_artifact"])
+    value["generated_at"] = "2026-08-14T01:05:00Z"
+    value["signals"][0]["value"] = 1.25
+    candidate = fixtures._append_seal(host, value, 2)
+    files = {adapter.BUILD_FORK_PATH: fork + (b" " if tamper == "archive" else b""),
+             adapter.ADMISSION_PATH: fixtures._json_bytes(proof)}
+    successor(f, ledger=candidate, extra_files=files)
+    return f
+
+
+def test_reviewed_admission_preserves_histories_and_supports_next_sync(tmp_path, monkeypatch):
+    f = admitted_successor(tmp_path, monkeypatch)
+    before = snapshot(f)
+    assert adapter.synchronize(f["config"], fetcher=f["fetch"], check=True)["status"] == "checked"
+    assert snapshot(f) == before
+    result = adapter.synchronize(f["config"], fetcher=f["fetch"])
+    assert result["status"] == "installed"
+    assert (f["config"].authority / legacy.LEDGER_FILENAME).read_bytes() == f["second_ledger"]
+    assert adapter.synchronize(f["config"], fetcher=f["fetch"]) == result
+    histories = [adapter.read_archive(f["config"], path.name)
+                 for path in (f["config"].state / adapter.HISTORY_NAME).iterdir()]
+    assert any(h[legacy.LEDGER_FILENAME] == before[str(f["config"].authority / legacy.LEDGER_FILENAME)]
+               for h in histories)
+
+
+@pytest.mark.parametrize("tamper,reason", [
+    ("archive", "admission-archive-mismatch"),
+    ("receipt", "admission-capture-mismatch"),
+    ("rewrite", "admission-contract-invalid"),
+    ("unknown-fork", "candidate-base-ledger-prefix-invalid"),
+    ("wrong-collector", "admission-collector-prefix-invalid"),
+])
+def test_unproved_admission_keeps_every_authority_byte(tmp_path, monkeypatch, tamper, reason):
+    f = admitted_successor(tmp_path, monkeypatch, tamper)
+    before = snapshot(f)
+    with pytest.raises(legacy.SyncFailure, match=reason):
         adapter.synchronize(f["config"], fetcher=f["fetch"])
     assert snapshot(f) == before
 

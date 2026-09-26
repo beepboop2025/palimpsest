@@ -31,6 +31,18 @@ TRANSACTION_NAME = "railway-transaction.json"
 STATE_FILES = {legacy.OSINT_FILENAME: legacy.MAX_OSINT_BYTES,
                legacy.LEDGER_FILENAME: legacy.MAX_LEDGER_BYTES,
                RECEIPT_NAME: 64 * 1024}
+ADMISSION_PATH = "readings/audit/readings-ledger-admission-20260925.json"
+BUILD_FORK_PATH = "readings/audit/readings-ledger-build-fork-20260925.jsonl"
+# The producer's exact, reviewed September 25 repair. This is not permission
+# to accept an arbitrary fork or a receipt supplied outside the sealed release.
+REVIEWED_FORK = {
+    "target_sha256": "9a54fa4f296d215837778d70bcef8e4e4c53e7e92f1828be4c5e7f5643815df8",
+    "target_entries": 5125,
+    "host_prefix_sha256": "9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee",
+    "host_prefix_entries": 5537,
+    "common_entries": 5102,
+    "source_commit": "0a6e89babffaa5f63aa722eca454918dcd7867fd",
+}
 
 
 @dataclass(frozen=True)
@@ -180,6 +192,47 @@ def git(repo, args, *, maximum=legacy.MAX_LEDGER_BYTES, allowed_failure=False):
     return result.returncode, raw
 
 
+def admitted_prefix(repo, base, release, base_ledger, candidate):
+    """Prove the finite reviewed repair from immutable release Git objects."""
+    spec = REVIEWED_FORK
+    require(legacy._sha256(base_ledger) == spec["target_sha256"], "candidate-base-ledger-prefix-invalid")
+    archived = git(repo, ["show", release + ":" + BUILD_FORK_PATH])[1]
+    require(archived == base_ledger, "admission-archive-mismatch")
+    old_entries = legacy._validate_ledger(archived)
+    entries = legacy._validate_ledger(candidate)
+    proof = document(git(repo, ["show", release + ":" + ADMISSION_PATH], maximum=64 * 1024)[1])
+    require(proof.get("schema") == "palimpsest.publication-ledger-admission.v1"
+            and proof.get("method") == "retain-exact-collector-chain-and-archive-reviewed-build-fork"
+            and proof.get("historical_records_rewritten") is False
+            and proof.get("derived_readings_require_final_sealing") is True
+            and proof.get("reviewed_source_commit") == spec["source_commit"], "admission-contract-invalid")
+    require(git(repo, ["merge-base", "--is-ancestor", spec["source_commit"], base],
+                maximum=4096, allowed_failure=True)[0] == 0, "admission-source-ancestry-invalid")
+    require(proof.get("archived_build_chain") == {
+        "path": BUILD_FORK_PATH, "sha256": spec["target_sha256"],
+        "entries": spec["target_entries"], "head": old_entries[-1]["entry_hash"],
+    } and len(old_entries) == spec["target_entries"], "admission-archive-receipt-invalid")
+    lines = candidate.splitlines(keepends=True)
+    prefix = b"".join(lines[:spec["host_prefix_entries"]])
+    require(len(lines) >= spec["host_prefix_entries"]
+            and legacy._sha256(prefix) == spec["host_prefix_sha256"], "admission-collector-prefix-invalid")
+    old_lines = archived.splitlines(keepends=True)
+    common = next((i for i, pair in enumerate(zip(old_lines, lines)) if pair[0] != pair[1]),
+                  min(len(old_lines), len(lines)))
+    require(common == spec["common_entries"] == proof.get("common_prefix_entries"), "admission-common-prefix-invalid")
+    retained = proof.get("retained_collector_chain")
+    require(isinstance(retained, dict), "admission-capture-invalid")
+    count = retained.get("entries")
+    require(type(count) is int and spec["host_prefix_entries"] <= count <= len(lines), "admission-capture-invalid")
+    require(retained == {
+        "entries": count, "sha256": legacy._sha256(b"".join(lines[:count])),
+        "head": entries[count - 1]["entry_hash"], "latest_record_at": entries[count - 1]["ts"],
+        "reviewed_prefix_sha256": spec["host_prefix_sha256"],
+        "reviewed_prefix_entries": spec["host_prefix_entries"],
+    }, "admission-capture-mismatch")
+    return prefix
+
+
 def extract(config, receipt, bundle, work, previous=None):
     repo = work / "proof.git"
     git(repo, ["init", "--bare"], maximum=4096)
@@ -204,13 +257,19 @@ def extract(config, receipt, bundle, work, previous=None):
     require(git(repo, ["merge-base", "--is-ancestor", source_commit, release], maximum=4096, allowed_failure=True)[0] == 0, "input-ancestry-invalid")
     base_ledger = git(repo, ["show", base + ":" + legacy.LEDGER_REPOSITORY_PATH])[1]
     legacy._validate_ledger(base_ledger)
-    require(ledger.startswith(base_ledger), "candidate-base-ledger-prefix-invalid")
+    admitted = None
+    if not ledger.startswith(base_ledger):
+        admitted = admitted_prefix(repo, base, release, base_ledger, ledger)
     if previous is not None:
         previous_base = previous["base_sha"]
         require(git(repo, ["merge-base", "--is-ancestor", previous_base, base], maximum=4096, allowed_failure=True)[0] == 0, "base-ancestry-invalid")
         previous_ledger = git(repo, ["show", previous_base + ":" + legacy.LEDGER_REPOSITORY_PATH])[1]
         legacy._validate_ledger(previous_ledger)
         require(base_ledger.startswith(previous_ledger), "base-ledger-prefix-invalid")
+        if admitted is not None and legacy._sha256(previous_ledger) == REVIEWED_FORK["target_sha256"]:
+            # Subsequent repaired editions must extend the same pinned collector
+            # history in the installed authority, with predecessor proof intact.
+            previous_ledger = admitted
         return artifact, ledger, previous_ledger
     return artifact, ledger, base_ledger
 
