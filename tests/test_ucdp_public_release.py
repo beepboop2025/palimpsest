@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -26,7 +27,13 @@ from scripts.verify_ucdp_public_release import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-CURRENT_AT = "2026-08-26T19:34:49Z"
+RELEASE = json.loads((ROOT / ARTIFACT_PATH).read_text(encoding="utf-8"))
+CURRENT_AT = RELEASE["generated_at"]
+
+
+def _shift_clock(value: str, seconds: int = 1) -> str:
+    return (datetime.fromisoformat(value.replace("Z", "+00:00"))
+            + timedelta(seconds=seconds)).isoformat().replace("+00:00", "Z")
 PUBLIC_PATHS = (
     ARTIFACT_PATH,
     RECEIPT_PATH,
@@ -72,11 +79,11 @@ def test_checked_in_release_receipt_is_exact_closed_and_live() -> None:
     assert receipt_id == sha256_bytes(canonical_json_bytes(payload))
     assert receipt["publication_state"] == "live"
     assert receipt["artifact"] == {
-        "bundle_id": "58dbd1b3b6ba2aca2c4257622b90ad10b07c5d78385231a75da97b0ef59ba0f2",
+        "bundle_id": "68e5f844799289fdb7876ade32cc8f3a765ff6751f4e1168d0ba9a4648e5a4bb",
         "bytes": 260077,
         "media_type": "application/json",
         "path": ARTIFACT_PATH,
-        "sha256": "af1965aa0c02bf58f8c7671b98531bb65338f59eddbd9f81b6c15c1f947258ae",
+        "sha256": "07e8ed2b9861ef54dcebf9c7fe0a4efe3f23b2742231d5dbe5173f14699701b1",
         "url": "https://palimpsest.info/readings/ucdp-aggregate-latest.json",
     }
     assert receipt["coverage"] == {
@@ -119,7 +126,7 @@ def test_public_release_rejects_expiry_artifact_tamper_and_lock_drift(
 ) -> None:
     root = _release_root(tmp_path)
     with pytest.raises(UCDPPublicReleaseError, match="rights decision has expired"):
-        build_receipt(root, current_at="2026-09-25T19:26:51Z")
+        build_receipt(root, current_at=_shift_clock(RELEASE["source"]["rights_valid_until"]))
 
     artifact_path = root / ARTIFACT_PATH
     artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
@@ -187,27 +194,27 @@ def test_rehashed_private_derived_actor_coverage_tamper_is_rejected(
     (
         (
             ("latest_retrieved_at",),
-            "2026-08-26T19:22:25.906114Z",
+            _shift_clock(RELEASE["latest_retrieved_at"]),
             "latest_retrieved_at",
         ),
         (
             ("generated_at",),
-            "2026-08-26T19:26:49Z",
+            _shift_clock(RELEASE["source"]["rights_reviewed_at"], -1),
             "rights and publication clocks|reviewed rights interval",
         ),
         (
             ("source", "rights_reviewed_at"),
-            "2026-08-26T19:26:51Z",
+            _shift_clock(RELEASE["source"]["rights_reviewed_at"]),
             "exactly bound to the reviewed rights decision",
         ),
         (
             ("source", "rights_observed_at"),
-            "2026-08-26T19:22:37Z",
+            _shift_clock(RELEASE["source"]["rights_observed_at"]),
             "exactly bound to the reviewed rights decision",
         ),
         (
             ("source", "rights_valid_until"),
-            "2026-09-25T19:26:51Z",
+            _shift_clock(RELEASE["source"]["rights_valid_until"]),
             "exactly bound to the reviewed rights decision",
         ),
     ),

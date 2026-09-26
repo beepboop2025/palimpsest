@@ -447,11 +447,11 @@ def test_registry_pins_rights_version_encodings_and_approved_release_status() ->
     review_lock = load_review_lock(REVIEW_LOCK)
     assert review_lock.status == "approved"
     assert review_lock.raw_sha256 == (
-        "5975f2bbf1617a06a0c63b9843500082d2a3d2c866314d57ef53719332807fb2"
+        "5cdce957a4be6eb66f22634cfdc3c59ac7ac7882e03e186be0bb61ae4d4c8dba"
     )
     assert review_lock.rights_decision is not None
     assert review_lock.rights_decision.decision_id == (
-        "e1d3e80d03ddb8b0983dabf4e9107cdc0cdbadb95b57bef41aa5d597db7ad66e"
+        "21f06241471e7ca5847fe489f2a3a0dc67bca683eeefe16f36fc016ecef6cf6c"
     )
     assert tuple(pin.input_id for pin in review_lock.inputs) == (
         "actor_registry",
@@ -465,10 +465,10 @@ def test_registry_pins_rights_version_encodings_and_approved_release_status() ->
             "e818085eb8dc15595ccc391da8c53612afd3acc58118e71e2baa2373bf22947d"
         ),
         "conflict_years_sha256": (
-            "d69c8879343f7433e05a10af123f02462d75463a23a9cf68348a6ccd06906063"
+            "7f42af82ed54661db7cad49caff6dc5f2a11698f925ccd65644458073cec5512"
         ),
         "country_years_sha256": (
-            "2305243bd886cb26eb0f565041b8e788dc607c21a1dd4ab3077e4126fbc2e9bb"
+            "ce2c454dd58e591087d90ab8bf1dd72bf05267f9fc1148772499947907de9eb7"
         ),
     }
 
@@ -903,6 +903,7 @@ def test_offline_cli_replay_is_exact_and_never_needs_network(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
+    monkeypatch.setattr("scripts.ucdp_bulk_pull._post_response_clock", lambda: PUBLICATION_AT)
     registry, archives, receipts = _evidence()
     review_lock, review_lock_raw, snapshot, rights_receipt = _review_material(
         registry, archives, receipts

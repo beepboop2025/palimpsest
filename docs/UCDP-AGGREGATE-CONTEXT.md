@@ -24,7 +24,7 @@ The lock is closed by
 and independently revalidated by the strict typed parser.
 
 The approved lock SHA-256 is
-`5975f2bbf1617a06a0c63b9843500082d2a3d2c866314d57ef53719332807fb2`.
+`5cdce957a4be6eb66f22634cfdc3c59ac7ac7882e03e186be0bb61ae4d4c8dba`.
 The reviewed Git lock is Palimpsest's explicit approval anchor. It is not a
 cryptographic signature by UCDP, proof that UCDP approved the acquisition, or a
 substitute for checking the captured rights page. The lock permits only annual
@@ -38,6 +38,16 @@ bundle. The required references are:
 - Sundberg and Melander, “Introducing the UCDP Georeferenced Event Dataset”: <https://doi.org/10.1177/0022343313484347>
 
 ## Evidence boundary
+
+The 26 September 2026 review captured the current Download Center rights page
+with SHA-256 `6739bd1dcc85b5e3467342c0da4e38577375eba8ac94470e6a78f49c77d97f2a`.
+It still states CC BY 4.0 with the dataset-specific citations. All three newly
+retrieved archives and decompressed members match the previously reviewed
+bytes; all 331 conflict-year and 74 country-year observations are unchanged.
+Only acquisition identities, review clocks, and their derived bindings changed.
+The decision expires at `2026-10-26T06:24:19Z`; arrange the next source review by
+19 October. Extending an expiry without reviewing a fresh rights snapshot is
+not a renewal.
 
 The private acquisition layer accepts exactly these versioned archives:
 
@@ -88,7 +98,7 @@ The public JSON schema is
 The checked-in version 26.1 aggregate contains 331 conflict-year records, 74
 country-year records, and referential-integrity coverage for 1,928 UCDP actor
 IDs over 1948–2025. Its exact SHA-256 is
-`af1965aa0c02bf58f8c7671b98531bb65338f59eddbd9f81b6c15c1f947258ae`.
+`07e8ed2b9861ef54dcebf9c7fe0a4efe3f23b2742231d5dbe5173f14699701b1`.
 It permits only:
 
 - Balochistan conflict-year rows where UCDP location is Pakistan and territory
