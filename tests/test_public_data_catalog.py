@@ -122,6 +122,23 @@ def test_registry_rejects_incomplete_public_availability(snapshot):
         atlas.build_research_catalog(now=NOW, public_catalog=catalog)
 
 
+def test_final_atlas_refresh_preserves_same_edition_rights_projection(snapshot):
+    assert public.main([]) == 0
+    path = snapshot / "readings/research-catalog-latest.json"
+    before = json.loads(path.read_text())
+    assert atlas.main(["--now", NOW.isoformat()]) == 0
+    assert json.loads(path.read_text()) == before
+    assert "987.654321" not in path.read_text()
+
+
+def test_atlas_cannot_reuse_public_availability_from_another_edition(snapshot):
+    assert public.main([]) == 0
+    assert atlas.main(["--now", "2026-09-14T18:00:00Z"]) == 0
+    registry = json.loads((snapshot / "readings/research-catalog-latest.json").read_text())
+    row = next(row for row in registry["datasets"] if row["id"] == "ddti")
+    assert row["artifacts"] == {"evidence_state": "unknown", "observed_at": None}
+
+
 def test_corrupt_latest_does_not_break_other_datasets(snapshot):
     (snapshot / "readings/ddti-latest.json").write_text("{broken")
     catalog = public.build_public_catalog(now=NOW)

@@ -698,7 +698,19 @@ def main(argv: list[str] | None = None) -> int:
         build_time = build_time.astimezone(timezone.utc)
     build_time = build_time or _utc_now()
     catalog, jsonld, datapackage = build_catalog(now=build_time)
-    research_catalog = build_research_catalog(now=build_time)
+    # The publisher refreshes this atlas after the rights-checked public
+    # projection has finalized collector-health. Preserve that same edition's
+    # availability instead of overwriting it with editorial-only unknowns.
+    # A prior edition cannot establish freshness for this publication clock.
+    public_catalog = None
+    public_path = ROOT / "readings" / "public-data-catalog-latest.json"
+    if public_path.exists():
+        candidate = json.loads(public_path.read_text(encoding="utf-8"))
+        if candidate.get("generated_at") == _iso(build_time):
+            if candidate.get("schema") != "palimpsest-data-catalog/v1":
+                raise ValueError("same-edition public catalog has an invalid schema")
+            public_catalog = candidate
+    research_catalog = build_research_catalog(now=build_time, public_catalog=public_catalog)
     if not args.check:
         _atomic_json(ROOT / "readings" / "catalog.json", catalog)
         _atomic_json(ROOT / "readings" / "catalog.jsonld", jsonld)
