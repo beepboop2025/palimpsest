@@ -25,6 +25,20 @@ publication receipt. Both source bases must have ancestor and byte-prefix
 continuity. Installed receipts, old seals, generation monotonicity and generation
 equivocation checks remain mandatory; no historical row is rewritten or merged.
 
+The September 25 producer repair has one finite additional proof path. Its
+5,125-entry build fork must match SHA-256
+`9a54fa4f296d215837778d70bcef8e4e4c53e7e92f1828be4c5e7f5643815df8`
+and remain byte-identical in the release's audit archive. The candidate must
+extend the reviewed 5,537-entry collector prefix with SHA-256
+`9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee`.
+Both chains are verified, their common 5,102 entries must match, and the sealed
+admission receipt must bind the entire captured collector prefix, its head and
+clock, the archived fork, and reviewed source ancestry. Unknown repairs refuse.
+Later editions still require the exact installed publication's predecessor
+chain and must retain that same collector prefix. This only teaches the private
+consumer to verify the producer's existing reviewed repair; it neither changes
+the publisher's ledger nor authorizes different public or private source values.
+
 Before switching, retain both complete authority states (artifact, full ledger
 and Railway receipt) beneath the private `railway-history/<manifest-sha256>/`.
 Each directory is immutable to this adapter and binds every byte with a manifest.
