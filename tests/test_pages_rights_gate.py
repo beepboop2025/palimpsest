@@ -539,7 +539,10 @@ def test_exact_git_archive_universe_is_recursively_quarantined(tmp_path: Path):
             assert 'href="/research/markets/"' in text
             assert 'background:white' not in text
             if relative == "china/index.html":
-                assert "Public evidence remains online" in text
+                assert "Explore China's economy and public record." in text
+                assert 'href="/china/economy/"' in text
+                assert 'href="/china/evidence/"' in text
+                assert 'href="/data.html"' in text
                 assert 'href="/news/china/situation/"' in text
                 assert 'href="/readings/ddti-latest.json"' in text
                 assert 'href="/belt-and-road/"' in text
