@@ -147,3 +147,68 @@ def test_publication_accepts_attributed_nbs_contract_without_allowing_denied_val
     changed = copy.deepcopy(snapshot)
     changed["releases"][0]["tables"][0]["cells"][0]["value"] = 99
     assert denied(changed)
+
+
+def energy_html():
+    statements = []
+    for metric, unit in [("raw coal production", "million tons"), ("crude oil production", "million tons"),
+                         ("processing volume of crude oil", "million tons"),
+                         ("production of natural gas", "billion cubic meters"), ("electricity generation", "billion kWh")]:
+        for period in ("In August", "From January to August"):
+            statements.append(f'<p>{period}, the {metric} by industrial enterprises above the designated size was 123.4 {unit}, a year-on-year decrease of 0.8%.</p>')
+    return ('<meta name="ArticleTitle" content="Energy Production in August 2026">'
+            '<meta name="PubDate" content="2026/09/16 10:00"><div class="cont_s">'
+            + ''.join(statements) + '</div>').encode()
+
+
+def test_energy_prose_keeps_units_periods_directions_and_source_tokens():
+    raw = energy_html().replace(b"a year-on-year decrease of 0.8%", b"down by 0.8% year on year", 1)
+    release = parse_release(raw, url=URL, collected_at="2026-09-27T00:00:00Z")
+    assert release["family"] == "energy"
+    assert release["measurement_scope"] == "source_paragraph_values_with_explicit_periods"
+    assert release["numeric_cells"] == 20
+    assert len(release["tables"]) == 10
+    cells = release["tables"][0]["cells"]
+    assert cells[0]["column_label"] == "Output (million tons)"
+    assert cells[1]["column_label"] == "Decrease year on year (%)"
+    assert cells[1]["raw_value"] == "0.8" and cells[1]["value"] == 0.8
+    assert "January–August 2026" in release["tables"][1]["cells"][0]["row_label"]
+    assert "not an upstream table" in release["tables"][0]["context"]
+
+
+def test_energy_observations_have_distinct_locators_when_paragraphs_are_combined():
+    raw = energy_html().replace(b"</p><p>", b" ")
+    release = parse_release(raw, url=URL, collected_at="2026-09-27T00:00:00Z")
+    assert release["numeric_cells"] == 20
+    assert len({table["table_id"] for table in release["tables"]}) == 10
+    assert {cell["source_row"] for table in release["tables"] for cell in table["cells"]} == {1}
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda raw: raw.replace(b"million tons", b"million dollars", 1),
+    lambda raw: raw.replace(b"was 123.4", b"is forecast to be 123.4", 1),
+    lambda raw: raw.replace(b"In August", b"In July", 1),
+    lambda raw: raw.replace(b"</div>", raw[raw.index(b"<p>"):raw.index(b"</p>") + 4] + b"</div>"),
+])
+def test_energy_drift_incomplete_periods_and_duplicates_are_not_guessed(mutation):
+    with pytest.raises(NBSReleaseError, match="energy"):
+        parse_release(mutation(energy_html()), url=URL, collected_at="2026-09-27T00:00:00Z")
+
+
+def test_retained_quarterly_release_is_rechecked_after_leaving_short_index(tmp_path):
+    gdp_url = "https://www.stats.gov.cn/english/PressRelease/202607/t20260717_1965000.html"
+    gdp = HTML.replace(b"Profits of Industrial Enterprises from January to July in 2026", b"Preliminary Accounting Results of GDP for the Second Quarter of 2026")
+    gdp_index = f'<ul class="list"><a href="{gdp_url}">Preliminary Accounting Results of GDP for the Second Quarter of 2026</a></ul>'.encode()
+    args = dict(store=tmp_path / "private", output=tmp_path / "latest.json", index_pages=1, pause_seconds=0)
+    first = collect(**args, transport=lambda url: gdp if url == gdp_url else gdp_index)
+    calls = []
+    def current(url):
+        calls.append(url)
+        return gdp if url == gdp_url else HTML if url == URL else INDEX
+    second = collect(**args, transport=current)
+    assert gdp_url in calls
+    assert second["collection"]["discovered_releases"] == 1
+    assert second["collection"]["checked_releases"] == 2
+    state = next(row for row in second["family_status"] if row["family"] == "national_accounts")
+    assert state["status"] == "current" and state["latest_discovered_url"] is None
+    assert next(row for row in second["releases"] if row["family"] == "national_accounts") == first["releases"][0]

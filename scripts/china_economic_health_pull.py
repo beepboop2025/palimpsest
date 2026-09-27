@@ -72,6 +72,21 @@ def _collect(store, output, index_pages, max_releases, pause_seconds, transport,
         except (OSError, ValueError, RuntimeError, FetchError) as exc:
             failures.append({"url": url, "family": "discovery", "error": str(exc)[:300]})
         time.sleep(pause_seconds)
+    # Quarterly releases age out of the short monthly index. Recheck the most
+    # recent retained source for any absent family without inventing a new
+    # discovery or advancing its original capture/release clock.
+    discovered_count = len(found)
+    retained_rechecks = set()
+    discovered_families = {item["family"] for item in found.values()}
+    for family in FAMILIES:
+        if family in discovered_families:
+            continue
+        retained = [row for row in manifest["captures"].values() if row["family"] == family]
+        if retained:
+            newest = max(retained, key=lambda row: (row["released_at"], row["collected_at"]))
+            url = newest["source_url"]
+            found[url] = {"url": url, "family": family}
+            retained_rechecks.add(url)
     # First reserve one slot per family, then use the rest for history. A busy
     # ten-day commodity series must not crowd out monthly property or labor.
     ordered = sorted(found.values(), key=lambda item: item["url"], reverse=True)
@@ -137,12 +152,12 @@ def _collect(store, output, index_pages, max_releases, pause_seconds, transport,
         family_status.append({"family": family, "label": label, "status": status,
                               "released_at": current["released_at"] if current else None,
                               "retained_vintages": len(history),
-                              "latest_discovered_url": newest_discovered["url"] if newest_discovered else None})
+                              "latest_discovered_url": newest_discovered["url"] if newest_discovered and newest_discovered["url"] not in retained_rechecks else None})
     document = {
         "schema": SCHEMA, "generated_at": now,
         "status": "partial" if failures or any(x["status"] != "current" for x in family_status) else "current",
         "source": {"publisher": "National Bureau of Statistics of China", "independence_group": "nbs_official_statistics", "index_url": INDEX_URL},
-        "collection": {"checked_at": now, "discovered_releases": len(found), "checked_releases": len(checked_urls),
+        "collection": {"checked_at": now, "discovered_releases": discovered_count, "checked_releases": len(checked_urls),
                        "successful_releases": len(successful_urls), "new_vintages": new_captures, "failures": failures},
         "coverage": {"families_available": len(releases), "families_expected": len(FAMILIES),
                      "latest_numeric_cells": sum(r["numeric_cells"] for r in releases),
@@ -151,7 +166,7 @@ def _collect(store, output, index_pages, max_releases, pause_seconds, transport,
                      "retained_numeric_cells": sum(r["numeric_cells"] for r in captures),
                      "independent_source_groups": 1 if releases else 0},
         "family_status": family_status, "releases": releases,
-        "interpretation": ["Official statistical aggregates and source-table cells; not a private respondent survey.",
+        "interpretation": ["Official statistical aggregates from source tables and explicitly labeled energy paragraphs; not a private respondent survey.",
                            "Original column headings govern units, reference periods and denominators. Monthly, cumulative and year-on-year values are distinct.",
                            "Ownership categories can overlap and must not be summed. Capture time is not economic observation time.",
                            "China Beige Book panel coverage, borrowing rejection, private credit terms and province-by-sector firm panels remain unavailable."]}

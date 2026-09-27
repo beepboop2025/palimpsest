@@ -231,7 +231,7 @@
     <a href="/readings/osint-china-latest.json">the raw JSON</a>; no cached placeholder or
     hand-entered number is substituted for a failed reading.
   </p>
-  <noscript><p class="oc-load">JavaScript is off, so the command surface cannot render. The complete machine-readable reading remains available as <a href="/readings/osint-china-latest.json">JSON</a>.</p></noscript>
+  <noscript><p class="oc-load">The published signal directory below works without JavaScript. Each dataset links to its available readings, sources and dates. The combined reading has its own publication status.</p></noscript>
 
   <div class="oc-live">
     <h2 class="ps-section-head" id="command">Command read</h2>
@@ -584,6 +584,17 @@
     root.setAttribute("data-oc", "error");
     loadEl.className = "oc-load";
     clear(loadEl);
+    var independent = document.querySelector(".public-signal-coverage");
+    if (independent) {
+      loadEl.appendChild(node("strong", null, "Combined reading unavailable. "));
+      loadEl.appendChild(document.createTextNode("The independent dataset directory below remains available, with each reading's date, sources and publication limits. No combined score is inferred from missing inputs."));
+      put("oc-status", "independent readings");
+      put("oc-reporting", independent.querySelectorAll(".dataset").length + " documented datasets");
+      put("oc-updated", independent.getAttribute("data-assessed-at"));
+      put("oc-version", "public dataset catalog");
+      document.getElementById("oc-status-dot").setAttribute("data-tone", "warning");
+      return;
+    }
     loadEl.appendChild(node("strong", null, "OSINT China did not load. "));
     loadEl.appendChild(document.createTextNode(
       text(err && err.message, "The public bundle was unavailable") +

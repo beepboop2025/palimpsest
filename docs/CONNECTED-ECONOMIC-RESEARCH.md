@@ -1,5 +1,14 @@
 # China economic health and connected regional research
 
+Parser v5 also captures explicit monthly and cumulative energy statements for
+coal, crude oil, refining, natural gas and electricity. These figures retain
+their source paragraph, units, direction and period; they are labeled as prose
+extractions rather than upstream tables. Coverage comes from the dated reading,
+not a fixed family count in this document. Quarterly sources falling outside
+the short discovery index are rechecked at their retained URLs without changing
+their original release or capture clocks. See the
+[v5 migration procedure](../ops/measurement/NBS-ENERGY-PARSER-MIGRATION.md).
+
 Palimpsest now collects detailed official China release tables and connects them
 to a shared China, CPEC/Gwadar, Balochistan, BRI and Myanmar research desk.
 NarcoScope packages the same research snapshot for its regional views, REST
