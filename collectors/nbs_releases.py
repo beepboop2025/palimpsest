@@ -267,7 +267,8 @@ def extract_energy_paragraphs(soup: BeautifulSoup, title: str) -> list[dict]:
                       "row_label": row_label, "column_label": columns[c],
                       "raw_value": value, "value": number(value), "status": "observed"}
                      for c, value in enumerate(values[1:], 1)]
-            tables.append({"table_id": f"paragraph-{ordinal}-{'cumulative' if cumulative else 'monthly'}",
+            metric_id = key.replace(" ", "-")
+            tables.append({"table_id": f"paragraph-{ordinal}-{metric_id}-{'cumulative' if cumulative else 'monthly'}",
                            "context": f"Structured prose extraction · source paragraph {ordinal} · industrial enterprises above the designated size; not an upstream table",
                            "columns": columns, "rows": [{"source_row": ordinal, "values": values}],
                            "cells": cells, "table_sha256": digest(text)})

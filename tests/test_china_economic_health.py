@@ -176,6 +176,14 @@ def test_energy_prose_keeps_units_periods_directions_and_source_tokens():
     assert "not an upstream table" in release["tables"][0]["context"]
 
 
+def test_energy_observations_have_distinct_locators_when_paragraphs_are_combined():
+    raw = energy_html().replace(b"</p><p>", b" ")
+    release = parse_release(raw, url=URL, collected_at="2026-09-27T00:00:00Z")
+    assert release["numeric_cells"] == 20
+    assert len({table["table_id"] for table in release["tables"]}) == 10
+    assert {cell["source_row"] for table in release["tables"] for cell in table["cells"]} == {1}
+
+
 @pytest.mark.parametrize("mutation", [
     lambda raw: raw.replace(b"million tons", b"million dollars", 1),
     lambda raw: raw.replace(b"was 123.4", b"is forecast to be 123.4", 1),
