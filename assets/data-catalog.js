@@ -153,6 +153,7 @@
     if (item.urls.history) files.appendChild(fileLink("History JSONL", item.urls.history, item.artifacts.history_available));
     files.appendChild(fileLink("Read the method", item.urls.method, true));
     files.appendChild(fileLink("Open landing page", item.urls.landing_page, true));
+    files.appendChild(fileLink("Dataset details and citation", "/datasets/" + item.id + "/", true));
     main.appendChild(files);
     body.appendChild(main);
 
@@ -219,6 +220,10 @@
   }
 
   function fail() {
+    if (list.querySelector(".dataset")) {
+      document.getElementById("catalog-asof").append(" Refresh unavailable; the dated published directory is retained.");
+      return;
+    }
     list.textContent = "";
     var box = element("div", "atlas-empty");
     box.append("The catalog could not be loaded. The files are still available in the ");

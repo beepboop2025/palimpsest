@@ -1,5 +1,11 @@
 /* Evidence Atlas — the catalog is an instrument, not a marketing card wall. */
-.atlas {
+.dataset-page { padding-block: 3rem; overflow-wrap: anywhere; }
+.dataset-page h1 { font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.1; max-width: 24ch; }
+.dataset-page > p, .dataset-page section { max-width: 80ch; }
+.dataset-page section { margin-block: 2rem; }
+.public-signal-coverage { margin-block: 3rem; overflow-wrap: anywhere; }
+.public-signal-coverage .dataset { content-visibility: auto; contain-intrinsic-size: auto 100px; }
+.atlas, .public-signal-coverage {
   --atlas-cyan: #06d6e0;
   --atlas-cyan-dim: #087c8b;
   --atlas-blue: #6aa8ff;

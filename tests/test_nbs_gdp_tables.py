@@ -35,7 +35,7 @@ def test_official_gdp_alias_is_specific_and_discovery_keeps_shelf_boundary():
 
 def test_gdp_tables_keep_year_growth_basis_and_missing_future_quarters():
     result = nbs.parse_release(RAW, url=URL, collected_at="2026-09-13T21:00:00Z")
-    assert result["parser_version"] == "nbs-release-tables.v4"
+    assert result["parser_version"] == "nbs-release-tables.v5"
     assert result["released_at"] == "2026-07-17T01:30:00Z"
     assert result["collected_at"] == "2026-09-13T21:00:00Z"
     assert len(result["tables"]) == 3

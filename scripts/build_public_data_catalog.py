@@ -180,6 +180,8 @@ def main(argv: list[str] | None = None) -> int:
             atlas.ROOT / "readings/research-catalog-latest.json",
             atlas.build_research_catalog(now=now, public_catalog=catalog),
         )
+        from scripts.render_public_catalog import write_surfaces
+        write_surfaces(atlas.ROOT, catalog)
     print(json.dumps({"states": catalog["summary"]["states"], "written": not args.check}))
     return 0
 

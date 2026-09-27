@@ -3661,7 +3661,6 @@ def _restricted_html(status: Mapping[str, Any]) -> bytes:
 .ps-restricted dd { margin-inline-start: 0; }
 </style>"""
     if artifact_path == "china/index.html":
-        quarantined_count = len(status["quarantined_paths"])
         return f"""<!doctype html>
 <html lang="en" data-palimpsest-publication-status="restricted">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -3670,10 +3669,12 @@ def _restricted_html(status: Mapping[str, Any]) -> bytes:
 {site_nav.HEAD}
 {shared_style}</head>
 <body class="ps ps-restricted">{navigation}<main id="main">
-<section class="hero"><p>Palimpsest China evidence</p><h1>Public evidence remains online.</h1>
-<p>One upstream economic value family is publication-restricted. That restriction does not close the public newsroom, measurement surfaces, briefs, research dossiers, or machine catalog.</p>
-<div class="stats"><div><strong>{counts["input_records"]}</strong><span>restricted input records evaluated</span></div><div><strong>{counts["published_records"]}</strong><span>restricted records published</span></div><div><strong>{quarantined_count}</strong><span>mixed or derivative paths replaced safely</span></div></div></section>
+<section class="hero"><p>Palimpsest China evidence</p><h1>Explore China's economy and public record.</h1>
+<p>Start with detailed economic releases, city housing histories, trade comparisons and public-source measurements. Each dataset carries its source, dates, downloads and coverage limits.</p></section>
 <section aria-labelledby="public-title"><h2 id="public-title">Open the current public record</h2><div class="grid">
+<article class="card"><p>Economic data</p><h2><a href="/china/economy/">Detailed China economic tables</a></h2><p>Industry profits, production, energy, investment, prices, business surveys and housing across 70 cities. Read attributed source figures and download the retained history.</p></article>
+<article class="card"><p>Research</p><h2><a href="/china/evidence/">Economic histories and source changes</a></h2><p>Explore city-level histories, trade comparisons and dated changes in official publications.</p></article>
+<article class="card"><p>Data directory</p><h2><a href="/data.html">Every dataset and its coverage</a></h2><p>Find available readings, source methods, retained history, reusable downloads and a stable citation page for every dataset.</p></article>
 <article class="card"><p>Live</p><h2><a href="/news/">Evidence desk</a></h2><p>Current measurement coverage, Board state, and attributed publisher reports.</p></article>
 <article class="card"><p>Publishers</p><h2><a href="/news/china/">China source index</a></h2><p>Current publisher metadata, source clocks, pagination, and durable story routes.</p></article>
 <article class="card"><p>Situation</p><h2><a href="/news/china/situation/">China situation desk</a></h2><p>Publisher reports, public context, measurement links, uncertainty, and limitations.</p></article>

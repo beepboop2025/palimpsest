@@ -1,7 +1,7 @@
-"""Bounded NBS release discovery and lossless statistical-table extraction.
+"""Bounded NBS release discovery and source statistical extraction.
 
-This is a source-table dataset, not a replacement for the reviewed economic
-observation ledger. Original headers, missing tokens and row labels travel with
+This source dataset includes tables and explicitly labeled energy paragraphs;
+it does not replace the reviewed economic observation ledger. Original headers, missing tokens and row labels travel with
 every value; annual, cumulative and monthly columns are never merged.
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 
 from core.safe_fetch import safe_fetch_bytes
 
-PARSER_VERSION = "nbs-release-tables.v4"
+PARSER_VERSION = "nbs-release-tables.v5"
 INDEX_URL = "https://www.stats.gov.cn/english/PressRelease/"
 TERMS_URL = "https://www.stats.gov.cn/english/nbs/200701/t20070104_59236.html"
 MAX_BYTES = 4 * 1024 * 1024
@@ -215,6 +215,67 @@ def extract_table(table, ordinal: int) -> dict | None:
             "table_sha256": digest(grid)}
 
 
+def extract_energy_paragraphs(soup: BeautifulSoup, title: str) -> list[dict]:
+    """Read explicit output/period/unit statements, never chart pixels or forecasts.
+
+    NBS publishes this family as prose and images, with no HTML tables. Keep
+    magnitudes verbatim and put the direction in the heading: 'down by 7.7%'
+    must not acquire a fabricated '-7.7' source token. Source row identifies
+    the paragraph within .cont_s, not an imaginary upstream table row.
+    """
+    month = re.fullmatch(r"Energy Production in ([A-Za-z]+) (20\d{2})", title)
+    body = soup.select_one(".cont_s")
+    if not month or body is None:
+        raise NBSReleaseError("unrecognized energy period or article body")
+    period, year = month.groups()
+    metrics = {
+        "raw coal production": ("Raw coal", {"million tons", "billion tons"}),
+        "crude oil production": ("Crude oil", {"million tons"}),
+        "processing volume of crude oil": ("Crude oil processing", {"million tons"}),
+        "production of natural gas": ("Natural gas", {"billion cubic meters"}),
+        "electricity generation": ("Electricity", {"billion kWh"}),
+    }
+    token = r"(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?"
+    pattern = re.compile(
+        r"(?P<period>In " + re.escape(period) + r"|From January to " + re.escape(period)
+        + r"), (?:the )?(?P<metric>" + "|".join(map(re.escape, metrics))
+        + r") by industrial enterprises above the designated size was (?P<amount>" + token
+        + r") (?P<unit>million tons|billion tons|billion cubic meters|billion kWh), "
+        + r"(?:(?P<direction>up|down) by (?P<change>" + token + r")% year on year"
+        + r"|a year-on-year (?P<trend>increase|decrease) of (?P<rate>" + token + r")%)",
+        re.I,
+    )
+    tables, seen = [], set()
+    for ordinal, paragraph in enumerate(body.find_all("p"), 1):
+        text = clean(paragraph.get_text(" ", strip=True))
+        for match in pattern.finditer(text):
+            item = match.groupdict()
+            key = item["metric"].lower()
+            label, units = metrics[key]
+            if item["unit"] not in units:
+                raise NBSReleaseError("unexpected energy unit")
+            cumulative = item["period"].lower().startswith("from")
+            identity = (key, cumulative)
+            if identity in seen:
+                raise NBSReleaseError("ambiguous duplicate energy observation")
+            seen.add(identity)
+            direction = "Decrease" if (item["direction"] or item["trend"]).lower() in {"down", "decrease"} else "Increase"
+            columns = ["Indicator and reference period", f"Output ({item['unit']})", f"{direction} year on year (%)"]
+            row_label = f"{label} · {'January–' if cumulative else ''}{period} {year}"
+            values = [row_label, item["amount"], item["change"] or item["rate"]]
+            cells = [{"source_row": ordinal, "source_column": c + 1,
+                      "row_label": row_label, "column_label": columns[c],
+                      "raw_value": value, "value": number(value), "status": "observed"}
+                     for c, value in enumerate(values[1:], 1)]
+            tables.append({"table_id": f"paragraph-{ordinal}-{'cumulative' if cumulative else 'monthly'}",
+                           "context": f"Structured prose extraction · source paragraph {ordinal} · industrial enterprises above the designated size; not an upstream table",
+                           "columns": columns, "rows": [{"source_row": ordinal, "values": values}],
+                           "cells": cells, "table_sha256": digest(text)})
+    if len(seen) != 2 * len(metrics):
+        raise NBSReleaseError("energy prose is incomplete or changed; expected five monthly and five cumulative observations")
+    return tables
+
+
 def parse_release(raw: bytes, *, url: str, collected_at: str) -> dict:
     source_policy(url)
     soup = soup_from(raw)
@@ -240,6 +301,9 @@ def parse_release(raw: bytes, *, url: str, collected_at: str) -> dict:
         if parsed and parsed["table_sha256"] not in seen:
             seen.add(parsed["table_sha256"])
             tables.append(parsed)
+    prose = family == "energy" and not tables
+    if prose:
+        tables = extract_energy_paragraphs(soup, title)
     if not tables:
         raise NBSReleaseError("no unambiguous statistical tables; manual review required")
     raw_hash = hashlib.sha256(raw).hexdigest()
@@ -261,7 +325,7 @@ def parse_release(raw: bytes, *, url: str, collected_at: str) -> dict:
             "released_at": released.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
             "publisher_time_zone": "Asia/Shanghai", "collected_at": collected_at,
             "raw_sha256": raw_hash, "raw_bytes": len(raw), "parser_version": PARSER_VERSION,
-            "measurement_scope": "source_table_cells_with_original_headings",
+            "measurement_scope": "source_paragraph_values_with_explicit_periods" if prose else "source_table_cells_with_original_headings",
             "rights": {"status": "attributed_statistical_data", "terms_url": TERMS_URL,
                        "attribution": "Quoted from the website of the National Bureau of Statistics (www.stats.gov.cn)",
                        "license": "NBS statistical-data terms; no downstream sublicense"},
