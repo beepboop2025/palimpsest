@@ -71,14 +71,19 @@ Original candidate, predecessor and release-bundle archives remain in place.
 The observer searches both bounded deployment history and active/latest
 topology for the old unique submission message. Checking active topology avoids
 hiding an old `createdAt` behind a page of newer history. Provider/query/parser
-errors fail visibly, and a busy publication lock is a deferred observation,
-not a claimed successful check. After disposition, it uses the archived exact
+errors fail visibly. Read-only observations do not acquire the publication
+lock, so a long build does not delay them. After disposition, it uses the archived exact
 reconciler dependency so a future routine-helper upgrade does not silently
 break its parser dependency.
 
 Any matching row, including a queued or terminal row, is retained and raises a
-root DATA HOLD through the existing strict hold writer. Existing unrelated
-holds are preserved. The observer never cancels, restarts, rolls back or uploads
+root DATA HOLD through the existing strict hold writer under the ordinary
+publication lock. A busy writer lock records the match and an unsuccessful
+`late_candidate_observed_hold_deferred` observation, with `hold_written: false`;
+the next timer cycle retries safely. A hold conflict or local write error is
+recorded as `late_candidate_observed_hold_failed` and also exits unsuccessfully.
+Each matching observation and its raw provider evidence are retained before
+updating the latest observation. Existing unrelated holds are preserved. The observer never cancels, restarts, rolls back or uploads
 to Railway. It exits unsuccessfully on late appearance. Public freshness and
 the ordinary direct watchdog remain independent checks and cannot be relabeled
 fresh by this disposition.
@@ -103,3 +108,12 @@ Rollback of the helper installation is independent of publication: retain the
 observer until the residual submission is authoritatively resolved. Do not
 restore old journal/hold bytes over a later transaction. A later incident
 requires its own reviewed decision.
+
+## Observer-only concurrency revision
+
+The original reviewed helper hash
+`cffe1bcc8c52529c12178cabcc308ae3475bae051ceed9a50ffc23dd14938ba3`
+was used for the disposition and is retained with the immutable incident
+evidence. The later observer concurrency revision changes only observation and
+hold-lock timing. It does not rewrite the durable decision, re-run disposition,
+change the ordinary publisher or relax predecessor capture.

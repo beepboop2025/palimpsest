@@ -331,8 +331,26 @@ def matching_candidates(rows: list[dict], status: bytes, message: str) -> dict[s
             if isinstance(row.get("meta"), dict) and row["meta"].get("cliMessage") == message}
 
 
+def hold_if_idle(n: dict, candidate: dict, gid: int) -> bool:
+    """Acquire the ordinary writer lock only for the strict local hold write."""
+    lock_path = CONTROL / "publish.lock"
+    n["_read"](lock_path, uid=0, gid=gid, mode=0o640, maximum=64, empty=True, single_link=True)
+    fd = os.open(lock_path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return False
+        n["_write_hold"](candidate, journal=JOURNAL,
+                         archive=STATE / "candidates" / f"{JOURNAL}.json",
+                         reason="candidate_identity_ambiguous", attempt=None, gid=gid)
+        return True
+    finally:
+        os.close(fd)
+
+
 def observe_retired() -> dict:
-    """Watch the retained message; a late appearance raises a root DATA HOLD.
+    """Observe even while publishing; serialize only the local DATA HOLD write.
 
     It does not cancel, roll back, delete deployments, or claim to fence Railway.
     The public freshness endpoint and ordinary watchdog remain independent.
@@ -346,47 +364,48 @@ def observe_retired() -> dict:
     if len(tokens) != 1:
         raise Refused("exactly one Railway token is required")
     n["_directory"](CONTROL, uid=0, gid=gid, mode=0o750)
-    lock_path = CONTROL / "publish.lock"
-    n["_read"](lock_path, uid=0, gid=gid, mode=0o640, maximum=64, empty=True, single_link=True)
-    fd = os.open(lock_path, os.O_RDONLY | os.O_NOFOLLOW)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        candidate_raw = n["_read"](STATE / "candidates" / f"{JOURNAL}.json", uid=uid, gid=gid, mode=0o600)
-        if digest(candidate_raw) != JOURNAL:
-            raise Refused("retained candidate changed")
-        candidate = json.loads(candidate_raw)
-        n["_validate_candidate"](candidate)
-        inventory = api(n, queries()[0], tokens[0])
-        rows = connection(inventory, "deployments")
-        status = n["_status"](*tokens[0])
-        # Active topology includes live deployments even when an old createdAt
-        # puts their row beyond the bounded historical inventory page.
-        matches = matching_candidates(rows, status, candidate["message"])
-        if not matches:
-            # A malformed/ambiguous topology must not produce a healthy
-            # observation merely because its message could not be found.
-            n["_topology"](status)
-        value = {"schema_version": "palimpsest.retired-submission-observation.v1", "incident": INCIDENT,
-                 "journal_sha256": JOURNAL, "observed_at": datetime.now(UTC).isoformat(),
-                 "helper_sha256": digest(Path(__file__).read_bytes()),
-                 "inventory_sha256": digest(inventory), "topology_sha256": digest(status),
-                 "matching_deployment_ids": sorted(matches),
-                 "status": "late_candidate_observed" if matches else "no_matching_candidate_observed",
-                 "provider_mutations": [], "residual_uncertainty": RESIDUAL}
-        n["_ensure_directory"](ROOT.parent, uid=0, gid=gid)
-        n["_ensure_directory"](ROOT, uid=0, gid=gid)
-        if matches:
-            immutable(n, ROOT / f"late-inventory-{digest(inventory)}.json", inventory, gid)
-            immutable(n, ROOT / f"late-topology-{digest(status)}.json", status, gid)
-            # Existing unrelated holds are never overwritten. Failure to create
-            # this hold makes the observer fail visibly rather than report OK.
-            n["_write_hold"](candidate, journal=JOURNAL,
-                             archive=STATE / "candidates" / f"{JOURNAL}.json",
-                             reason="candidate_identity_ambiguous", attempt=None, gid=gid)
-        n["_atomic"](ROOT / "observer-latest.json", canonical(value), uid=0, gid=gid, mode=0o600, replace=True)
-        return value
-    finally:
-        os.close(fd)
+    # This content-addressed candidate is immutable. Neither reading it nor
+    # observing Railway requires the writer lock held throughout a long build.
+    candidate_raw = n["_read"](STATE / "candidates" / f"{JOURNAL}.json", uid=uid, gid=gid, mode=0o600)
+    if digest(candidate_raw) != JOURNAL:
+        raise Refused("retained candidate changed")
+    candidate = json.loads(candidate_raw)
+    n["_validate_candidate"](candidate)
+    inventory = api(n, queries()[0], tokens[0])
+    rows = connection(inventory, "deployments")
+    status = n["_status"](*tokens[0])
+    # Active topology includes live deployments even when an old createdAt
+    # puts their row beyond the bounded historical inventory page.
+    matches = matching_candidates(rows, status, candidate["message"])
+    if not matches:
+        # A malformed/ambiguous topology must not produce a healthy
+        # observation merely because its message could not be found.
+        n["_topology"](status)
+    value = {"schema_version": "palimpsest.retired-submission-observation.v1", "incident": INCIDENT,
+             "journal_sha256": JOURNAL, "observed_at": datetime.now(UTC).isoformat(),
+             "helper_sha256": digest(Path(__file__).read_bytes()),
+             "inventory_sha256": digest(inventory), "topology_sha256": digest(status),
+             "matching_deployment_ids": sorted(matches),
+             "status": "late_candidate_observed" if matches else "no_matching_candidate_observed",
+             "provider_mutations": [], "residual_uncertainty": RESIDUAL}
+    n["_ensure_directory"](ROOT.parent, uid=0, gid=gid)
+    n["_ensure_directory"](ROOT, uid=0, gid=gid)
+    if matches:
+        immutable(n, ROOT / f"late-inventory-{digest(inventory)}.json", inventory, gid)
+        immutable(n, ROOT / f"late-topology-{digest(status)}.json", status, gid)
+        value["hold_written"] = False
+        try:
+            value["hold_written"] = hold_if_idle(n, candidate, gid)
+            if not value["hold_written"]:
+                value["status"] = "late_candidate_observed_hold_deferred"
+        except Exception as exc:
+            # Preserve the matching evidence and report unsuccessful observation
+            # if an unrelated hold or local error prevents the strict hold write.
+            value["status"] = "late_candidate_observed_hold_failed"
+            value["hold_error"] = str(exc)
+        immutable(n, ROOT / f"late-observation-{digest(canonical(value))}.json", canonical(value), gid)
+    n["_atomic"](ROOT / "observer-latest.json", canonical(value), uid=0, gid=gid, mode=0o600, replace=True)
+    return value
 
 
 def execute(retire: bool, acknowledgement: str | None) -> dict:
@@ -475,7 +494,7 @@ def main() -> int:
         print(f"incident disposition refused: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(result, sort_keys=True))
-    return 1 if result.get("status") == "late_candidate_observed" else 0
+    return 1 if result.get("status", "").startswith("late_candidate_observed") else 0
 
 
 if __name__ == "__main__":

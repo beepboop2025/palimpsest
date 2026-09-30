@@ -300,3 +300,87 @@ def test_observer_is_bounded_local_hold_only(m):
     assert "no_matching_candidate_observed" in source
     assert 'reason="candidate_identity_ambiguous"' in source
     assert "observer_ready(n, gid)" in source
+
+
+@pytest.fixture
+def observer(m, monkeypatch, candidate, tmp_path):
+    g = m["observe_retired"].__globals__
+    raw = m["canonical"](candidate)
+    monkeypatch.setitem(g, "JOURNAL", m["digest"](raw))
+    monkeypatch.setitem(g, "ROOT", tmp_path / "incident")
+    monkeypatch.setitem(g, "CONTROL", tmp_path)
+    monkeypatch.setitem(g, "STATE", tmp_path / "state")
+    monkeypatch.setattr(g["os"], "geteuid", lambda: 0)
+    monkeypatch.setattr(g["pwd"], "getpwnam", lambda _: SimpleNamespace(pw_uid=99))
+    monkeypatch.setattr(g["grp"], "getgrnam", lambda _: SimpleNamespace(gr_gid=99))
+    monkeypatch.setenv("RAILWAY_TOKEN", "test-token")
+    monkeypatch.delenv("RAILWAY_API_TOKEN", raising=False)
+    reads, writes, immutable_writes, events = [], {}, {}, []
+    n = {
+        "_directory": lambda *a, **kw: None,
+        "_read": lambda path, **kw: reads.append(path) or raw,
+        "_validate_candidate": lambda _: None,
+        "_status": lambda *a: events.append("status") or b'{"active": []}',
+        "_topology": lambda _: events.append("topology"),
+        "_ensure_directory": lambda *a, **kw: None,
+        "_atomic": lambda path, data, **kw: writes.update({path.name: json.loads(data)}),
+    }
+    monkeypatch.setitem(g, "load_helper", lambda **kw: n)
+    monkeypatch.setitem(g, "api", lambda *a: events.append("inventory") or page(m, "deployments", deployments(m)))
+    monkeypatch.setitem(g, "immutable", lambda n, path, data, gid: immutable_writes.update({path.name: data}))
+    monkeypatch.setitem(g, "hold_if_idle", lambda *a: pytest.fail("unexpected hold lock"))
+    return SimpleNamespace(g=g, n=n, reads=reads, writes=writes, retained=immutable_writes, events=events)
+
+
+def test_observation_does_not_acquire_writer_lock_without_match(m, observer, monkeypatch):
+    monkeypatch.setattr(observer.g["fcntl"], "flock", lambda *a: pytest.fail("writer lock requested for read-only observation"))
+    result = m["observe_retired"]()
+    assert result["status"] == "no_matching_candidate_observed"
+    assert observer.events == ["inventory", "status", "topology"]
+    assert len(observer.reads) == 1
+    assert observer.writes["observer-latest.json"] == result
+
+
+@pytest.mark.parametrize("hold_result", [False, True, "conflict"])
+def test_late_observation_retained_and_fails_even_if_hold_deferred_or_conflicts(m, observer, monkeypatch, candidate, hold_result):
+    status = m["canonical"]({"active": [{"id": "late", "meta": {"cliMessage": candidate["message"]}}]})
+    observer.n["_status"] = lambda *a: status
+    def hold(*a):
+        assert observer.retained  # Raw evidence precedes any attempted hold.
+        if hold_result == "conflict":
+            raise m["Refused"]("existing unrelated hold")
+        return hold_result
+    monkeypatch.setitem(observer.g, "hold_if_idle", hold)
+    result = m["observe_retired"]()
+    expected = {False: "late_candidate_observed_hold_deferred", True: "late_candidate_observed", "conflict": "late_candidate_observed_hold_failed"}[hold_result]
+    assert result["status"] == expected
+    assert result["hold_written"] is (hold_result is True)
+    assert result["matching_deployment_ids"] == ["late"]
+    assert len(observer.retained) == 3
+    assert observer.writes["observer-latest.json"] == result
+    monkeypatch.setitem(observer.g, "observe_retired", lambda: result)
+    monkeypatch.setattr(observer.g["sys"], "argv", [str(HELPER), "--observe"])
+    assert m["main"]() == 1
+
+
+@pytest.mark.parametrize("busy", [False, True])
+def test_hold_write_uses_real_nonblocking_writer_lock(m, monkeypatch, tmp_path, candidate, busy):
+    import fcntl
+    import os
+    g = m["hold_if_idle"].__globals__
+    monkeypatch.setitem(g, "CONTROL", tmp_path)
+    lock = tmp_path / "publish.lock"
+    lock.write_bytes(b"")
+    writes = []
+    n = {"_read": lambda path, **kw: path.read_bytes(), "_write_hold": lambda *a, **kw: writes.append(kw)}
+    fd = os.open(lock, os.O_RDONLY)
+    try:
+        if busy:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        assert m["hold_if_idle"](n, candidate, os.getgid()) is (not busy)
+        assert len(writes) == int(not busy)
+    finally:
+        os.close(fd)
+    if busy:
+        assert m["hold_if_idle"](n, candidate, os.getgid()) is True
+        assert len(writes) == 1
