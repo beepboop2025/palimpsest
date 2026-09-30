@@ -384,3 +384,13 @@ def test_hold_write_uses_real_nonblocking_writer_lock(m, monkeypatch, tmp_path, 
     if busy:
         assert m["hold_if_idle"](n, candidate, os.getgid()) is True
         assert len(writes) == 1
+
+
+def test_unexpected_observer_blocking_error_is_not_success_exit_75(m, monkeypatch, capsys):
+    g = m["main"].__globals__
+    def fail():
+        raise BlockingIOError("unexpected provider or local I/O error")
+    monkeypatch.setitem(g, "observe_retired", fail)
+    monkeypatch.setattr(g["sys"], "argv", [str(HELPER), "--observe"])
+    assert m["main"]() == 1
+    assert "incident observation failed" in capsys.readouterr().err
