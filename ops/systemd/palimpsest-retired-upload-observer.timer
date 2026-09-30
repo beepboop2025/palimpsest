@@ -1,0 +1,11 @@
+[Unit]
+Description=Check the retained ambiguous Palimpsest submission each minute
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=1min
+AccuracySec=5s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

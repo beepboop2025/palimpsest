@@ -1,0 +1,32 @@
+[Unit]
+Description=Observe the explicitly retired Palimpsest upload for delayed provider appearance
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=/etc/palimpsest/railway-publication.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/local/sbin/palimpsest-retire-upload-502-20260928 --observe
+TimeoutStartSec=3min
+SuccessExitStatus=75
+UMask=0077
+Nice=10
+MemoryMax=512M
+TasksMax=64
+ProtectSystem=strict
+ProtectHome=tmpfs
+ReadWritePaths=/var/lib/palimpsest/railway-control /etc/palimpsest
+ReadOnlyPaths=/var/lib/palimpsest/railway-publication
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
