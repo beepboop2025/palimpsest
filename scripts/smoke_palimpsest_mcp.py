@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import http.client
 import importlib.util
 import ipaddress
 import json
+import re
 import socket
 import ssl
 import sys
@@ -15,6 +17,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from datetime import datetime
 from types import ModuleType
 from typing import Any
 
@@ -41,6 +44,9 @@ _EXPECTED_AFFECTED_VIEWS = {
 }
 _NEWSROOM_PATH = "readings/newsroom-latest.json"
 _CATALOG_PATH = "readings/research-catalog-latest.json"
+_RELEASE_PATH = "railway-release.json"
+_PUBLICATION_ORIGIN = "https://www.palimpsest.info/"
+_MAX_RELEASE_BYTES = 256 * 1024
 
 
 class SmokeError(RuntimeError):
@@ -71,7 +77,7 @@ def _decode_json(data: bytes, label: str) -> Any:
             object_pairs_hook=_strict_object,
             parse_constant=_reject_constant,
         )
-    except (json.JSONDecodeError, SmokeError) as exc:
+    except (json.JSONDecodeError, RecursionError, SmokeError) as exc:
         raise SmokeError(f"{label} is not strict JSON: {exc}") from exc
 
 
@@ -560,6 +566,149 @@ def _validate_restored_catalog(body: dict[str, Any]) -> None:
             stack.extend(value)
 
 
+def _get_publication_bytes(path: str, timeout: float, cap: int) -> bytes:
+    """Independent fixed-origin reader: never import the candidate's cache/parser."""
+    if path not in {_RELEASE_PATH, _CATALOG_PATH}:
+        raise SmokeError("catalog publication path is not allowlisted")
+    host = "www.palimpsest.info"
+    addresses = _resolve_public_addresses(host, 443)
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    last_error = None
+    for family, sockaddr in addresses:
+        raw_socket = None
+        tls_socket = None
+        connection = None
+        try:
+            raw_socket = socket.socket(family, socket.SOCK_STREAM)
+            raw_socket.settimeout(timeout)
+            raw_socket.connect(sockaddr)
+            tls_socket = context.wrap_socket(raw_socket, server_hostname=host)
+            raw_socket = None
+            connection = http.client.HTTPSConnection(host, 443, timeout=timeout)
+            connection.sock = tls_socket
+            tls_socket = None
+            connection.request("GET", "/" + path, headers={
+                "Accept": "application/json", "Accept-Encoding": "identity",
+                "Cache-Control": "no-cache, no-store", "Pragma": "no-cache",
+                "Connection": "close", "User-Agent": _REQUEST_HEADERS["User-Agent"],
+            })
+            response = connection.getresponse()
+            if response.status != 200:
+                raise SmokeError("catalog publication returned non-200 status (redirects forbidden)")
+            headers = response.headers
+            if headers.get("Content-Encoding", "identity").strip().lower() != "identity":
+                raise SmokeError("catalog publication used unsupported encoding")
+            if headers.get_content_type() != "application/json":
+                raise SmokeError("catalog publication is not JSON media")
+            lengths = headers.get_all("Content-Length") or []
+            declared = None
+            if lengths:
+                if len(set(lengths)) != 1 or not re.fullmatch(r"[0-9]+", lengths[0]):
+                    raise SmokeError("catalog publication has invalid Content-Length")
+                declared = int(lengths[0])
+                if declared > cap:
+                    raise SmokeError("catalog publication exceeds its byte cap")
+            raw = response.read(cap + 1)
+            if len(raw) > cap or (declared is not None and len(raw) != declared):
+                raise SmokeError("catalog publication has invalid bounded length")
+            return raw
+        except (OSError, http.client.HTTPException) as exc:
+            last_error = exc
+        finally:
+            if connection is not None:
+                connection.close()
+            elif tls_socket is not None:
+                tls_socket.close()
+            elif raw_socket is not None:
+                raw_socket.close()
+    raise SmokeError("catalog publication request failed") from last_error
+
+
+def _catalog_release(raw: bytes) -> tuple[dict, dict]:
+    manifest = _decode_json(raw, "catalog release manifest")
+    if not isinstance(manifest, dict):
+        raise SmokeError("catalog release manifest is not an object")
+    files = manifest.get("critical_files")
+    anchor = files.get(_CATALOG_PATH) if isinstance(files, dict) else None
+    if (
+        manifest.get("schema_version") != "palimpsest.railway-static-release.v1"
+        or manifest.get("state") != "artifact_ready"
+        or not isinstance(manifest.get("source_commit"), str)
+        or not re.fullmatch(r"[0-9a-f]{40}", manifest["source_commit"])
+        or not isinstance(manifest.get("tree_sha256"), str)
+        or not re.fullmatch(r"[0-9a-f]{64}", manifest["tree_sha256"])
+        or not isinstance(anchor, dict)
+        or type(anchor.get("bytes")) is not int
+        or not 0 < anchor["bytes"] <= MAX_RESPONSE_BYTES
+        or not isinstance(anchor.get("sha256"), str)
+        or not re.fullmatch(r"[0-9a-f]{64}", anchor["sha256"])
+    ):
+        raise SmokeError("catalog release has invalid source identity or byte anchor")
+    try:
+        built_at = datetime.fromisoformat(manifest["built_at"].replace("Z", "+00:00"))
+        if built_at.utcoffset() is None:
+            raise ValueError("timezone absent")
+    except (KeyError, TypeError, AttributeError, ValueError) as exc:
+        raise SmokeError("catalog release has invalid build clock") from exc
+    return manifest, anchor
+
+
+def _probe_research_catalog(rpc, timeout: float, first_id: int) -> dict:
+    before = _get_publication_bytes(_RELEASE_PATH, timeout, _MAX_RELEASE_BYTES)
+    manifest, anchor = _catalog_release(before)
+    raw = _get_publication_bytes(_CATALOG_PATH, timeout, anchor["bytes"])
+    if len(raw) != anchor["bytes"] or hashlib.sha256(raw).hexdigest() != anchor["sha256"]:
+        raise SmokeError("static catalog bytes differ from the release anchor")
+    catalog = _decode_json(raw, "static research catalog")
+    _validate_restored_catalog({"source_url": _PUBLICATION_ORIGIN + _CATALOG_PATH,
+                                "data": catalog})
+    rows = catalog["datasets"]
+    if len({row["id"] for row in rows}) != len(rows):
+        raise SmokeError("static research catalog contains duplicate identities")
+    pages = 0
+    for offset in range(0, len(rows), 25):
+        request_id = first_id + pages
+        result = _rpc_result(rpc({
+            "jsonrpc": "2.0", "id": request_id, "method": "tools/call",
+            "params": {"name": "research_catalog", "arguments": {"offset": offset, "limit": 25}},
+        }), request_id, "research_catalog")
+        page = _tool_body(result, "research_catalog")
+        expected = []
+        for row in rows[offset:offset + 25]:
+            item = {key: row.get(key) for key in
+                    ("id", "name", "description", "layer", "cadence", "geography", "sources")}
+            for field, keys in {"artifacts": ("evidence_state", "observed_at"),
+                                "license": ("name", "url"),
+                                "urls": ("latest", "landing_page", "method")}.items():
+                mapping = row.get(field) if isinstance(row.get(field), dict) else {}
+                item[field] = {key: mapping.get(key) for key in keys}
+            item["values_included"] = False
+            expected.append(item)
+        if (
+            page.get("schema") != "palimpsest.research-catalog.v1"
+            or page.get("source_url") != _PUBLICATION_ORIGIN + _CATALOG_PATH
+            or page.get("metadata_only") is not True
+            or page.get("generated_at") != catalog.get("generated_at")
+            or not isinstance(page.get("generated_at"), str)
+            or type(page.get("offset")) is not int or page["offset"] != offset
+            or type(page.get("total")) is not int or page["total"] != len(rows)
+            or type(page.get("returned")) is not int or page["returned"] != len(expected)
+            or page.get("next_offset") != (offset + 25 if offset + 25 < len(rows) else None)
+            or page.get("truncated") != {} or page.get("datasets") != expected
+        ):
+            raise SmokeError("MCP research catalog differs from the manifest-bound static edition")
+        pages += 1
+    after = _get_publication_bytes(_RELEASE_PATH, timeout, _MAX_RELEASE_BYTES)
+    _catalog_release(after)
+    if after != before:
+        raise SmokeError("catalog publication changed during the MCP smoke")
+    return {"source_commit": manifest["source_commit"],
+            "manifest_sha256": hashlib.sha256(before).hexdigest(),
+            "catalog_sha256": anchor["sha256"], "catalog_bytes": len(raw),
+            "generated_at": catalog["generated_at"], "datasets": len(rows), "pages": pages}
+
+
 def rights_preflight(
     module_path: Path,
     manifest_path: Path,
@@ -896,6 +1045,9 @@ def probe(
         )
         calls.append("whats_happening:rights-restricted")
 
+        catalog_verification = _probe_research_catalog(rpc, timeout, next_id + 1)
+        calls.append("research_catalog:manifest-bound")
+
     return {
         "endpoint": url,
         "version": contract["version"],
@@ -904,6 +1056,7 @@ def probe(
         "resource_count": len(resource_uris),
         "calls": calls,
         "rights_verification": rights_verification,
+        "catalog_verification": catalog_verification if not basic else None,
     }
 
 

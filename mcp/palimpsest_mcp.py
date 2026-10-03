@@ -10,8 +10,8 @@ explicit operational state. This server makes them callable by any LLM agent
 over the Model Context Protocol.
 
 Design: stdlib only (http.server + pinned HTTPS), stateless JSON-RPC 2.0 over
-streamable HTTP, ten-minute per-signal cache, and explicit failure. A signal
-that cannot be fetched is unavailable. Published stale or disabled evidence
+streamable HTTP, ten-minute per-signal cache, edition-bound catalog cache, and
+explicit failure. A signal that cannot be fetched is unavailable. Published stale or disabled evidence
 remains inspectable with its status and generated_at; no replacement is invented.
 
 Deploy: systemd service on the box, fronted by Caddy at
@@ -36,6 +36,7 @@ import threading
 import time
 import unicodedata
 import urllib.request
+from concurrent.futures import Future, TimeoutError as FutureTimeoutError
 from datetime import date, datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
@@ -47,6 +48,10 @@ SERVER_VERSION = "1.9.3"
 SITE = "https://www.palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
+RESEARCH_CATALOG_PATH = "/readings/research-catalog-latest.json"
+RESEARCH_RELEASE_URL = SITE + "/railway-release.json"
+MAX_RESEARCH_RELEASE_BYTES = 256 * 1024
+RESEARCH_FETCH_TIMEOUT_S = 15
 # Browser access exists only for the first-party developer console. Normal MCP
 # clients are server-to-server and send no Origin header. Keeping this exact
 # instead of returning Access-Control-Allow-Origin: * makes the endpoint useful
@@ -501,6 +506,7 @@ def _fixed_publication_urls() -> frozenset[str]:
             ECON_OBSERVATIONS_URL,
             ECON_OBSERVATIONS_MANIFEST_URL,
             ECON_RIGHTS_STATUS_URL,
+            RESEARCH_RELEASE_URL,
         ]
     )
 
@@ -679,9 +685,180 @@ _econ_rights_cache: dict[str, tuple[float, bytes] | None] = {"value": None}
 _econ_rights_lock = threading.Lock()
 _econ_rights_identity: dict[str, str | None] = {"value": None}
 
+# Only the catalog worker owns this cache. Every new call (including a cache
+# hit) validates the current publication; simultaneous callers share one flight.
+_research_cache: tuple[tuple, dict] | None = None
+_research_flight: Future | None = None
+_research_lock = threading.Lock()
+
+
+def _research_remaining(deadline: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise SignalFetchError("research catalog verification timed out")
+    return remaining
+
+
+def _research_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise SignalFetchError("research catalog publication contains a non-finite number")
+    return parsed
+
+
+def _research_document(url: str, max_bytes: int, deadline: float) -> tuple[bytes, dict]:
+    """Read bounded, strict JSON through the fixed-origin pinned transport."""
+    request = urllib.request.Request(url, headers={
+        "Accept": "application/json", "Accept-Encoding": "identity",
+        "Cache-Control": "no-cache, no-store", "Pragma": "no-cache",
+        "User-Agent": f"palimpsest-mcp/{SERVER_VERSION}",
+    })
+    try:
+        with _urlopen(request, timeout=min(15, _research_remaining(deadline))) as response:
+            if response.geturl() != url:
+                raise SignalFetchError("research catalog publication redirected")
+            if response.status != 200:
+                raise SignalFetchError("research catalog publication returned a non-200 status")
+            headers = response.headers
+            encoding = headers.get("Content-Encoding", "identity").strip().lower()
+            if encoding != "identity":
+                raise SignalFetchError("research catalog publication used unsupported encoding")
+            media = headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if media != "application/json" and not media.endswith("+json"):
+                raise SignalFetchError("research catalog publication is not JSON media")
+            get_all = getattr(headers, "get_all", None)
+            lengths = get_all("Content-Length") if callable(get_all) else None
+            if lengths is None:
+                length = headers.get("Content-Length")
+                lengths = [] if length is None else [length]
+            declared = None
+            if lengths:
+                if len(set(lengths)) != 1 or not re.fullmatch(r"[0-9]+", lengths[0]):
+                    raise SignalFetchError("research catalog publication has invalid Content-Length")
+                declared = int(lengths[0])
+                if declared > max_bytes:
+                    raise SignalFetchError("research catalog publication exceeds its byte limit")
+            raw = response.read(max_bytes + 1)
+        _research_remaining(deadline)
+        if len(raw) > max_bytes:
+            raise SignalFetchError("research catalog publication exceeds its byte limit")
+        if declared is not None and declared != len(raw):
+            raise SignalFetchError("research catalog publication length did not match its header")
+        document = json.loads(raw.decode("utf-8"), object_pairs_hook=_signal_json_object,
+                              parse_constant=_reject_signal_nonfinite, parse_float=_research_float)
+        if not isinstance(document, dict):
+            raise SignalFetchError("research catalog publication must be a JSON object")
+        _validate_signal_shape(document)
+        return raw, document
+    except SignalFetchError:
+        raise
+    except Exception as exc:
+        raise SignalFetchError("research catalog publication could not be read as bounded JSON") from exc
+
+
+def _research_anchor(manifest: dict) -> tuple:
+    files = manifest.get("critical_files")
+    anchor = files.get(RESEARCH_CATALOG_PATH.lstrip("/")) if isinstance(files, dict) else None
+    if (
+        manifest.get("schema_version") != "palimpsest.railway-static-release.v1"
+        or manifest.get("state") != "artifact_ready"
+        or not isinstance(manifest.get("source_commit"), str)
+        or not re.fullmatch(r"[0-9a-f]{40}", manifest["source_commit"])
+        or not isinstance(manifest.get("tree_sha256"), str)
+        or not re.fullmatch(r"[0-9a-f]{64}", manifest["tree_sha256"])
+        or not isinstance(anchor, dict)
+        or type(anchor.get("bytes")) is not int
+        or not 0 < anchor["bytes"] <= MAX_SIGNAL_SOURCE_BYTES
+        or not isinstance(anchor.get("sha256"), str)
+        or not re.fullmatch(r"[0-9a-f]{64}", anchor["sha256"])
+    ):
+        raise SignalFetchError("research catalog release has an invalid identity or catalog anchor")
+    _economic_timestamp(manifest.get("built_at"), "release built_at", SignalFetchError)
+    return (manifest["source_commit"], anchor["bytes"], anchor["sha256"])
+
+
+def _refresh_research_catalog(deadline: float) -> dict:
+    global _research_cache
+    if not _fetch_slots.acquire(timeout=min(FETCH_QUEUE_TIMEOUT_S, _research_remaining(deadline))):
+        raise SignalFetchError("research catalog fetch capacity is busy; retry later")
+    try:
+        before_raw, before = _research_document(
+            RESEARCH_RELEASE_URL, MAX_RESEARCH_RELEASE_BYTES, deadline,
+        )
+        anchor = _research_anchor(before)
+        if _research_cache is not None and _research_cache[0] == anchor:
+            catalog = _research_cache[1]
+        else:
+            raw, catalog = _research_document(SITE + RESEARCH_CATALOG_PATH, anchor[1], deadline)
+            if len(raw) != anchor[1] or hashlib.sha256(raw).hexdigest() != anchor[2]:
+                raise SignalFetchError("research catalog bytes do not match the release anchor")
+            rows = catalog.get("datasets")
+            if (
+                catalog.get("schema") != "palimpsest-research-catalog/v1"
+                or catalog.get("metadata_only") is not True
+                or not isinstance(rows, list) or len(rows) > 1000
+                or not all(isinstance(row, dict) and isinstance(row.get("id"), str)
+                           and row["id"] and row.get("values_included") is False for row in rows)
+                or len({row["id"] for row in rows}) != len(rows)
+            ):
+                raise SignalFetchError("research catalog is not valid bounded metadata")
+            _economic_timestamp(catalog.get("generated_at"), "catalog generated_at", SignalFetchError)
+            stack = [catalog]
+            while stack:
+                value = stack.pop()
+                if isinstance(value, dict):
+                    if {"observations", "value", "forecast", "direction", "score"}.intersection(value):
+                        raise SignalFetchError("research catalog contains observation fields")
+                    stack.extend(value.values())
+                elif isinstance(value, list):
+                    stack.extend(value)
+        after_raw, after = _research_document(
+            RESEARCH_RELEASE_URL, MAX_RESEARCH_RELEASE_BYTES, deadline,
+        )
+        if _research_anchor(after) != anchor or before_raw != after_raw:
+            raise SignalFetchError("research catalog publication changed during verification")
+        _research_remaining(deadline)
+        _research_cache = (anchor, catalog)
+        return catalog
+    finally:
+        _fetch_slots.release()
+
+
+def _research_worker(flight: Future, deadline: float) -> None:
+    try:
+        flight.set_result(_refresh_research_catalog(deadline))
+    except Exception as exc:
+        flight.set_exception(exc)
+
+
+def _fetch_research_catalog() -> dict:
+    """Bound caller wait even if DNS or a trickling response ignores its timeout.
+
+    A stuck worker retains its one flight and one fetch slot. Later callers join
+    it and time out, rather than creating unbounded background network workers.
+    A late response cannot enter the cache after the worker's original deadline.
+    """
+    global _research_flight
+    deadline = time.monotonic() + RESEARCH_FETCH_TIMEOUT_S
+    with _research_lock:
+        if _research_flight is None or _research_flight.done():
+            _research_flight = Future()
+            try:
+                threading.Thread(target=_research_worker, args=(_research_flight, deadline),
+                                 name="research-catalog-fetch", daemon=True).start()
+            except RuntimeError:
+                _research_flight.set_exception(SignalFetchError("research catalog worker unavailable"))
+        flight = _research_flight
+    try:
+        return flight.result(timeout=_research_remaining(deadline))
+    except FutureTimeoutError as exc:
+        raise SignalFetchError("research catalog verification timed out") from exc
+
 
 def _fetch(name: str) -> dict:
     path, _ = SIGNALS[name]
+    if path == RESEARCH_CATALOG_PATH:
+        return _fetch_research_catalog()
     url = SITE + path
     now = time.monotonic()
     with _cache_lock:

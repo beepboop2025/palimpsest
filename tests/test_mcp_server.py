@@ -331,6 +331,28 @@ def test_generic_signal_fetch_is_bounded_validated_and_cached(monkeypatch):
     assert calls[0][1] == 15
 
 
+def test_research_catalog_transport_failure_is_an_explicit_tool_error(monkeypatch):
+    monkeypatch.setattr(mcp, "_research_cache", None)
+    monkeypatch.setattr(mcp, "_research_flight", None)
+    monkeypatch.setattr(mcp, "_urlopen", lambda *_args, **_kwargs:
+                        (_ for _ in ()).throw(OSError("offline")))
+    result = mcp.dispatch(_rpc("tools/call", {
+        "name": "research_catalog", "arguments": {"offset": 0, "limit": 25},
+    }))
+    assert result["result"]["isError"] is True
+    assert "datasets" not in result["result"].get("structuredContent", {})
+
+
+def test_release_manifest_url_is_fixed_and_retains_private_dns_denial(monkeypatch):
+    assert mcp.RESEARCH_RELEASE_URL in mcp._fixed_publication_urls()
+    monkeypatch.setattr(mcp.socket, "getaddrinfo", lambda *args, **kwargs: [
+        (mcp.socket.AF_INET, mcp.socket.SOCK_STREAM, mcp.socket.IPPROTO_TCP,
+         "", ("127.0.0.1", 443))])
+    request = mcp.urllib.request.Request(mcp.RESEARCH_RELEASE_URL)
+    with pytest.raises(OSError, match="non-public"):
+        mcp._pinned_urlopen(request)
+
+
 @pytest.mark.parametrize(
     ("response", "message"),
     (

@@ -42,6 +42,37 @@ root-owned GitHub signing key before mutation. The workflow then repeats
 the full smoke through `https://api.seiche.info/palimpsest/mcp` (therefore
 including the Caddy route).
 
+### Research catalog cache coherence
+
+Both `research-catalog` and `evidence-catalog` use one publication-bound cache.
+Each request revalidates the fixed `/railway-release.json`; concurrent requests
+share one verification. The source commit, byte count, and SHA-256 must match
+before a cached catalog can be reused. New bytes are bounded and validated, and
+the manifest must remain byte-identical across the operation, including cache
+hits. Any unavailable manifest, mixed edition, invalid metadata, or timeout
+returns an explicit failure without serving the old catalog as current. Source
+`generated_at` and observation/access fields are preserved. Other signal caches
+keep their ten-minute TTL.
+
+Catalog callers wait at most 15 seconds for verification. A stuck DNS/read task
+retains a single background flight and one of the existing fetch slots; it
+cannot spawn repeated workers or admit bytes after its original deadline.
+
+The full runtime smoke independently reads the static release and hash-bound
+catalog, compares every `research_catalog` page including clocks and access
+metadata, then re-reads the release. Its `catalog_verification` records the
+source, manifest/catalog digests, byte count, dataset count, and page count.
+`--basic` remains discovery-only for rollback/recovery. An edition change during
+the full probe is a failed verification, not permission to weaken the comparison.
+
+This smoke change requires the reviewed controller trust-bundle upgrade: retain
+the installed smoke/wrapper bytes and hashes, install the reviewed smoke, then
+its matching wrapper pin using the existing controlled upgrade procedure. Do
+not patch a live module or clear caches through a private endpoint. The tool
+schemas and `server.json` version remain unchanged. After native activation,
+retain the new signed source/module receipt, update the LiquiLens receipt and
+catalog binding, and rerun its strict static/MCP parity gate before publication.
+
 ## One-time host bootstrap
 
 Do this manually from an independently reviewed, GitHub-verified `origin/main`
