@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import textwrap
@@ -334,8 +335,14 @@ def test_live_smoke_covers_native_rights_closure(
         rights["quarantined_paths"].remove("readings/newsroom-latest.json")
     if restored_catalog:
         rights["quarantined_paths"].remove("readings/research-catalog-latest.json")
+    catalog = _smoke_catalog()
+    catalog_raw, release_raw = _smoke_catalog_publication(catalog)
+    monkeypatch.setattr(smoke, "_get_publication_bytes", lambda path, timeout, cap:
+                        release_raw if path == smoke._RELEASE_PATH else catalog_raw)
 
     def fetch(name):
+        if name == "research-catalog":
+            return catalog
         if restored_catalog and name == "evidence-catalog":
             return {"schema": "palimpsest-research-catalog/v1", "metadata_only": True,
                     "datasets": [{"id": "example", "values_included": False}]}
@@ -389,7 +396,81 @@ def test_live_smoke_covers_native_rights_closure(
             for view in sorted(server.ECON_RIGHTS_AFFECTED_NEWSROOM_VIEWS)
         ],
         "whats_happening:rights-restricted",
+        "research_catalog:manifest-bound",
     ]
+    assert result["catalog_verification"]["datasets"] == 98
+    assert result["catalog_verification"]["pages"] == 4
+
+
+def _smoke_catalog():
+    return {"schema": "palimpsest-research-catalog/v1", "metadata_only": True,
+            "generated_at": "2026-10-03T21:00:00Z", "datasets": [
+                {"id": f"source-{i}", "name": "Source", "values_included": False,
+                 "artifacts": {"evidence_state": "gated" if i % 2 else "unknown",
+                               "observed_at": None}} for i in range(98)]}
+
+
+def _smoke_catalog_publication(catalog):
+    raw = json.dumps(catalog).encode()
+    release = {"schema_version": "palimpsest.railway-static-release.v1",
+               "state": "artifact_ready", "source_commit": "a" * 40,
+               "built_at": "2026-10-03T21:01:00Z", "tree_sha256": "b" * 64,
+               "critical_files": {smoke._CATALOG_PATH: {
+                   "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}}}
+    return raw, json.dumps(release).encode()
+
+
+@pytest.mark.parametrize("fault", ["clock", "rights", "source", "hash", "rotating", "page", "text"])
+def test_catalog_smoke_rejects_mixed_or_altered_editions(monkeypatch, fault):
+    catalog = _smoke_catalog()
+    raw, release = _smoke_catalog_publication(catalog)
+    manifest = json.loads(release)
+    if fault == "source":
+        manifest["source_commit"] = "not-a-commit"
+    if fault == "hash":
+        manifest["critical_files"][smoke._CATALOG_PATH]["sha256"] = "c" * 64
+    release = json.dumps(manifest).encode()
+    reads = 0
+
+    def get_bytes(path, timeout, cap):
+        nonlocal reads
+        if path == smoke._CATALOG_PATH:
+            return raw
+        reads += 1
+        if fault == "rotating" and reads == 2:
+            manifest["source_commit"] = "d" * 40
+            return json.dumps(manifest).encode()
+        return release
+
+    def rpc(payload):
+        response = server.dispatch(payload)
+        result = response["result"]
+        body = result["structuredContent"]
+        if fault == "clock":
+            body["generated_at"] = "2026-10-03T20:00:00Z"
+        elif fault == "rights":
+            body["datasets"][0]["artifacts"]["evidence_state"] = "fresh"
+        elif fault == "page" and body["offset"] == 25:
+            body["datasets"][0]["id"] = "source-0"
+        if fault != "text":
+            result["content"][0]["text"] = json.dumps(body)
+        else:
+            result["content"][0]["text"] = "{}"
+        return response
+
+    monkeypatch.setattr(server, "_fetch", lambda name: catalog)
+    monkeypatch.setattr(smoke, "_get_publication_bytes", get_bytes)
+    with pytest.raises(smoke.SmokeError):
+        smoke._probe_research_catalog(rpc, 2, 100)
+
+
+def test_catalog_smoke_fixed_reader_rejects_external_paths_and_private_dns(monkeypatch):
+    with pytest.raises(smoke.SmokeError, match="allowlisted"):
+        smoke._get_publication_bytes("https://attacker.invalid/", 1, 1024)
+    monkeypatch.setattr(smoke.socket, "getaddrinfo", lambda *args, **kwargs: [
+        (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("127.0.0.1", 443))])
+    with pytest.raises(smoke.SmokeError, match="non-public"):
+        smoke._get_publication_bytes(smoke._RELEASE_PATH, 1, 1024)
 
 
 @pytest.mark.parametrize(
