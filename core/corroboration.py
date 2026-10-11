@@ -669,6 +669,8 @@ def validate_corroboration(value: Any) -> None:
             "single-primary-source",
             "single-measurement-source",
             "multi-source",
+            "primary-corroborated",
+            "measurement-corroborated",
         }:
             raise CorroborationError("event evidence strength is invalid")
         for field in (
