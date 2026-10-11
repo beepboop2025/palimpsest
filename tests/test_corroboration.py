@@ -187,3 +187,54 @@ def test_public_validator_recomputes_candidate_independence(tmp_path):
 
     with pytest.raises(CorroborationError, match="independence flag"):
         validate_corroboration(tampered)
+
+
+@pytest.mark.parametrize(
+    ("source_id", "expected_strength"),
+    [
+        ("ooni", "measurement-corroborated"),
+        ("tor-project", "primary-corroborated"),
+    ],
+)
+def test_corroborated_wire_labels_preserve_original_evidence_and_review(
+    tmp_path, source_id, expected_strength
+):
+    registry = load_source_registry()
+    payloads = {}
+    for source in registry.sources:
+        if source.id in {source_id, "citizen-lab"}:
+            payloads[source.feed_url] = (
+                "<rss><channel><item>"
+                "<title>China housing prices fall across major cities</title>"
+                f"<link>https://{source.article_hosts[0]}/news/housing-fixture</link>"
+                "<description>Official release context and independent reporting.</description>"
+                "<pubDate>Fri, 13 Feb 2026 10:00:00 +0000</pubDate>"
+                "</item></channel></rss>"
+            ).encode()
+    wire = collect_newswire(
+        registry,
+        lambda url, **_kwargs: payloads.get(url, b"<rss><channel></channel></rss>"),
+        now=datetime(2026, 2, 14, 10, tzinfo=timezone.utc),
+    )
+    assert len(wire["events"]) == 1
+    assert wire["events"][0]["evidence_strength"] == expected_strength
+
+    document = build_corroboration(wire, _primary(tmp_path))
+
+    validate_corroboration(document)
+    event = document["events"][0]
+    assert event["original_evidence_strength"] == expected_strength
+    assert event["n_independent_groups"] == 2
+    assert event["attached_primary_groups"] == []
+    assert event["has_primary_document"] is False
+    assert document["n_accepted_edges"] == 0
+    assert document["candidates"]
+    assert all(row["review"]["status"] == "unreviewed" for row in document["candidates"])
+
+
+def test_public_validator_rejects_unknown_original_evidence_strength(tmp_path):
+    document = build_corroboration(_wire(), _primary(tmp_path))
+    document["events"][0]["original_evidence_strength"] = "assumed-confirmed"
+
+    with pytest.raises(CorroborationError, match="evidence strength is invalid"):
+        validate_corroboration(document)
