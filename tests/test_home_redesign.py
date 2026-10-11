@@ -33,11 +33,11 @@ def test_home_has_one_heading_and_clear_publication_routes():
         "data-home-wire-source-state",
     ):
         assert marker in page
-    assert "Follow China’s economy." in page
-    assert "Examine the public record." in page
+    assert "Follow the economy." in page
+    assert "Read the record." in page
     for route in ("/china/evidence/", "/china/economy/", "/research/markets/", "/research/connected/"):
         assert f'href="{route}"' in page
-    assert "Not a newspaper" in page
+    assert "retain their own evidence labels" in page
     assert "Evidence and review" in page
     assert "machine-authored text and human review" in page
     assert 'id="main"' in page
