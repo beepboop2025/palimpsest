@@ -27,6 +27,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
+from urllib.parse import quote
 
 from core import sealed_ledger
 from core.openrouter_client import (
@@ -418,6 +419,15 @@ def _clean_text(value: Any) -> str:
     return " ".join(value.split())
 
 
+def _publisher_url(value: Any) -> str | None:
+    """Escape whitespace without rewriting retained Unicode links or URL escapes."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise TranslationBuildError("retained publisher URL must be a string")
+    return re.sub(r"\s", lambda match: quote(match[0], safe=""), value.strip()) or None
+
+
 def _bounded_context(value: Any, *, source_path: str) -> str:
     text = _clean_text(value)
     if len(text) > MAX_CONTEXT_CHARS:
@@ -449,7 +459,7 @@ def _source_records_from_event(event: dict[str, Any]) -> tuple[dict[str, Any], .
             "source_name": _clean_text(ref.get("source_name")) or None,
             "item_id": _clean_text(ref.get("item_id")) or None,
             "item_version_id": _clean_text(ref.get("version_id")) or None,
-            "publisher_url": _clean_text(ref.get("url")) or None,
+            "publisher_url": _publisher_url(ref.get("url")),
             "published_at": _clean_text(ref.get("published_at")) or None,
         }
         records.append(record)
@@ -523,7 +533,7 @@ def _item_candidate(item: dict[str, Any], *, source_path: str) -> Candidate | No
         "source_name": _clean_text(item.get("source_name")) or None,
         "item_id": item_id,
         "item_version_id": version_id,
-        "publisher_url": _clean_text(item.get("url")) or None,
+        "publisher_url": _publisher_url(item.get("url")),
         "published_at": _clean_text(item.get("published_at")) or None,
     }
     return Candidate(

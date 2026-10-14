@@ -233,6 +233,31 @@ def test_schema_preserves_unicode_http_publisher_urls() -> None:
     )
 
 
+@pytest.mark.parametrize("url, expected", [
+    ("https://www.dw.com/zh/中国经济- 新安排/a-123?x=%20&y=a+b",
+     "https://www.dw.com/zh/中国经济-%20新安排/a-123?x=%20&y=a+b"),
+    ("https://example.test/标题\u00a0链接?q=a  b", "https://example.test/标题%C2%A0链接?q=a%20%20b"),
+    ("https://example.test/标题%20链接", "https://example.test/标题%20链接"),
+])
+def test_source_urls_escape_whitespace_without_changing_evidence(url: str, expected: str) -> None:
+    event = _event("eventv-url", "中国港口公布新的货运安排", "公告说明安排。", "itemv-url")
+    item = _item("itemv-url", "中国港口公布新的货运安排", "公告说明安排。")
+    event["evidence_refs"][0]["url"] = item["url"] = url
+    before = json.dumps([event, item], ensure_ascii=False)
+    candidates = [
+        translation_builder._event_candidate(event, record_kind="current_wire_event", source_path="fixture"),
+        translation_builder._item_candidate(item, source_path="fixture"),
+    ]
+    source_schema = json.loads(SCHEMA.read_text())["$defs"]["sourceRecord"]["properties"]["publisher_url"]
+    for candidate in candidates:
+        record = translation_builder._record(candidate, _cached(candidate))
+        actual = record["source_records"][0]["publisher_url"]
+        assert actual == expected
+        Draft202012Validator(source_schema).validate(actual)
+        assert record["source_records"][0]["item_version_id"] == "itemv-url"
+    assert json.dumps([event, item], ensure_ascii=False) == before
+
+
 def test_discovery_keeps_revisions_every_item_and_only_unretained_current_events(
     tmp_path: Path,
 ) -> None:
