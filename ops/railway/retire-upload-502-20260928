@@ -1,0 +1,504 @@
+#!/usr/bin/env python3
+"""Explicit, incident-only disposition; this is NOT no-mutation reconciliation.
+
+The ordinary reconciler remains unchanged. A privileged operator may accept
+the residual possibility of an unregistered provider job only for the pinned
+28 September 2026 upload, after fresh repeated provider and origin evidence.
+The decision and original gates are durable before either gate is consumed.
+"""
+from __future__ import annotations
+
+import argparse
+import fcntl
+import grp
+import hashlib
+import json
+import os
+from pathlib import Path
+import pwd
+import runpy
+import subprocess
+import sys
+import time
+from datetime import UTC, datetime
+
+INCIDENT = "palimpsest-upload-502-20260928"
+ACK = "accept-unregistered-provider-job-uncertainty-for-600a32145644507e6111213ecd18edfc"
+JOURNAL = "e06381214a2c40495a83daa38d2137586a140bc5d525cd480c10a37abb87ae02"
+HOLD = "070575e1202df0fc15956a53491b2c9e61b75b44c2e34f2a17e6d4c874af4a4c"
+PIN = "17a018bf67a056d35fe04da7c9ca95c26c58b646127b5572ec5cd319f9d9fd65"
+UPLOAD = "448710321ecd2687b1912117c80b116171042d09ecc67d7973de5e8659b13a2d"
+RECONCILER = "fb2bdd9542691842492620e78be60e9bc23b6ff3daa50045fe0f71ff8a0651ca"
+PROJECT = "f7c86128-53a7-458a-a931-6628c6e61fb2"
+ENVIRONMENT = "1d4d9eef-7bad-4c7b-a003-0e66fe9a8fe2"
+SERVICE = "86a6f49c-b9dc-4be8-acd1-dd180c693230"
+STATE = Path("/var/lib/palimpsest/railway-publication")
+CONTROL = Path("/var/lib/palimpsest/railway-control")
+ROOT = CONTROL / "incident-dispositions" / INCIDENT
+HELPER = Path("/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate")
+MIN_AGE = 24 * 3600
+MAX_AGE = 96 * 3600
+OBSERVATION_GAP = 30
+MAX_OBSERVATION_SECONDS = 300
+RESIDUAL = (
+    "Provider inventories and events show no accepted candidate. They do not "
+    "prove that an unregistered provider job cannot appear later. This is an "
+    "explicit incident disposition, not a verified no-mutation outcome."
+)
+OBSERVER_TIMER = "palimpsest-retired-upload-observer.timer"
+
+
+class Refused(RuntimeError):
+    pass
+
+
+def digest(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def canonical(value: object) -> bytes:
+    return (json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n").encode()
+
+
+def clock(value: str) -> datetime:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise Refused("invalid UTC clock")
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def age(candidate: dict, now: datetime) -> None:
+    seconds = (now - clock(candidate["prepared_at"])).total_seconds()
+    if not MIN_AGE <= seconds <= MAX_AGE:
+        raise Refused("incident is outside its explicit 24-96 hour disposition window")
+
+
+def connection(raw: bytes, name: str) -> list[dict]:
+    value = json.loads(raw)
+    if set(value) != {"data"} or set(value["data"]) != {name}:
+        raise Refused("provider response has errors or an unexpected envelope")
+    page = value["data"][name]
+    if set(page) != {"pageInfo", "edges"}:
+        raise Refused("provider connection has an unexpected shape")
+    info, edges = page["pageInfo"], page["edges"]
+    if set(info) != {"hasNextPage", "endCursor"} or type(info["hasNextPage"]) is not bool:
+        raise Refused("provider pagination is unproved")
+    if not isinstance(edges, list) or not 1 <= len(edges) <= 100:
+        raise Refused("provider history is empty or oversized")
+    rows = []
+    for edge in edges:
+        if not isinstance(edge, dict) or set(edge) != {"node"} or not isinstance(edge["node"], dict):
+            raise Refused("invalid provider row")
+        rows.append(edge["node"])
+    if len({row.get("id") for row in rows}) != len(rows):
+        raise Refused("duplicate provider identities")
+    clocks = [clock(row["createdAt"]) for row in rows]
+    if clocks != sorted(clocks, reverse=True):
+        raise Refused("provider history is not newest first")
+    return rows
+
+
+def validate_inventory(raw: bytes, candidate: dict) -> list[dict]:
+    rows = connection(raw, "deployments")
+    predecessor = candidate["predecessor"]["deployment_id"]
+    before = clock(candidate["rollback_evidence"]["topology"]["created_at"])
+    if rows[0]["id"] != predecessor or clock(rows[-1]["createdAt"]) > before:
+        raise Refused("deployment inventory does not span the captured predecessor")
+    for row in rows:
+        if (row.get("projectId"), row.get("environmentId"), row.get("serviceId")) != (PROJECT, ENVIRONMENT, SERVICE):
+            raise Refused("deployment scope differs")
+        if row.get("meta", {}).get("cliMessage") == candidate["message"]:
+            raise Refused("candidate now has a provider identity; use normal reconciliation")
+        if clock(row["createdAt"]) > before:
+            raise Refused("a newer provider deployment exists")
+        if row["id"] == predecessor:
+            if row.get("status") != "SUCCESS" or row.get("deploymentStopped") is not False:
+                raise Refused("predecessor is not the sole running success")
+        elif row.get("deploymentStopped") is not True or row.get("status") not in {
+            "SUCCESS", "CANCELED", "CANCELLED", "CRASHED", "FAILED", "REMOVED", "SKIPPED"
+        }:
+            raise Refused("another deployment may still activate or run")
+    return rows
+
+
+def validate_events(raw: bytes, candidate: dict) -> list[dict]:
+    rows = connection(raw, "events")
+    boundary = clock(candidate["prepared_at"])
+    predecessor = candidate["predecessor"]["deployment_id"]
+    seen_predecessor = False
+    for row in rows:
+        if row.get("projectId") != PROJECT or row.get("environmentId") != ENVIRONMENT:
+            raise Refused("event scope differs")
+        if clock(row["createdAt"]) >= boundary:
+            raise Refused("provider history contains activity after submission")
+        payload = row.get("payload")
+        if not isinstance(payload, dict):
+            raise Refused("provider event payload is unavailable")
+        if payload.get("cliMessage") == candidate["message"]:
+            raise Refused("provider recorded the candidate")
+        if row.get("object") == "Deployment" and payload.get("id") == predecessor and row.get("action") == "deployed":
+            seen_predecessor = True
+    if not seen_predecessor:
+        raise Refused("event history does not span predecessor activation")
+    return rows
+
+
+def queries() -> tuple[str, str]:
+    deployment = (
+        'query IncidentAllDeployments { deployments(first:100,input:{'
+        f'projectId:"{PROJECT}",environmentId:"{ENVIRONMENT}",serviceId:"{SERVICE}",includeDeleted:true'
+        '}){pageInfo{hasNextPage endCursor} edges{node{id projectId environmentId serviceId status createdAt updatedAt deploymentStopped meta}}}}'
+    )
+    events = (
+        'query IncidentEvents { events(first:100,'
+        f'projectId:"{PROJECT}",environmentId:"{ENVIRONMENT}"'
+        '){pageInfo{hasNextPage endCursor} edges{node{id projectId environmentId object action createdAt payload}}}}'
+    )
+    return deployment, events
+
+
+def api(n: dict, query: str, token: tuple[str, str]) -> bytes:
+    # Every query is a constant read-only GraphQL document. No Railway mutation
+    # is present anywhere in this incident helper.
+    return n["_railway"](["api", query, "--compact"], *token, timeout=45)
+
+
+def load_helper(*, observer: bool = False) -> dict:
+    # Reject caller-supplied alternate state trees, origins, helpers or projects.
+    expected = {
+        "RAILWAY_PROJECT_ID": PROJECT,
+        "RAILWAY_ENVIRONMENT_ID": ENVIRONMENT,
+        "RAILWAY_SERVICE_ID": SERVICE,
+    }
+    if any(os.environ.get(k) != v for k, v in expected.items()):
+        raise Refused("Railway environment scope differs from this incident")
+    if any(k.startswith("PALIMPSEST_") for k in os.environ):
+        raise Refused("Palimpsest path/origin overrides are forbidden for this incident")
+    dependency = ROOT / "original-reconciler.py" if observer and (ROOT / "original-reconciler.py").exists() else HELPER
+    st = dependency.lstat()
+    if not dependency.is_file() or dependency.is_symlink() or st.st_uid != 0 or st.st_mode & 0o022:
+        raise Refused("installed reconciler is not root-controlled")
+    if digest(dependency.read_bytes()) != RECONCILER:
+        raise Refused("installed reconciler differs from the reviewed incident dependency")
+    return runpy.run_path(str(dependency))
+
+
+def local_proof(n: dict, uid: int, gid: int, *, hold_consumed: bool = False) -> tuple[dict, dict[str, bytes]]:
+    if (Path("/var/lib/palimpsest-continuity/maintenance-hold.json").exists()
+            or (CONTROL / "rotation-intent.json").exists()):
+        raise Refused("another maintenance or rotation transaction is active")
+    n["_directory"](STATE, uid=uid, gid=gid)
+    n["_directory"](CONTROL, uid=0, gid=gid, mode=0o750)
+    def read(path: Path, owner: int = uid, mode: int = 0o600) -> bytes:
+        return n["_read"](path, uid=owner, gid=gid, mode=mode)
+    originals = {
+        "candidate.json": read(STATE / "pending-candidate.json"),
+        "pin.json": read(Path("/etc/palimpsest/railway-publication-base.json"), 0, 0o640),
+        "latest-success.json": read(STATE / "latest-success.json"),
+        "upload.json": read(STATE / "last-upload.json"),
+    }
+    hold_path = Path("/etc/palimpsest/railway-publication-data-hold.json")
+    if hold_consumed and not hold_path.exists():
+        originals["hold.json"] = n["_read"](ROOT / "original-hold.json", uid=0, gid=gid, mode=0o600)
+    else:
+        originals["hold.json"] = read(hold_path, 0, 0o640)
+    for name, expected in {"candidate.json": JOURNAL, "hold.json": HOLD, "pin.json": PIN, "upload.json": UPLOAD}.items():
+        if digest(originals[name]) != expected:
+            raise Refused(f"{name} is not the exact incident")
+    candidate = json.loads(originals["candidate.json"])
+    pin = json.loads(originals["pin.json"])
+    n["_validate_candidate"](candidate)
+    n["_validate_pin"](pin)
+    n["_validate_candidate_pin_binding"](candidate, pin, originals["pin.json"])
+    deployed = n["_read"](Path("/etc/palimpsest/deployed-commit"), uid=0, gid=0, mode=0o644).decode().strip()
+    if deployed != candidate["host_deployed_sha"]:
+        raise Refused("host deployment changed")
+    n["_validate_bundle"](candidate, uid=uid, gid=gid)
+    n["_validate_release_manifest_anchor"](candidate, uid=uid, gid=gid)
+    if n["_matching_preparation"](candidate, uid=uid, gid=gid):
+        raise Refused("pre-mutation evidence exists; use the normal reconciler")
+    if digest(originals["latest-success.json"]) != candidate["predecessor"]["receipt_sha256"]:
+        raise Refused("latest publication receipt moved")
+    if n["_predecessor_from_receipt"](originals["latest-success.json"], json.loads(originals["latest-success.json"]), pin) != candidate["predecessor"]:
+        raise Refused("predecessor receipt binding differs")
+    archive = STATE / "candidates" / f"{JOURNAL}.json"
+    if read(archive) != originals["candidate.json"]:
+        raise Refused("immutable candidate archive differs")
+    if read(Path(candidate["predecessor"]["archive_path"])) != originals["latest-success.json"]:
+        raise Refused("immutable predecessor receipt differs")
+    if n["_read_attempt"](JOURNAL, candidate=candidate, deployment=None, uid=uid, gid=gid) is not None:
+        raise Refused("rollback was attempted")
+    if json.loads(originals["hold.json"])["rollback"]["attempted"] is not False:
+        raise Refused("hold records rollback uncertainty")
+    if (STATE / "reconciliations" / f"{JOURNAL}.json").exists():
+        raise Refused("a normal recovery receipt already exists")
+    provider, public = n["_validate_evidence"](candidate, uid=uid, gid=gid)
+    originals["provider-manifest.json"] = provider
+    originals["public-manifest.json"] = public
+    return candidate, originals
+
+
+def observe(n: dict, candidate: dict, token: tuple[str, str]) -> tuple[dict, dict[str, bytes]]:
+    started = datetime.now(UTC)
+    raw: dict[str, bytes] = {}
+    deployment_query, event_query = queries()
+    raw["deployments.json"] = api(n, deployment_query, token)
+    raw["events.json"] = api(n, event_query, token)
+    validate_inventory(raw["deployments.json"], candidate)
+    validate_events(raw["events.json"], candidate)
+    raw["topology-before.json"] = n["_status"](*token)
+    active = n["_topology"](raw["topology-before.json"])
+    expected = candidate["rollback_evidence"]["topology"]
+    if active != {k: expected[k] for k in ("created_at", "deployment_id", "image_digest", "reason")}:
+        raise Refused("active predecessor identity moved")
+    provider, public = n["_live_manifests"]("incident-disposition")
+    if provider != public or digest(provider) != candidate["predecessor"]["manifest_sha256"]:
+        raise Refused("dual-origin predecessor bytes moved")
+    raw["provider-manifest.json"], raw["public-manifest.json"] = provider, public
+    raw["topology-after.json"] = n["_status"](*token)
+    if n["_topology"](raw["topology-after.json"]) != active:
+        raise Refused("provider topology moved during observation")
+    ended = datetime.now(UTC)
+    if not 0 <= (ended - started).total_seconds() <= MAX_OBSERVATION_SECONDS:
+        raise Refused("observation exceeded its time bound")
+    return {"started_at": started.isoformat(), "finished_at": ended.isoformat(), "active": active,
+            "artifacts": {name: {"sha256": digest(body), "bytes": len(body)} for name, body in raw.items()}}, raw
+
+
+def immutable(n: dict, path: Path, raw: bytes, gid: int) -> None:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        n["_atomic"](path, raw, uid=0, gid=gid, mode=0o600, replace=False)
+    else:
+        existing = n["_read"](path, uid=0, gid=gid, mode=0o600)
+        if existing != raw:
+            raise Refused(f"immutable incident evidence conflicts: {path.name}")
+
+
+def consume(n: dict, originals: dict[str, bytes], decision: bytes, gid: int) -> None:
+    # This durable decision is not a normal recovery receipt and cannot be used
+    # by the normal reconciler as proof of absence/no mutation.
+    immutable(n, ROOT / "decision.json", decision, gid)
+    for path, name, owner, mode in (
+        (Path("/etc/palimpsest/railway-publication-data-hold.json"), "hold.json", 0, 0o640),
+        (STATE / "pending-candidate.json", "candidate.json", pwd.getpwnam("palimpsest").pw_uid, 0o600),
+    ):
+        try:
+            path.lstat()
+        except FileNotFoundError:
+            if name != "hold.json":
+                raise Refused("candidate disappeared before explicit consumption")
+            continue
+        raw = n["_read"](path, uid=owner, gid=gid, mode=mode)
+        if raw != originals[name]:
+            raise Refused("gate changed before explicit consumption")
+        n["_unlink"](path)
+
+
+def complete(n: dict, decision: dict, gid: int) -> dict:
+    value = {"schema_version": "palimpsest.incident-disposition-completion.v1",
+             "incident": INCIDENT, "decision_sha256": digest(canonical(decision)),
+             "outcome": "retired_with_unregistered_provider_job_uncertainty",
+             "no_mutation_proved": False, "residual_uncertainty": RESIDUAL}
+    immutable(n, ROOT / "completion.json", canonical(value), gid)
+    return value
+
+
+def observer_ready(n: dict, gid: int) -> None:
+    for operation in ("is-enabled", "is-active"):
+        if subprocess.run(["/usr/bin/systemctl", operation, "--quiet", OBSERVER_TIMER], capture_output=True, timeout=10).returncode:
+            raise Refused("the delayed-candidate observer timer is not enabled and active")
+    observation = json.loads(n["_read"](ROOT / "observer-latest.json", uid=0, gid=gid, mode=0o600))
+    elapsed = (datetime.now(UTC) - datetime.fromisoformat(observation["observed_at"])).total_seconds()
+    if (observation.get("incident") != INCIDENT or observation.get("journal_sha256") != JOURNAL
+            or observation.get("status") != "no_matching_candidate_observed"
+            or observation.get("helper_sha256") != digest(Path(__file__).read_bytes())
+            or not 0 <= elapsed <= 300):
+        raise Refused("a recent successful observation by this exact helper is required")
+
+
+def matching_candidates(rows: list[dict], status: bytes, message: str) -> dict[str, dict]:
+    def walk(value):
+        if isinstance(value, dict):
+            if isinstance(value.get("meta"), dict) and value["meta"].get("cliMessage") == message:
+                yield value
+            for child in value.values():
+                yield from walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from walk(child)
+    return {row["id"]: row for row in [*rows, *walk(json.loads(status))]
+            if isinstance(row.get("meta"), dict) and row["meta"].get("cliMessage") == message}
+
+
+def hold_if_idle(n: dict, candidate: dict, gid: int) -> bool:
+    """Acquire the ordinary writer lock only for the strict local hold write."""
+    lock_path = CONTROL / "publish.lock"
+    n["_read"](lock_path, uid=0, gid=gid, mode=0o640, maximum=64, empty=True, single_link=True)
+    fd = os.open(lock_path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return False
+        n["_write_hold"](candidate, journal=JOURNAL,
+                         archive=STATE / "candidates" / f"{JOURNAL}.json",
+                         reason="candidate_identity_ambiguous", attempt=None, gid=gid)
+        return True
+    finally:
+        os.close(fd)
+
+
+def observe_retired() -> dict:
+    """Observe even while publishing; serialize only the local DATA HOLD write.
+
+    It does not cancel, roll back, delete deployments, or claim to fence Railway.
+    The public freshness endpoint and ordinary watchdog remain independent.
+    """
+    if os.geteuid() != 0:
+        raise Refused("incident observation requires root")
+    n = load_helper(observer=True)
+    publisher, group = pwd.getpwnam("palimpsest"), grp.getgrnam("palimpsest")
+    uid, gid = publisher.pw_uid, group.gr_gid
+    tokens = [(k, os.environ.pop(k)) for k in ("RAILWAY_TOKEN", "RAILWAY_API_TOKEN") if os.environ.get(k)]
+    if len(tokens) != 1:
+        raise Refused("exactly one Railway token is required")
+    n["_directory"](CONTROL, uid=0, gid=gid, mode=0o750)
+    # This content-addressed candidate is immutable. Neither reading it nor
+    # observing Railway requires the writer lock held throughout a long build.
+    candidate_raw = n["_read"](STATE / "candidates" / f"{JOURNAL}.json", uid=uid, gid=gid, mode=0o600)
+    if digest(candidate_raw) != JOURNAL:
+        raise Refused("retained candidate changed")
+    candidate = json.loads(candidate_raw)
+    n["_validate_candidate"](candidate)
+    inventory = api(n, queries()[0], tokens[0])
+    rows = connection(inventory, "deployments")
+    status = n["_status"](*tokens[0])
+    # Active topology includes live deployments even when an old createdAt
+    # puts their row beyond the bounded historical inventory page.
+    matches = matching_candidates(rows, status, candidate["message"])
+    if not matches:
+        # A malformed/ambiguous topology must not produce a healthy
+        # observation merely because its message could not be found.
+        n["_topology"](status)
+    value = {"schema_version": "palimpsest.retired-submission-observation.v1", "incident": INCIDENT,
+             "journal_sha256": JOURNAL, "observed_at": datetime.now(UTC).isoformat(),
+             "helper_sha256": digest(Path(__file__).read_bytes()),
+             "inventory_sha256": digest(inventory), "topology_sha256": digest(status),
+             "matching_deployment_ids": sorted(matches),
+             "status": "late_candidate_observed" if matches else "no_matching_candidate_observed",
+             "provider_mutations": [], "residual_uncertainty": RESIDUAL}
+    n["_ensure_directory"](ROOT.parent, uid=0, gid=gid)
+    n["_ensure_directory"](ROOT, uid=0, gid=gid)
+    if matches:
+        immutable(n, ROOT / f"late-inventory-{digest(inventory)}.json", inventory, gid)
+        immutable(n, ROOT / f"late-topology-{digest(status)}.json", status, gid)
+        value["hold_written"] = False
+        try:
+            value["hold_written"] = hold_if_idle(n, candidate, gid)
+            if not value["hold_written"]:
+                value["status"] = "late_candidate_observed_hold_deferred"
+        except Exception as exc:
+            # Preserve the matching evidence and report unsuccessful observation
+            # if an unrelated hold or local error prevents the strict hold write.
+            value["status"] = "late_candidate_observed_hold_failed"
+            value["hold_error"] = str(exc)
+        immutable(n, ROOT / f"late-observation-{digest(canonical(value))}.json", canonical(value), gid)
+    n["_atomic"](ROOT / "observer-latest.json", canonical(value), uid=0, gid=gid, mode=0o600, replace=True)
+    return value
+
+
+def execute(retire: bool, acknowledgement: str | None) -> dict:
+    if os.geteuid() != 0:
+        raise Refused("incident disposition requires root")
+    if retire and acknowledgement != ACK:
+        raise Refused("explicit incident uncertainty acknowledgement is required")
+    n = load_helper()
+    publisher, group = pwd.getpwnam("palimpsest"), grp.getgrnam("palimpsest")
+    uid, gid = publisher.pw_uid, group.gr_gid
+    tokens = [(k, os.environ.pop(k)) for k in ("RAILWAY_TOKEN", "RAILWAY_API_TOKEN") if os.environ.get(k)]
+    if len(tokens) != 1:
+        raise Refused("exactly one Railway token is required")
+    token = tokens[0]
+    lock_path = CONTROL / "publish.lock"
+    n["_read"](lock_path, uid=0, gid=gid, mode=0o640, maximum=64, empty=True, single_link=True)
+    fd = os.open(lock_path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        decision_path = ROOT / "decision.json"
+        previous = None
+        if decision_path.exists():
+            previous = json.loads(n["_read"](decision_path, uid=0, gid=gid, mode=0o600))
+            if (previous.get("incident") != INCIDENT or previous.get("journal_sha256") != JOURNAL
+                    or previous.get("no_mutation_proved") is not False or previous.get("residual_uncertainty") != RESIDUAL):
+                raise Refused("existing incident decision differs")
+            if not (STATE / "pending-candidate.json").exists():
+                hold_path = Path("/etc/palimpsest/railway-publication-data-hold.json")
+                if hold_path.exists() and digest(hold_path.read_bytes()) == HOLD:
+                    raise Refused("original hold remains despite missing candidate")
+                return complete(n, previous, gid) if retire else previous
+        candidate, originals = local_proof(n, uid, gid, hold_consumed=previous is not None)
+        age(candidate, datetime.now(UTC))
+        first, first_raw = observe(n, candidate, token)
+        time.sleep(OBSERVATION_GAP)
+        second, second_raw = observe(n, candidate, token)
+        if (datetime.fromisoformat(second["finished_at"]) - datetime.fromisoformat(first["started_at"])).total_seconds() > MAX_OBSERVATION_SECONDS:
+            raise Refused("paired observations exceeded their time bound")
+        age(candidate, datetime.now(UTC))
+        final_candidate, final_originals = local_proof(n, uid, gid, hold_consumed=previous is not None)
+        if final_candidate != candidate or final_originals != originals:
+            raise Refused("local authority changed while provider was observed")
+        if first["active"] != second["active"]:
+            raise Refused("predecessor changed between observations")
+        decision = {"schema_version": "palimpsest.explicit-incident-disposition.v1",
+                    "incident": INCIDENT, "journal_sha256": JOURNAL, "original_hold_sha256": HOLD,
+                    "recorded_at": datetime.now(UTC).isoformat(), "acknowledgement": ACK,
+                    "no_mutation_proved": False, "residual_uncertainty": RESIDUAL,
+                    "provider_mutations": [], "routine_reconciler_changed": False,
+                    "reconciler_sha256": RECONCILER, "observations": [first, second],
+                    "originals": {k: {"sha256": digest(v), "bytes": len(v)} for k, v in originals.items()}}
+        if not retire:
+            return {"status": "eligible_for_explicit_incident_disposition", "proposed_decision": decision}
+        observer_ready(n, gid)
+        n["_ensure_directory"](ROOT.parent, uid=0, gid=gid)
+        n["_ensure_directory"](ROOT, uid=0, gid=gid)
+        immutable(n, ROOT / "original-reconciler.py", HELPER.read_bytes(), gid)
+        for name, raw in originals.items():
+            immutable(n, ROOT / f"original-{name}", raw, gid)
+        for label, items in (("first", first_raw), ("second", second_raw)):
+            for name, raw in items.items():
+                # Content-addressed evidence makes interrupted pre-decision
+                # captures append-only; the decision names each exact digest.
+                immutable(n, ROOT / f"{label}-{digest(raw)}-{name}", raw, gid)
+        chosen = previous if previous is not None else decision
+        consume(n, originals, canonical(chosen), gid)
+        return complete(n, chosen, gid)
+    finally:
+        os.close(fd)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--retire", action="store_true", help="consume only this incident after explicit acknowledgement")
+    parser.add_argument("--acknowledge")
+    parser.add_argument("--observe", action="store_true", help="watch the retired message without provider mutations")
+    args = parser.parse_args()
+    try:
+        if args.observe and (args.retire or args.acknowledge):
+            raise Refused("observer and disposition modes cannot be combined")
+        result = observe_retired() if args.observe else execute(args.retire, args.acknowledge)
+    except BlockingIOError as exc:
+        if args.observe:
+            print(f"incident observation failed: {exc}", file=sys.stderr)
+            return 1
+        print("publication lock is busy; retry at the next observation", file=sys.stderr)
+        return 75
+    except Exception as exc:
+        print(f"incident disposition refused: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, sort_keys=True))
+    return 1 if result.get("status", "").startswith("late_candidate_observed") else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
