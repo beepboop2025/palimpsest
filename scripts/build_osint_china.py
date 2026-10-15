@@ -1315,6 +1315,43 @@ def _anchor_source_at(
     )
 
 
+def _unavailable_signal(spec: SignalSpec, input_fingerprint: dict[str, Any],
+                        reason: str) -> dict[str, Any]:
+    """Preserve the source identity while withholding unusable values."""
+    raw_url = PUBLIC_BASE + spec.filename
+    status = "missing" if reason == "source file is missing" else "corrupt"
+    return {
+        "id": spec.id,
+        "title": spec.title,
+        "layer": spec.layer,
+        "optional": spec.optional,
+        "method_version": None,
+        "cadence_hours": spec.cadence_hours,
+        "source_timestamp": None,
+        "freshness_deadline": None,
+        "status": status,
+        "live": False,
+        "health": {
+            "ok": False,
+            "reason": reason,
+            "age_hours": None,
+            "upstream_status": None,
+            "collector_status": None,
+            "collector_reason": None,
+            "pipeline_checked_at": None,
+        },
+        "source": spec.source_fallback,
+        "method": spec.method_fallback,
+        "scope": spec.description,
+        "summary": _summary(spec, None, status, None, None, None, reason),
+        "metric": None,
+        "raw_url": raw_url,
+        "input": input_fingerprint,
+        "payload": None,
+        "payload_complete": False,
+    }
+
+
 def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, Any]:
     path = readings_dir / spec.filename
     if spec.id == "anchors":
@@ -1325,39 +1362,11 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
     raw_url = PUBLIC_BASE + spec.filename
 
     if payload is None:
-        status = "missing" if load_error == "source file is missing" else "corrupt"
-        return {
-            "id": spec.id,
-            "title": spec.title,
-            "layer": spec.layer,
-            "optional": spec.optional,
-            "method_version": None,
-            "cadence_hours": spec.cadence_hours,
-            "source_timestamp": None,
-            "freshness_deadline": None,
-            "status": status,
-            "live": False,
-            "health": {
-                "ok": False,
-                "reason": load_error,
-                "age_hours": None,
-                "upstream_status": None,
-                "collector_status": None,
-                "collector_reason": None,
-                "pipeline_checked_at": None,
-            },
-            "source": spec.source_fallback,
-            "method": spec.method_fallback,
-            "scope": spec.description,
-            "summary": _summary(spec, None, status, None, None, None, load_error),
-            "metric": None,
-            "raw_url": raw_url,
-            "input": input_fingerprint,
-            "payload": None,
-            "payload_complete": False,
-        }
+        return _unavailable_signal(spec, input_fingerprint, load_error)
 
     measured_at, timestamp_error = _timestamp(payload, spec)
+    if measured_at is None:
+        return _unavailable_signal(spec, input_fingerprint, timestamp_error)
     metric = _metric(spec, payload)
     source, method, scope = _provenance(payload, spec)
     upstream_status = _upstream_status(payload)
@@ -1394,13 +1403,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
     if spec.id == "baike-redaction" and semantic_reason:
         metric = None
 
-    if measured_at is None:
-        status = "corrupt"
-        source_timestamp = None
-        deadline = None
-        age_hours = None
-        reason = timestamp_error
-    else:
+    if measured_at is not None:
         measured_at = _utc(measured_at)
         freshness_at = measured_at + timedelta(hours=spec.freshness_hours)
         source_timestamp = iso_z(measured_at)
@@ -1438,7 +1441,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
     if payload_method_version is None:
         payload_method_version = _at(payload, ("summary", "method_version"))
     embedded, payload_complete = _embed_payload(payload)
-    return {
+    signal = {
         "id": spec.id,
         "title": spec.title,
         "layer": spec.layer,
@@ -1478,6 +1481,20 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
         "payload": embedded,
         "payload_complete": payload_complete,
     }
+
+    # The downstream newsroom applies this same contract to the entire roll-up.
+    # Isolate an invalid source here so its siblings can still be published.
+    # Do not echo exception text: a path can contain the rejected source text.
+    from core.newsroom import NewsroomError, validate_public_json
+
+    try:
+        validate_public_json(signal)
+    except NewsroomError:
+        return _unavailable_signal(
+            spec, input_fingerprint,
+            "source fails the public JSON safety contract; values withheld",
+        )
+    return signal
 
 
 def _layers(signals: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -430,6 +430,67 @@ def test_missing_corrupt_and_stale_sources_remain_visible_and_never_live(mod, tm
     assert {"ddti", "gdelt", "ooni-gfw"} <= health_ids
 
 
+@pytest.mark.parametrize("bad_value", [
+    "<script>alert(1)</script>",
+    "javascript:alert(1)",
+    "title with onclick=handler",
+    "invisible\u202etext",
+])
+def test_unsafe_source_is_withheld_without_blocking_other_sources(mod, tmp_path, bad_value):
+    from core import newsroom
+
+    for spec in mod.SIGNALS:
+        if spec.id in {"ddti", "public-deletion-ledgers"}:
+            _write_current_source(tmp_path, spec)
+    spec = next(item for item in mod.SIGNALS if item.id == "public-deletion-ledgers")
+    path = tmp_path / spec.filename
+    clean = json.loads(path.read_text())
+    payload = {**clean, "ledgers": [{"items": [{"title": bad_value}]}]}
+    _write_json(path, payload)
+    original = path.read_bytes()
+
+    document = mod.build_document(tmp_path, NOW)
+    held = _signal(document, spec.id)
+    assert held["status"] == "corrupt"
+    assert held["live"] is False and held["health"]["ok"] is False
+    assert held["payload"] is None and held["metric"] is None
+    assert held["payload_complete"] is False
+    assert held["input"]["sha256"] == hashlib.sha256(original).hexdigest()
+    assert path.read_bytes() == original
+    assert bad_value not in json.dumps(document, ensure_ascii=False)
+    assert _signal(document, "ddti")["status"] == "live"
+    assert document["health"]["counts"]["corrupt"] == 1
+    newsroom.transform_osint_feed(
+        document, newsroom.load_newsroom_config(ROOT / "config/newsroom.json")
+    )
+    for forbidden in ({"payload": {}}, {"metric": {"value": 1}},
+                      {"source_timestamp": "2026-08-04T11:00:00Z"}):
+        held.update(forbidden)
+        with pytest.raises(newsroom.NewsroomError, match="corrupt signals"):
+            newsroom.transform_osint_feed(
+                document, newsroom.load_newsroom_config(ROOT / "config/newsroom.json")
+            )
+        held.update(payload=None, metric=None, source_timestamp=None)
+
+    # The next clean capture heals naturally; no manual reset or age override.
+    _write_json(path, clean)
+    recovered = mod.build_document(tmp_path, NOW)
+    assert _signal(recovered, spec.id)["status"] == "live"
+
+
+def test_unsafe_source_keys_are_not_echoed_into_failure_metadata(mod, tmp_path):
+    from core.newsroom import validate_public_json
+
+    spec = next(item for item in mod.SIGNALS if item.id == "gdelt")
+    payload = _write_current_source(tmp_path, spec)
+    payload["<script>hostile-key</script>"] = "value"
+    _write_json(tmp_path / spec.filename, payload)
+    document = mod.build_document(tmp_path, NOW)
+    assert _signal(document, spec.id)["status"] == "corrupt"
+    assert "hostile-key" not in json.dumps(document)
+    validate_public_json(document)
+
+
 def test_explicit_upstream_abstention_is_degraded_not_promoted_to_live(mod, tmp_path):
     _write_json(
         tmp_path / "baike-redaction-latest.json",
