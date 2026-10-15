@@ -316,6 +316,11 @@ def _validate_json_tree(value: object, path: str = "$") -> None:
     _fail(f"{path} contains non-JSON value {type(value).__name__}")
 
 
+def validate_public_json(value: object) -> None:
+    """Apply the newsroom JSON/text boundary before joining source payloads."""
+    _validate_json_tree(value)
+
+
 def _object_without_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -589,6 +594,13 @@ def _validate_signal(raw_signal: object, path: str, feed_generated_at: str) -> d
             _fail(f"{path} missing signals may not claim source evidence")
         if signal["payload"] is not None or signal["metric"] is not None:
             _fail(f"{path} missing signals may not carry a payload or metric")
+    elif status == "corrupt":
+        if source_timestamp is not None or freshness_deadline is not None:
+            _fail(f"{path} corrupt signals may not claim observation clocks")
+        if signal["payload"] is not None or signal["metric"] is not None:
+            _fail(f"{path} corrupt signals may not carry a payload or metric")
+        if (sha256 is None) != (input_bytes is None):
+            _fail(f"{path} corrupt source fingerprints must be complete or absent")
     else:
         if source_timestamp is None or freshness_deadline is None or sha256 is None or input_bytes is None:
             _fail(f"{path} reporting signals require timestamped, hashed input evidence")
@@ -1160,4 +1172,5 @@ __all__ = [
     "canonical_json_bytes",
     "load_newsroom_config",
     "transform_osint_feed",
+    "validate_public_json",
 ]
