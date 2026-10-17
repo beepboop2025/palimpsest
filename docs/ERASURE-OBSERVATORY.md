@@ -52,16 +52,12 @@ The integrity backbone is grounded in the trusted-public-archive literature
 - **`.github/workflows/erasure-refresh.yml`** — 6-hourly; verifies the ledger
   *before* sealing (fail-loud on any prior tamper), seals, commits if changed.
 
-## Why the sealed ledger is the moat
+## What the sealed ledger verifies
 
-Anyone can publish a live number, so the number alone proves nothing. When the
-subject under measurement is *the retroactive rewriting of the record*, the first
-attack on the observatory is "you fabricated the before-state / you changed your
-own history." No censorship observatory in the field answers that. The sealed
-ledger does: publication of the JSONL into the public repo is the anchoring, and a
-third party who cloned the repo yesterday holds a witness to yesterday's chain
-head. It is the one differentiator that is both technically real and impossible to
-hand-wave: un-censorable public infrastructure.
+A published JSONL chain lets a reader verify whether retained records have changed.
+Independent copies can witness earlier chain heads. These integrity checks do not
+establish that an observation was true when it was first recorded; see
+[the integrity limits](INTEGRITY.md).
 
 ## Status and honesty notes
 

@@ -1,74 +1,6 @@
 # China Economic Observatory
 
-## Decision
-
-Palimpsest can become the public-source, provenance and vintage layer for a much
-deeper China economic system. It cannot become a public clone of China Beige
-Book (CBB). CBB's differentiator is a proprietary in-country respondent network,
-not a formula that can be reconstructed from public time series. CBB says its
-independent network covers more than 4,000 firms and 34 industries, while its
-analytics platform advertises more than 4 million rows, 100+ indicators and 60
-filter dimensions; the public site does not grant access to its respondent records
-or shadow-finance microdata.
-
-The defensible target is therefore a **CBB-shaped observatory**, not “CBB data”:
-
-1. collect every lawful public aggregate with release-time and revision history;
-2. add contractually licensed aggregate panels where they provide genuinely
-   independent information;
-3. use open Earth-observation and AIS data to measure physical activity outside
-   the statistical system;
-4. keep official, market, licensed-survey, geospatial and censorship-derived
-   measurements separate; and
-5. combine them only through point-in-time models that expose uncertainty,
-   source dependence and release-level news.
-
-Palimpsest's safety rules remain controlling. It does not recruit respondents in
-China, store respondent rows, profile individuals, bypass access controls or
-automate sources whose contracts prohibit it. A foreign-sponsored primary survey
-requires a licensed Chinese foreign-related-survey institution and legal review;
-that operation belongs outside this public OSINT repository. Palimpsest may ingest
-approved **aggregate outputs** from such a partner.
-
-## Where the competing data can be obtained
-
-ChinaData.Live exposes a documented public distribution API at
-`https://chinadata.live/api/v2`. Its `GET /datasets` endpoint lists the current
-catalogue; `GET /data/:id` returns one dataset as JSON, and the same endpoint with
-`?format=csv` returns a spreadsheet-friendly export. Separate trade routes cover
-country and HS-code views. This is the quickest legitimate way to inspect the
-public product, but it is not permission to mirror the service: the published
-[terms](https://chinadata.live/terms/) limit anonymous use to 100 requests per IP
-per UTC day, retain original-provider restrictions, and reserve bulk or recurring
-delivery for a written agreement. Palimpsest should use the catalogue for gap
-analysis and collect from the named original source wherever practical; a
-ChinaData.Live transport is not independent confirmation of the NBS, PBOC, GACC or
-other official series it republishes.
-
-China Beige Book does not offer its underlying panel as an open public dataset.
-Its [analytics platform](https://www.chinabeigebook.com/analytics-platform/) is a
-licensed product with interactive views and client delivery through Azure SQL,
-AWS S3, SFTP and Excel. The current public description says it contains more than
-4 million rows, 100+ indicators and 60 filter dimensions; its
-[methodological advantage](https://www.chinabeigebook.com/cbb-advantage/) is an
-independently collected network covering more than 4,000 firms and 34 industries.
-Access therefore means buying a licence directly from CBB and negotiating derived-
-output and retention rights. There is no lawful public route to “get all” of the
-respondent-level data, and Palimpsest must not imply otherwise.
-
-| Product | Strongest public claim | Access | What Palimpsest should learn from it | Boundary |
-|---|---|---|---|---|
-| ChinaData.Live | Broad, searchable official statistics and trade tables | Public JSON/CSV for light use; custom bulk delivery by agreement | Breadth, simple discovery, stable developer ergonomics | Mostly redistributed official information; source rights and rate limits still apply |
-| China Beige Book | Early, cross-sectional private firm, labor, credit and commodity signals | Paid platform/database/files | Firm-size, ownership, region and sector cuts; decision-oriented releases | Proprietary respondent network cannot be reconstructed from public data |
-| Palimpsest | Open evidence graph with separate period, release and collection clocks | Public files, static pages, OpenAPI and MCP | Make every claim replayable, revision-aware and falsifiable | Current economic history is narrow, so the system must abstain from a national composite |
-
-The product opportunity is an **evidence and vintage layer**, not a third generic
-data portal. Palimpsest can exceed both competitors on properties a reader can
-independently verify: exact source receipts, as-of queries, revision diffs,
-independence-group accounting, stale/missing states, source-rights metadata,
-pseudo-real-time backtests and a public record of model misses. It cannot exceed a
-private panel on information it does not lawfully observe, and should say so on
-every relevant surface.
+Current interfaces, source coverage, record contracts and verification requirements.
 
 ## What exists now
 
@@ -477,90 +409,6 @@ PYTHONPATH=. python -m scripts.china_econ_plan
 The output counts **independence groups**, not URLs. An NBS release copied by a
 multilateral database is one information family, not independent confirmation.
 
-## Coverage architecture
-
-### 1. Firm and survey layer
-
-The strongest lawful public analog to a private business panel is larger than the
-current system suggests. NBS states that its quarterly enterprise-climate survey
-received reports from more than 600,000 firms in 2023 across 16 industry divisions.
-The PBOC's 5,000-enterprise system combines monthly financial reporting with a
-quarterly entrepreneur questionnaire across 30 provinces. Both publish aggregate
-indices/reports, not public respondent files. They should be the first soft-data
-collectors because they cover business conditions, profits, demand, investment,
-employment, costs and expectations without acquiring personal or confidential
-firm records.
-
-Licensed complements belong in a separate procurement track:
-
-- CIER/Zhaopin for vacancies-to-applicants ratios by sector, city tier, firm size
-  and ownership;
-- Kantar Worldpanel for FMCG purchases, brands, prices, channels and city tiers;
-- UnionPay/China UMS aggregate payments and commercial-district footfall;
-- Baidu Huiyan aggregate mobility/footfall and Baidu Index search demand;
-- CREIS for deeper property indices; and
-- Wind for licensed macro, company, bond, commodity and forecast transports.
-
-Every contract must state fields, history, update rights, derived-output rights,
-retention, redistribution and audit rules. A visible dashboard is not a bulk-data
-licence.
-
-The aggregate-only survey processor (`processors/china_econ_survey.py`) accepts
-stratum counts, never respondent rows. It suppresses thin cells, trims extreme
-post-stratification weights, reports coverage and Kish effective sample size, and
-computes a diffusion index with an uncertainty interval. It is a publication
-processor for legally obtained aggregate cells, not a survey-recruitment system.
-
-### 2. Official value collectors
-
-Turn the existing publication watchers into value collectors in this order:
-
-1. PBOC money, loans and Total Social Financing components, plus the public
-   5,000-enterprise indices;
-2. NBS enterprise-climate indices and national-data releases for industrial
-   output, retail, fixed-asset investment, prices, employment, property and
-   production;
-3. GACC monthly trade by commodity, partner, regime, enterprise type and location;
-4. SAFE balance of payments, settlement, cross-border receipts/payments, external
-   debt and reserves;
-5. Ministry of Transport freight/ports/passengers/investment, State Post Bureau
-   parcel volume/revenue, and NEA sector electricity use; and
-6. provincial and city releases through source-specific adapters with versioned
-   geographic codes.
-
-The State Tax Administration's public VAT-invoice analyses add useful high-frequency
-sales summaries, but the daily invoice microdata are confidential and unavailable.
-The PBOC credit registry is subject-authorised, not a bulk feed. GSXT and LandChina
-are interactive public services without a documented bulk contract; they stay
-blocked until written permission or a licensed export exists.
-
-### 3. Physical and cross-border layer
-
-Open sensors create an information family independent of official publication:
-
-- VIIRS night lights for changes in city and industrial-zone activity;
-- Sentinel-5P NO2 for combustion-intensive activity, with meteorological and
-  sensor-quality controls;
-- IMF PortWatch for port calls and shipment estimates derived from satellite AIS;
-- Sentinel-1 SAR for port/yard motion and construction where a reproducible
-  extraction pipeline is available; and
-- public weather/crop products for agriculture, with STAC records and explicit
-  processing levels.
-
-These are proxies, not hidden GDP. Models must publish cloud masks, coverage,
-measurement error, spatial aggregation and revision status. Use changes rather
-than cross-region levels unless validation demonstrates transferability.
-
-### 4. Company and market layer
-
-CNINFO/SSE/SZSE statutory filings can support aggregate revenue, margins, cash
-conversion, receivables, inventories, capex, headcount and sector diffusion. Bulk
-history and redistribution require a documented licence. Market layers include
-Stock Connect, CFETS, CCDC/ChinaBond or licensed bond data, commodity exchanges and
-licensed A-share data. Company identity resolution must prefer Unified Social
-Credit Code and original Chinese names; pinyin is a weak comparison feature, not
-an identifier.
-
 ## Data contract and storage
 
 `core/econ_observation.py` defines the interchange row. It is long-form and
@@ -580,15 +428,6 @@ Because the CFETS response supplies a data date but no exact release timestamp,
 backfilled rows use Palimpsest's first-observed time as a conservative upper bound.
 They are never pretended to have been known on the economic data date.
 
-For a local pilot, store raw bytes and long observations as content-addressed files
-plus Parquet, query with DuckDB and keep the public JSONL export. At production
-scale, use object storage + Parquet + Apache Iceberg for snapshot/time-travel,
-DuckDB/Trino for analytical reads, PostgreSQL/PostGIS for metadata and exact spatial
-joins, and OpenLineage for run/dataset lineage. Raster assets belong in COG/Zarr
-with STAC; vector features belong in GeoParquet with effective-dated boundaries.
-Kafka is unnecessary for mostly monthly releases; add streaming infrastructure only
-for genuinely high-rate licensed feeds.
-
 GitHub Pages is the compact catalog, latest-reading and human-navigation layer; it
 is not the durable warehouse for every raw response or historical revision. The
 August 2026 release audit measured a 957,941,760-byte Pages artifact against the
@@ -603,7 +442,7 @@ rate ceiling, bounded response size, redirect/host validation, raw immutable cap
 parser version, schema/range/unit checks, explicit abstention and replay fixtures.
 Quarantine shape changes; never coerce them to zero.
 
-## Mathematical engine ladder
+## Published reference methods
 
 ### Reference baselines shipped here
 
@@ -629,42 +468,6 @@ folds, 37 days of history, one source family and no revised outcomes. Champion a
 forecast fields therefore remain null. This is published backtest evidence, not a
 China-wide nowcast.
 
-### Production champion/challenger system
-
-The primary nowcaster should be a mixed-frequency dynamic factor model using
-`statsmodels.tsa.statespace.DynamicFactorMQ`: EM estimation, Kalman filtering,
-monthly/quarterly blocks, arbitrary missing patterns and release-news decomposition.
-Run three challengers beside it:
-
-1. restricted and unrestricted MIDAS (`midasr`) for transparent daily/monthly-to-
-   quarterly bridge equations;
-2. Bayesian MF-VAR (`mfbvar`) for joint uncertainty and scenario dynamics; and
-3. Elastic Net/LASSO for a high-dimensional linear benchmark.
-
-Do not make deep neural models the default. Short quarterly histories and many
-research choices create an overfitting problem; nonlinear models join only after
-they beat the baselines in frozen pseudo-real-time evaluation.
-
-The measurement model should distinguish latent activity from source behaviour:
-
-```text
-y[source, period, vintage] = latent_state[period]
-                            + source_bias[source]
-                            + revision_noise[source, vintage]
-```
-
-Use robust (for example Student-t) observation errors for outliers, time-varying
-reliability, and explicit source blocks. Survey soft data should matter more early
-in a release cycle; hard production/trade values should gain weight as they arrive.
-
-For a legally commissioned external panel, the statistical chain is design weights,
-non-response adjustment, trimming, calibration/raking to province × sector × size ×
-ownership totals, then MRP or small-area estimation for sparse cells. Publish direct
-and model-based estimates separately. Reconcile high-frequency estimates to trusted
-quarterly/annual totals with Denton-Cholette, then reconcile national/province/sector
-hierarchies with MinT. Lunar New Year, Golden Week, leap-year and trading-day effects
-must be explicit calendar regressors.
-
 ### Validation and promotion
 
 No model is promoted on final revised data. For each historical decision date:
@@ -680,52 +483,6 @@ No model is promoted on final revised data. For each historical decision date:
 Use expanding-window rolling origins with release-calendar replay. A model that
 cannot beat a seasonal/random-walk/bridge baseline, loses calibration, depends on
 one source family, or fails after costs/licensing constraints stays a challenger.
-
-## Product outputs
-
-Do not collapse the observatory into one unexplained “China score.” Publish a small
-family of states with distributions and contributors:
-
-- national growth/activity nowcast;
-- province and sector activity diffusion;
-- firm health (sales/profit/cash/inventory/receivables/capex);
-- credit access, cost and shadow-credit proxies;
-- labor demand, hiring and wage pressure;
-- consumer/digital demand;
-- property/construction;
-- trade/logistics and commodity supply; and
-- data-publication/revision reliability.
-
-Each reading should show as-of time, target period, interval, freshness/coverage,
-independent source groups, largest positive/negative release-news contributions,
-revision effect, model version and a link to the exact training snapshot.
-
-## Implementation sequence
-
-### First 30 days
-
-- Merge the source registry, bitemporal contract and tests.
-- Start CFETS long-form vintage accumulation (implemented in this change).
-- Add replay fixtures and collectors for PBOC TSF, NBS enterprise climate, PBOC
-  5,000-enterprise aggregates, GACC and SAFE.
-- Connect MOT, SPB, NEA and NBS 70-city housing adapters.
-- Export all economic readings through series/release/vintage MCP queries.
-
-### Days 31 to 90
-
-- Backfill public history with actual first-known/revision metadata where available.
-- Add VIIRS, Sentinel and PortWatch derived series with STAC provenance.
-- Deploy Iceberg/Parquet and OpenLineage; keep JSON/JSONL as the public interchange.
-- Fit and score the DFM, MIDAS and Elastic Net baselines on pseudo-real-time vintages.
-- Negotiate CIER/property/consumer/payment licences in a separate procurement lane.
-
-### Days 91 to 180
-
-- Add provincial/sector hierarchical reconciliation and sparse-cell MRP/SAE.
-- Add company filing aggregates and licensed bond/market risk features.
-- Run a blind shadow period; publish misses, interval coverage and revision effects.
-- Promote only models and sources that clear accuracy, calibration, lineage, safety
-  and licensing gates.
 
 ## Non-negotiable limits
 

@@ -70,8 +70,8 @@ Included deliberately to mark the method's edge. When Beijing **suspended** the 
 unemployment series, nothing was "deleted" — *data* was withheld. The index still surfaces
 rising censor attention on 青年失业率 (discussion of the suspension is itself censored), but the
 underlying disappearance is of a statistic, not a post. Deletion-as-data sees the shadow, not
-the object. We state this rather than hide it: a complementary "withholding" signal (a series
-that stops updating) is future work, noted in [METHODOLOGY.md](METHODOLOGY.md).
+the object. This validation does not establish a complementary withholding signal
+for a statistical series that stops updating. See [METHODOLOGY.md](METHODOLOGY.md).
 
 ## Honest limits
 

@@ -127,8 +127,8 @@ boundary and local single-writer procedure are documented in
   silently.
 - **Endpoint compromise.** If the publishing key or CI is compromised, an
   attacker can append false *new* entries (they still cannot rewrite old
-  ones without tripping layers 3 to 6). Signed attestations are the planned
-  next layer; see below.
+  ones without tripping layers 3 to 6). Existing anchoring does not authenticate
+  the truth of a newly captured observation.
 
 ## A worked case: the limit above, caught before it published
 
@@ -209,13 +209,3 @@ just our record. It hashes every published response, matches it against what the
 run sealed, then re-derives each label from that text and prints any response
 where the classifier and the published label disagree. If you think a particular
 refusal was not a refusal, the response is right there to quote.
-
-## Planned hardening
-
-- **Ed25519-signed attestations** so a CI compromise cannot mint entries that
-  pass as ours (adds a key, so it lands together with a documented key
-  ceremony and rotation story rather than quietly).
-- **More witnesses.** The witness is deliberately trivial to run; each
-  independent copy shrinks the rewrite window. If you run one, tell us.
-- **Cross-registry anchoring** with peer projects, so records vouch for each
-  other's roots.
