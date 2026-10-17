@@ -366,49 +366,10 @@ If the registry grows beyond a single-node polling budget, partition it by a
 stable source hash across workers. Stable IDs and source-level receipts make the
 result deterministic regardless of worker completion order.
 
-## Rollout plan
+## Current design limits
 
-### Phase 1 — safe vertical slice
-
-- land the registry, schema, deterministic model, offline fixtures, architecture
-  documentation, and zero-state public desk;
-- implement the ScamShield Telegram revision spool/export and Instagram Graph
-  adapter with injected network clients and secret/redirect/bound tests;
-- deploy collectors disabled by default;
-- activate only reviewed sources after credentials and permissions exist; and
-- publish social observations without touching Wire v1 evidence counts.
-
-### Phase 2 — source partnerships and coverage
-
-- onboard publisher-operated Telegram channels and Instagram professional
-  accounts;
-- activate approved hashtag discovery with a reviewed 30-tag rolling budget;
-- add coverage history, alerting, and explicit source onboarding receipts; and
-- connect exact publisher/article URLs to existing dossiers as context-only
-  relations.
-
-### Phase 3 — Evidence Wire v2
-
-Dual-publish a transport-neutral Wire v2 whose item provenance is
-`transport + source_document_sha256 + source_endpoint` rather than
-`feed_url + feed_sha256`. Prove in tests that an RSS item, Telegram post, and
-Instagram post from the same publisher remain one independence group and cannot
-inflate evidence strength. Retire v1 only after every consumer has migrated.
-
-## Tradeoffs and decisions to revisit
-
-- **Long polling before webhook:** preserves the node's outbound-only posture but
-  gives a shorter recovery window. Revisit if Palimpsest gains a hardened public
-  ingress service.
-- **Metadata-only publication:** limits quotation and richer analysis, but sharply
-  reduces rights, privacy, and deletion risk. Direct publisher agreements may
-  justify a richer per-source policy later.
-- **Separate lane before Wire v2:** avoids false RSS provenance and protects
-  existing consumers, at the cost of temporarily keeping social observations
-  outside event clustering.
-- **Closed allowlist:** does not provide universal discovery, but makes coverage,
-  authorization, and editorial independence auditable.
-
-The architecture should be revisited when Meta changes permissions or rate
-limits, Telegram exposes a supported deletion/history signal, the source registry
-exceeds one-node budgets, or Wire v2 is ready for dual publication.
+- Long polling keeps the collector outbound-only and bounds its recovery window.
+- Metadata-only publication limits quotation and richer analysis under the current
+  source policies.
+- Social observations remain a separate lane from Wire v1 evidence counts.
+- The closed source allowlist bounds coverage, authorization and independence.
