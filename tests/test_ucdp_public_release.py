@@ -79,11 +79,11 @@ def test_checked_in_release_receipt_is_exact_closed_and_live() -> None:
     assert receipt_id == sha256_bytes(canonical_json_bytes(payload))
     assert receipt["publication_state"] == "live"
     assert receipt["artifact"] == {
-        "bundle_id": "68e5f844799289fdb7876ade32cc8f3a765ff6751f4e1168d0ba9a4648e5a4bb",
+        "bundle_id": "ea19cbdb30f5b93af3f15b07098fb6d67db1249fdcb7dd305d31e272996eb303",
         "bytes": 260077,
         "media_type": "application/json",
         "path": ARTIFACT_PATH,
-        "sha256": "07e8ed2b9861ef54dcebf9c7fe0a4efe3f23b2742231d5dbe5173f14699701b1",
+        "sha256": "6ffea3cb75ea7766c6ee72a9296958b2ab227e3b9d8ddbb5880e43f67b74ba21",
         "url": "https://palimpsest.info/readings/ucdp-aggregate-latest.json",
     }
     assert receipt["coverage"] == {
@@ -204,7 +204,8 @@ def test_rehashed_private_derived_actor_coverage_tamper_is_rejected(
         ),
         (
             ("source", "rights_reviewed_at"),
-            _shift_clock(RELEASE["source"]["rights_reviewed_at"]),
+            # Preserve clock ordering even when review and publication coincide.
+            _shift_clock(RELEASE["source"]["rights_reviewed_at"], -1),
             "exactly bound to the reviewed rights decision",
         ),
         (
