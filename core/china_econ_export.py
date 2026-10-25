@@ -22,7 +22,10 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
-from core.econ_ledger import LedgerIntegrityError, load_snapshot, validate_observations
+from core.econ_ledger import (
+    MAX_CHINA_LEDGER_BYTES, MAX_CHINA_LEDGER_ROWS,
+    LedgerIntegrityError, load_snapshot, validate_observations,
+)
 from core.econ_observation import EconomicObservation
 
 
@@ -1219,12 +1222,12 @@ def load_availability_receipt(
 
 
 def _parse_ledger_bytes(raw: bytes) -> tuple[EconomicObservation, ...]:
-    if type(raw) is not bytes or len(raw) > 64 * 1024 * 1024:
+    if type(raw) is not bytes or len(raw) > MAX_CHINA_LEDGER_BYTES:
         raise ChinaEconExportError("input ledger exceeds the bounded byte contract")
     if raw and not raw.endswith(b"\n"):
         raise ChinaEconExportError("input ledger does not end at a JSONL boundary")
     lines = raw.splitlines()
-    if len(lines) > 1_000_000:
+    if len(lines) > MAX_CHINA_LEDGER_ROWS:
         raise ChinaEconExportError("input ledger exceeds the bounded row contract")
     rows: list[EconomicObservation] = []
     for position, line in enumerate(lines, 1):

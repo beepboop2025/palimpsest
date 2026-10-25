@@ -41,6 +41,7 @@ from core import china_situation as china_situation_model
 from core import instrument_analysis as instrument_analysis_model
 from core import newswire as newswire_model
 from core.china_econ_export import SourcePolicy, load_source_policy
+from core.econ_ledger import is_china_ledger, ledger_byte_limit
 from scripts import share_cards, site_nav
 
 
@@ -601,12 +602,17 @@ def _read_bounded(path: Path) -> bytes:
         size = path.stat().st_size
     except OSError as exc:
         raise PagesRightsError(f"cannot inspect staged file {path}: {exc}") from exc
-    if size > MAX_PUBLIC_FILE_BYTES:
+    maximum = ledger_byte_limit(path) if is_china_ledger(path) else MAX_PUBLIC_FILE_BYTES
+    if size > maximum:
         raise PagesRightsError(
             f"staged public file exceeds scan cap: {path} ({size} bytes)"
         )
     try:
-        return path.read_bytes()
+        with path.open("rb") as handle:
+            raw = handle.read(maximum + 1)
+        if len(raw) > maximum:
+            raise PagesRightsError(f"staged public file grew beyond scan cap: {path}")
+        return raw
     except OSError as exc:
         raise PagesRightsError(f"cannot read staged file {path}: {exc}") from exc
 
