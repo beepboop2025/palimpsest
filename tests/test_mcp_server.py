@@ -2031,3 +2031,15 @@ def test_http_discovery_does_not_count_as_activation(capsys):
     handler.do_POST()
 
     assert "mcp_activation" not in capsys.readouterr().err
+
+
+def test_tools_list_declares_read_only_capabilities():
+    payload = mcp.dispatch(_rpc("tools/list"))
+    tools = payload["result"]["tools"]
+    assert len(tools) == 7
+    for tool in tools:
+        annotations = tool["annotations"]
+        assert annotations["readOnlyHint"] is True
+        assert annotations["destructiveHint"] is False
+        assert annotations["idempotentHint"] is True
+        assert annotations["openWorldHint"] is False

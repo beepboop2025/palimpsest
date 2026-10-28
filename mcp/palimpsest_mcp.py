@@ -3086,6 +3086,7 @@ TOOL_TITLES = {
 # beyond the observatory's own served payloads.
 TOOL_ANNOTATIONS = {
     "readOnlyHint": True,
+    "destructiveHint": False,
     "idempotentHint": True,
     "openWorldHint": False,
 }
