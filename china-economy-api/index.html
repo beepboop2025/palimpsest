@@ -116,7 +116,7 @@
 
   <section class="cd-section" aria-labelledby="mcp-example">
     <p class="cd-kicker">MCP quickstart</p>
-    <h2 id="mcp-example">Query one series as known at one time</h2>
+    <h2 id="mcp-example">Inspect publication rights before requesting evidence</h2>
     <pre><code>curl -sS https://api.seiche.info/palimpsest/mcp \
   -H 'Content-Type: application/json' \
   -d '{
@@ -124,17 +124,13 @@
     "id":1,
     "method":"tools/call",
     "params":{
-      "name":"query_economic_observations",
-      "arguments":{
-        "series_id":"cn.cfets.shibor_on",
-        "as_of":"2026-08-21T23:59:59Z",
-        "revision_view":"latest-as-of",
-        "limit":20
-      }
+      "name":"inspect_economic_publication_rights",
+      "arguments":{}
     }
   }'</code></pre>
-    <p>The tool verifies the fixed manifest’s exact JSONL bytes, digest and record count before parsing. The <code>as_of</code> cutoff applies to both <code>released_at</code> and <code>collected_at</code>, preventing a later-known vintage from leaking into an earlier question.</p>
-    <p class="cd-note">Checksum verification establishes consistency with the manifest, not publisher identity. Preserve the row’s evidence URL and source ID.</p>
+    <p>The tool returns the policy digest, UTC evaluation clocks, per-source decisions and published-record status. It accepts no arguments and does not read or return the ledger.</p>
+    <p class="cd-note">A publication count is not an economic observation. Restricted rows and derivatives remain unavailable.</p>
+    <p>Historical observation metadata distinguishes <code>released_at</code> from <code>collected_at</code>; those clocks do not authorize publication of a restricted value. For example, <code>cn.cfets.fdr007</code> remains subject to the source publication decision.</p>
   </section>
 
   <section class="cd-section" aria-labelledby="clocks">

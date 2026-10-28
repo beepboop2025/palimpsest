@@ -50,9 +50,10 @@ The first public product layer is now complete without overstating coverage:
   and economic-domain directories. Its current headline remains an abstention.
 - `readings/china-econ-observations.jsonl` is the append-only aggregate ledger;
   its manifest and row schemas publish exact byte/row/checksum receipts.
-- the read-only MCP `query_economic_observations` tool filters the fixed ledger by
-  series, source, slice, period, release clock and both-clock `as_of`, with
-  manifest pinning and revision-aware pagination;
+- the read-only MCP `inspect_economic_publication_rights` tool accepts no arguments
+  and returns policy decisions, clocks and publication counts only. The historical
+  `query_economic_observations` alias preserves callers but never returns rows;
+  private ledger-query fixtures do not grant public access;
 - `readings/china-econ-forecast-latest.json` publishes every pseudo-real-time fold,
   miss, failed model and frozen promotion gate while keeping unqualified forecasts
   null; and

@@ -706,23 +706,51 @@ def test_get_newsroom_machine_analysis_does_not_leak_mixed_cases(monkeypatch):
     assert "cases" not in body["data"]
 
 
-def test_economic_query_is_discoverable_bounded_and_has_no_url_argument():
+def test_rights_inspection_is_discoverable_without_observation_query_arguments():
     tools = {
         tool["name"]: tool
         for tool in mcp.dispatch(_rpc("tools/list"))["result"]["tools"]
     }
-    query = tools["query_economic_observations"]
-    schema = query["inputSchema"]
-
+    inspection = tools["inspect_economic_publication_rights"]
     assert len(tools) == 7
-    assert "url" not in schema["properties"]
-    assert schema["additionalProperties"] is False
-    assert schema["properties"]["revision_view"]["enum"] == [
-        "all", "latest-as-of",
-    ]
-    assert schema["properties"]["limit"]["maximum"] == mcp.MAX_ECON_QUERY_LIMIT
-    assert query["annotations"]["readOnlyHint"] is True
-    assert query["annotations"]["openWorldHint"] is False
+    assert "query_economic_observations" not in tools
+    assert inspection["inputSchema"] == {
+        "type": "object", "properties": {}, "additionalProperties": False,
+    }
+    assert inspection["annotations"]["readOnlyHint"] is True
+    assert inspection["annotations"]["openWorldHint"] is False
+
+
+def test_rights_action_and_legacy_alias_never_query_the_ledger(monkeypatch):
+    _stub_verified_rights(monkeypatch)
+    monkeypatch.setattr(mcp, "_fetch_economic_observations",
+                        lambda: (_ for _ in ()).throw(AssertionError("denied ledger fetch")))
+    monkeypatch.setattr(mcp, "_legacy_query_economic_observations",
+                        lambda _args: (_ for _ in ()).throw(AssertionError("private query dispatch")))
+    rights = mcp.economic_rights_status()
+    for name, args in (
+        ("inspect_economic_publication_rights", {}),
+        ("query_economic_observations", {"series_id": "cn.money.fdr007", "limit": 10}),
+    ):
+        result = mcp.dispatch(_rpc("tools/call", {"name": name, "arguments": args}))["result"]
+        assert result["isError"] is False
+        body = result["structuredContent"]
+        assert json.loads(result["content"][0]["text"]) == body
+        assert body["tool"] == name
+        assert all(body[key] == value for key, value in rights.items())
+        assert body["publication_allowed"] is False
+        assert body["counts"]["published_records"] == 0
+        assert not any(key in body for key in ("observations", "value", "selection", "score"))
+
+
+def test_rights_inspection_rejects_query_filters_before_fetch(monkeypatch):
+    monkeypatch.setattr(mcp, "economic_rights_status",
+                        lambda: (_ for _ in ()).throw(AssertionError("unexpected fetch")))
+    response = mcp.dispatch(_rpc("tools/call", {
+        "name": "inspect_economic_publication_rights",
+        "arguments": {"series_id": "cn.money.fdr007"},
+    }))
+    assert response["error"]["code"] == mcp.INVALID_PARAMS
 
 
 def test_all_affected_signal_and_newsroom_calls_are_metadata_only(monkeypatch):
@@ -1870,7 +1898,7 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
     ):
         assert live_version in text, label
         assert "1.9.0" not in text, label
-        assert "query_economic_observations" in text, label
+        assert "inspect_economic_publication_rights" in text, label
         assert "china-econ-forecast-latest.json" in text, label
     assert "Seven hosted tools" in developers
     assert "Seven hosted tools" in docs
@@ -2048,6 +2076,6 @@ def test_tools_list_declares_read_only_capabilities():
 def test_economic_tool_title_describes_rights_status_only():
     payload = mcp.dispatch(_rpc("tools/list"))
     tool = next(t for t in payload["result"]["tools"]
-                if t["name"] == "query_economic_observations")
+                if t["name"] == "inspect_economic_publication_rights")
     assert tool["title"] == "Inspect China data publication rights"
     assert tool["annotations"]["title"] == tool["title"]

@@ -155,7 +155,7 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
         "list_signals",
         "get_signal",
         "get_newsroom",
-        "query_economic_observations",
+        "inspect_economic_publication_rights",
         "whats_happening",
         "gfw_reading",
     ]
@@ -639,7 +639,10 @@ def test_pages_publish_examples_clocks_abstention_rights_and_fleet_routing():
     api = _read("china-economy-api/index.html")
     assert "zero promoted champions" in api
     assert "24 August 2026 publication snapshot" in api
-    assert '"as_of":"2026-08-21T23:59:59Z"' in api
+    for page in (api, money):
+        assert '"name":"inspect_economic_publication_rights"' in page
+        assert '"arguments":{}' in page
+        assert '"name":"query_economic_observations"' not in page
     assert "caller-supplied source URLs" in api
 
 
