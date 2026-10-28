@@ -203,3 +203,7 @@ Host bootstrap, rollback behavior, environment secrets, and receipt paths are do
 separate, later transaction: a green deploy does not run `registry-publish.yml`.
 
 The complete editorial source index is `/readings/research-catalog-latest.json`. Its clock describes the registry publication, not an observation. It contains no numeric observations, counts, private source clocks or value hashes. Unknown availability must be checked at the linked public resource. The existing recursive publication-rights gate applies to this index.
+
+## Tool capability annotations
+
+Every advertised tool reads the observatory's own bounded published payloads. The MCP catalog declares boolean `readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, and `openWorldHint: false` for that behavior. These capability hints do not grant source-data rights or establish freshness; each response retains its separate rights, coverage, and date qualifications.
