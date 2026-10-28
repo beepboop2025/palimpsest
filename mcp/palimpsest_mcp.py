@@ -3077,7 +3077,7 @@ TOOL_TITLES = {
     "list_signals": "List published signals",
     "get_signal": "One signal's full reading",
     "get_newsroom": "Evidence and reporting desks",
-    "query_economic_observations": "Query China economic observations",
+    "query_economic_observations": "Inspect China data publication rights",
     "whats_happening": "Cross-signal board verdict",
     "gfw_reading": "Great Firewall: both layers",
 }
