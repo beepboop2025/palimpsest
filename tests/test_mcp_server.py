@@ -2043,3 +2043,11 @@ def test_tools_list_declares_read_only_capabilities():
         assert annotations["destructiveHint"] is False
         assert annotations["idempotentHint"] is True
         assert annotations["openWorldHint"] is False
+
+
+def test_economic_tool_title_describes_rights_status_only():
+    payload = mcp.dispatch(_rpc("tools/list"))
+    tool = next(t for t in payload["result"]["tools"]
+                if t["name"] == "query_economic_observations")
+    assert tool["title"] == "Inspect China data publication rights"
+    assert tool["annotations"]["title"] == tool["title"]
