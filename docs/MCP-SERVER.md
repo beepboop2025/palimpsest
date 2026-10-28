@@ -58,7 +58,7 @@ and a request carrying any other web origin is rejected before JSON-RPC dispatch
 | `list_signals` | What is measured at all — every signal's name, one-line description, and source URL. Call this first. |
 | `get_signal(name, max_rows=25)` | One signal's latest reading, with its `generated_at`, denominators and upstream sources. This is also the door to the model-evaluation side: `eval-registry`, `eval-assurance`, `eval-journal`, `eval-findings`, `gfi-transcripts` and `refusal-drift`. Long arrays and the keyed GFI transcript matrix are bounded by `max_rows`, with true totals and the complete source URL returned whenever a cap applies. Read assurance before promoting chain integrity into a validity claim. |
 | `get_newsroom(view="newsroom", limit=10)` | The evidence newsroom, wire, economic pulse, deterministic machine-analysis desk, investigations desk, editorial-readiness gate, or `interconnection` view over the public China-situation joins. Analysis, abstention and draft states remain distinct; citations, counterevidence, limitations and right-to-reply metadata stay attached. |
-| `query_economic_observations(…, revision_view="latest-as-of", limit=25, cursor=null)` | A bounded point-in-time query over the fixed public China-economic JSONL ledger. Its fixed manifest is fetched first; exact bytes, SHA-256 and record count must match before any row is parsed. Exact slice filters, inclusive period/release ranges, both-clock `as_of` visibility, revision selection and opaque pagination are available without accepting a URL from the caller. |
+| `inspect_economic_publication_rights()` | Publication-rights metadata only: policy digest, UTC evaluation clocks, per-source decisions and published-record status. It accepts no arguments and never reads or returns observations or derived values. |
 | `whats_happening` | The censorship board's own cross-signal verdict: is anything actually happening right now, with multiplicity paid for and coverage confounds flagged as artifacts rather than findings. |
 | `gfw_reading` | The Great Firewall at both layers in one call — network blocking measured inside China (OONI) beside model-layer censorship (the Generative Firewall Index). |
 
@@ -78,19 +78,17 @@ rebuilt without denied economic lineage can be read even while economic observat
 remain restricted. Missing or invalid rights evidence still blocks the newsroom,
 and every required economic endpoint must remain in the quarantine closure.
 
-`query_economic_observations` is the narrow analytical surface over the fixed
-[`manifest`](https://palimpsest.info/readings/china-econ-observations-latest.json) and
-[`JSONL ledger`](https://palimpsest.info/readings/china-econ-observations.jsonl). It accepts exact
-`series_id`, `source_id`, `geography`, `sector`, `firm_size` and `ownership` filters;
-inclusive `period_start`/`period_end` and `released_from`/`released_to` ranges; an
-optional timezone-aware `as_of`; `revision_view` (`all` or the default
-`latest-as-of`); and `limit` plus an opaque `cursor`. `as_of` applies to both
-`released_at` and `collected_at`: a release that existed upstream but had not yet
-been collected by Palimpsest is not made retrospectively knowable. With no `as_of`,
-`latest-as-of` means the latest revision in the complete published ledger. Rows are
-returned whole, including both clocks, `evidence_url`, `raw_sha256`,
-`observation_id` and method metadata. Every successful page also returns the manifest URL,
-scope and limitations.
+`inspect_economic_publication_rights` is the advertised rights-inspection action.
+It takes no arguments. It returns the current publication decision and evidence
+from the fixed rights-status artifact, not observations, query results or a
+reconstruction of restricted values. Read `palimpsest://china-economic/publication-rights`
+for the same rights evidence. A zero published-record count describes publication
+state; it is not an economic observation.
+
+Existing clients may still call `query_economic_observations` as an unadvertised
+compatibility alias. It preserves validation of historical filters and its response
+envelope, but invokes only the same rights-status operation. Filters cannot override
+rights, enable ledger access or expose the private fixture-query implementation.
 
 ## Row caps, and the text you are handed
 

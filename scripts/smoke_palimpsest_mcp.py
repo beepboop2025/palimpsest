@@ -937,22 +937,22 @@ def probe(
                     "id": 7,
                     "method": "tools/call",
                     "params": {
-                        "name": "query_economic_observations",
+                        "name": "inspect_economic_publication_rights",
                         "arguments": {},
                     },
                 },
             ),
             7,
-            "tools/call query_economic_observations",
+            "tools/call inspect_economic_publication_rights",
         )
-        query_body = _tool_body(query, "query_economic_observations")
+        query_body = _tool_body(query, "inspect_economic_publication_rights")
         _validate_rights_payload(
             query_body,
             contract,
             require_verified=rights_mode,
             expected_publication_sha=expected_publication_sha,
         )
-        calls.append("query_economic_observations:rights-status")
+        calls.append("inspect_economic_publication_rights:rights-status")
 
         next_id = 8
         for name in contract["affected_signals"]:

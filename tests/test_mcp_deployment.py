@@ -121,8 +121,8 @@ def test_current_candidate_satisfies_release_contract() -> None:
             "get_newsroom",
             "get_signal",
             "gfw_reading",
+            "inspect_economic_publication_rights",
             "list_signals",
-            "query_economic_observations",
             "research_catalog",
             "whats_happening",
         ],
@@ -379,7 +379,7 @@ def test_live_smoke_covers_native_rights_closure(
     assert result["calls"] == [
         "resources/read:china-economic-publication-rights",
         "list_signals",
-        "query_economic_observations:rights-status",
+        "inspect_economic_publication_rights:rights-status",
         *[
             f"get_signal:{name}:" + (
                 "lineage-filtered" if name == "newsroom" and restored_newsroom

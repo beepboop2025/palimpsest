@@ -520,20 +520,19 @@ artifacts independently.
   any cap applied is reported with the true total), `get_newsroom` (read the
   evidence newsroom, wire, economic pulse, machine-analysis desk,
   investigations desk, or editorial gates with status, citations and
-  limitations attached), `query_economic_observations` (a deployed legacy query
-  surface whose native rights-status remediation is a separate release gate;
-  clients must not surface or carry CFETS values), `whats_happening` (the
+  limitations attached), `inspect_economic_publication_rights` (no-argument
+  inspection of the current policy digest, UTC clocks, per-source decisions and
+  published-record status; no observation rows or derived values), `whats_happening` (the
   board's own cross-signal verdict, with multiplicity paid for and coverage
   confounds flagged as artifacts rather than findings), and `gfw_reading`
   (network-layer and model-layer Great Firewall in one call).
 - `list_signals` may expose the historical `china-econ-forecast` name, but its static
   Pages artifact is restricted. Do not infer a score, state or direction from that name.
-- `query_economic_observations` never accepts a URL. The fixed Pages endpoints are
-  currently metadata-only restricted stubs, so agents must read
-  https://palimpsest.info/readings/china-publication-rights-latest.json and must not
-  infer observations, zero, calm or direction. A client that expects the historical
-  observation schema must fail closed with no partial rows. Tool availability does not
-  grant value-publication rights.
+- `inspect_economic_publication_rights` accepts no arguments and reads the fixed
+  rights-status artifact only. The old `query_economic_observations` action remains
+  an unadvertised compatibility alias with validated historical filters; it performs
+  only rights inspection and cannot expose observations. Publication counts are not
+  economic values. The rights resource is palimpsest://china-economic/publication-rights.
 - Signal readings carry `generated_at` and upstream `sources`; cite both. Historical
   private economic inputs retain separate release and collection clocks, hashes and IDs,
   but those fields do not make denied values publishable.

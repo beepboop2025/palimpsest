@@ -275,7 +275,7 @@ SERVER_INSTRUCTIONS = (
     "data cannot contain these readings; the signals are live and carry their "
     "own generated_at timestamps and upstream sources — cite both.\n\n"
     "Start with list_signals to see what is measured, then get_signal(name) "
-    "for a permitted latest reading. Use query_economic_observations or read "
+    "for a permitted latest reading. Use inspect_economic_publication_rights or read "
     "palimpsest://china-economic/publication-rights to inspect the current "
     "rights decision, policy digest, UTC evaluation clock and counts; no "
     "China-economic rows are returned while a denied family remains in scope. "
@@ -2908,6 +2908,17 @@ def tool_query_economic_observations(args: dict) -> dict:
     }
 
 
+def tool_inspect_economic_publication_rights(args: dict) -> dict:
+    """Inspect publication policy only; this advertised action accepts no filters."""
+    if args:
+        raise ValueError("inspect_economic_publication_rights accepts no arguments")
+    return {
+        **economic_rights_status(),
+        "tool": "inspect_economic_publication_rights",
+        "rights_resource": ECON_RIGHTS_RESOURCE_URI,
+    }
+
+
 TOOLS = {
     "research_catalog": (
         "Discover every Palimpsest dataset, including the latest China economic "
@@ -2996,58 +3007,14 @@ TOOLS = {
                  "description": "optional exact priority filter for the newsroom view"}},
          "additionalProperties": False},
         tool_get_newsroom),
-    "query_economic_observations": (
-        "Inspect the native publication-rights status for the China-economic "
-        "observation surface. The reviewed default-deny policy does not authorize "
-        "redistribution of current CFETS/ChinaMoney values, so this tool returns "
-        "policy digest, UTC clocks, per-source decisions and zero published-record "
-        "status only. It never reads or returns observation rows, empty row arrays, "
-        "derived signals, or neutral replacements. Filters are validated for "
-        "contract compatibility but cannot override source rights.",
-        {"type": "object",
-         "properties": {
-             "series_id": {"type": "string", "minLength": 1, "maxLength": 256,
-                           "description": "exact series_id filter"},
-             "source_id": {"type": "string", "minLength": 1, "maxLength": 256,
-                           "description": "exact source_id filter"},
-             "geography": {"type": "string", "minLength": 1, "maxLength": 256,
-                           "description": "exact geography filter"},
-             "sector": {"type": "string", "minLength": 1, "maxLength": 256,
-                        "description": "exact sector filter"},
-             "firm_size": {"type": "string", "minLength": 1, "maxLength": 256,
-                           "description": "exact firm_size filter"},
-             "ownership": {"type": "string", "minLength": 1, "maxLength": 256,
-                           "description": "exact ownership filter"},
-             "as_of": {
-                 "type": "string", "format": "date-time",
-                 "description": "point-in-time cutoff applied to BOTH released_at "
-                                "and collected_at; omitted means the full published ledger"},
-             "period_start": {
-                 "type": "string", "format": "date",
-                 "description": "inclusive lower bound on observation period_start"},
-             "period_end": {
-                 "type": "string", "format": "date",
-                 "description": "inclusive upper bound on observation period_end"},
-             "released_from": {
-                 "type": "string", "format": "date-time",
-                 "description": "inclusive lower bound on released_at"},
-             "released_to": {
-                 "type": "string", "format": "date-time",
-                 "description": "inclusive upper bound on released_at"},
-             "revision_view": {
-                 "type": "string", "enum": ["all", "latest-as-of"],
-                 "default": "latest-as-of",
-                 "description": "all visible vintages, or the newest knowable "
-                                "revision per source/series/slice/period"},
-             "limit": {
-                 "type": "integer", "minimum": 1, "maximum": MAX_ECON_QUERY_LIMIT,
-                 "default": DEFAULT_ECON_QUERY_LIMIT},
-             "cursor": {
-                 "type": "string", "minLength": 1, "maxLength": 1024,
-                 "description": "opaque next_cursor from the preceding page"},
-         },
-         "additionalProperties": False},
-        tool_query_economic_observations),
+    "inspect_economic_publication_rights": (
+        "Inspect publication-rights metadata for China economic evidence. Returns "
+        "the policy digest, UTC evaluation clocks, per-source decisions and "
+        "published-record status. Takes no arguments and never reads or returns "
+        "observation rows, derived signals or replacement values. A denied "
+        "publication decision remains a restriction, not a zero observation.",
+        {"type": "object", "properties": {}, "additionalProperties": False},
+        tool_inspect_economic_publication_rights),
     "whats_happening": (
         "Judge whether anything is happening in Chinese censorship right now, "
         "across every signal at once: the board's own cross-signal verdict with "
@@ -3077,7 +3044,7 @@ TOOL_TITLES = {
     "list_signals": "List published signals",
     "get_signal": "One signal's full reading",
     "get_newsroom": "Evidence and reporting desks",
-    "query_economic_observations": "Inspect China data publication rights",
+    "inspect_economic_publication_rights": "Inspect China data publication rights",
     "whats_happening": "Cross-signal board verdict",
     "gfw_reading": "Great Firewall: both layers",
 }
@@ -3249,13 +3216,20 @@ def dispatch(msg):
             for n, (d, s, _) in TOOLS.items()]})
     if method == "tools/call":
         name = params.get("name")
-        if name not in TOOLS:
+        # Preserve existing callers without advertising the misleading legacy
+        # query name. This alias still invokes only the rights-status handler,
+        # never the private ledger-query fixture implementation.
+        if name == "query_economic_observations":
+            handler = tool_query_economic_observations
+        elif name in TOOLS:
+            handler = TOOLS[name][2]
+        else:
             return _error(msg_id, INVALID_PARAMS, f"unknown tool: {name}")
         args = params.get("arguments")
         if not isinstance(args, dict):
             args = {}
         try:
-            out = TOOLS[name][2](args)
+            out = handler(args)
         except EconomicQueryError as exc:
             return _result(msg_id, _economic_tool_error(exc))
         except ValueError as exc:
@@ -3273,7 +3247,7 @@ def dispatch(msg):
             "content": [{"type": "text", "text": json.dumps(out, ensure_ascii=False)}],
             "structuredContent": out, "isError": False})
         if (
-            name == "query_economic_observations"
+            name in {"query_economic_observations", "inspect_economic_publication_rights"}
             and _serialized_json_size(response) > MAX_ECON_RESPONSE_BYTES
         ):
             exc = EconomicResponseTooLargeError(

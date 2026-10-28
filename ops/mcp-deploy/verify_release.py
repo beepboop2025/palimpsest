@@ -42,7 +42,7 @@ REQUIRED_TOOLS = {
     "get_signal",
     "gfw_reading",
     "list_signals",
-    "query_economic_observations",
+    "inspect_economic_publication_rights",
     "research_catalog",
     "whats_happening",
 }
