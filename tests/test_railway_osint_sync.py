@@ -354,8 +354,9 @@ def admitted_successor(tmp_path, monkeypatch, tamper=None):
     f["base_sha"] = fixtures._write_publication(f["source"], fork_doc, fork, "reviewed build fork")
     spec = {"target_sha256": legacy._sha256(fork), "target_entries": 2,
             "host_prefix_sha256": legacy._sha256(host), "host_prefix_entries": 2,
-            "common_entries": 1, "source_commit": source_commit}
-    monkeypatch.setattr(adapter, "REVIEWED_FORK", spec)
+            "common_entries": 1, "source_commit": source_commit,
+            "archive_path": adapter.BUILD_FORK_PATH, "admission_path": adapter.ADMISSION_PATH}
+    monkeypatch.setattr(adapter, "REVIEWED_FORKS", (spec,))
     host_tip = json.loads(host.splitlines()[-1])
     proof = {"schema": "palimpsest.publication-ledger-admission.v1",
              "method": "retain-exact-collector-chain-and-archive-reviewed-build-fork",
@@ -377,6 +378,7 @@ def admitted_successor(tmp_path, monkeypatch, tamper=None):
     files = {adapter.BUILD_FORK_PATH: fork + (b" " if tamper == "archive" else b""),
              adapter.ADMISSION_PATH: fixtures._json_bytes(proof)}
     successor(f, ledger=candidate, extra_files=files)
+    f.update(september=spec, fork=fork, fork_doc=fork_doc, host=host, value=value)
     return f
 
 
@@ -408,6 +410,116 @@ def test_unproved_admission_keeps_every_authority_byte(tmp_path, monkeypatch, ta
     with pytest.raises(legacy.SyncFailure, match=reason):
         adapter.synchronize(f["config"], fetcher=f["fetch"])
     assert snapshot(f) == before
+
+
+def append_entry(raw, source, sequence):
+    """Append one non-OSINT seal, as the collector and the renewal commit did."""
+    entry = {"seq": sequence, "ts": f"2026-08-14T0{sequence}:30:00+00:00", "source": source,
+             "payload_sha256": legacy._sha256(source.encode()),
+             "prev_hash": json.loads(raw.splitlines()[-1])["entry_hash"]}
+    entry["entry_hash"] = legacy._entry_hash(entry)
+    return raw + json.dumps(entry, separators=(",", ":")).encode() + b"\n"
+
+
+def admission_receipt(spec, archived, host):
+    """The producer's receipt for one exact archived fork and captured collector chain."""
+    tip = json.loads(host.splitlines()[-1])
+    return {"schema": "palimpsest.publication-ledger-admission.v1",
+            "method": "retain-exact-collector-chain-and-archive-reviewed-build-fork",
+            "historical_records_rewritten": False, "derived_readings_require_final_sealing": True,
+            "reviewed_source_commit": spec["source_commit"], "common_prefix_entries": spec["common_entries"],
+            "archived_build_chain": {"path": spec["archive_path"], "sha256": legacy._sha256(archived),
+                                     "entries": len(archived.splitlines()),
+                                     "head": json.loads(archived.splitlines()[-1])["entry_hash"]},
+            "retained_collector_chain": {"entries": len(host.splitlines()), "sha256": legacy._sha256(host),
+                                         "head": tip["entry_hash"], "latest_record_at": tip["ts"],
+                                         "reviewed_prefix_entries": spec["host_prefix_entries"],
+                                         "reviewed_prefix_sha256": spec["host_prefix_sha256"]}}
+
+
+def renewal_successor(tmp_path, monkeypatch, tamper=None):
+    """The real transition: an installed September admission, then the UCDP renewal fork."""
+    f = admitted_successor(tmp_path, monkeypatch)
+    september = f["september"]
+    adapter.synchronize(f["config"], fetcher=f["fetch"])
+    # The renewal base extends the September fork by one seal, like 35bd6808b0.
+    renewal_fork = append_entry(f["fork"], "ucdp-aggregate", 2)
+    fixtures._git(f["source"], "checkout", "-B", "renewal-build", f["base_sha"])
+    f["base_sha"] = fixtures._write_publication(f["source"], f["fork_doc"], renewal_fork, "renew reviewed source")
+    renewal = {"target_sha256": legacy._sha256(renewal_fork), "target_entries": 3,
+               "host_prefix_sha256": september["host_prefix_sha256"], "host_prefix_entries": 2,
+               "common_entries": 1, "source_commit": f["base_sha"],
+               "archive_path": adapter.UCDP_RENEWAL_FORK["archive_path"],
+               "admission_path": adapter.UCDP_RENEWAL_FORK["admission_path"]}
+    forks = [september, renewal]
+    if tamper == "ambiguous":
+        forks.append(dict(renewal, archive_path="readings/audit/other.jsonl"))
+    monkeypatch.setattr(adapter, "REVIEWED_FORKS", tuple(forks))
+    # The collector chain kept growing on the host after the September edition.
+    host = append_entry(f["host"], "chinese-translations", 2)
+    proof = admission_receipt(renewal, renewal_fork, host)
+    if tamper == "receipt-path": proof["archived_build_chain"]["path"] = adapter.BUILD_FORK_PATH
+    if tamper == "source-commit": proof["reviewed_source_commit"] = september["source_commit"]
+    if tamper == "capture": proof["retained_collector_chain"]["sha256"] = "0" * 64
+    if tamper == "unknown-fork": renewal["target_sha256"] = "0" * 64
+    if tamper == "wrong-collector": renewal["host_prefix_sha256"] = "0" * 64
+    if tamper == "split": renewal["common_entries"] = 0
+    archive_path, admission_path = renewal["archive_path"], renewal["admission_path"]
+    if tamper == "september-names":
+        archive_path, admission_path = adapter.BUILD_FORK_PATH, adapter.ADMISSION_PATH
+    files = {archive_path: renewal_fork + (b" " if tamper == "archive" else b""),
+             admission_path: fixtures._json_bytes(proof)}
+    successor(f, ledger=fixtures._append_seal(host, f["value"], 3), extra_files=files)
+    f.update(renewal=renewal, renewal_fork=renewal_fork)
+    return f
+
+
+def test_ucdp_renewal_fork_edition_extends_the_admitted_september_authority(tmp_path, monkeypatch):
+    f = renewal_successor(tmp_path, monkeypatch)
+    installed = (f["config"].authority / legacy.LEDGER_FILENAME).read_bytes()
+    before = snapshot(f)
+    assert adapter.synchronize(f["config"], fetcher=f["fetch"], check=True)["status"] == "checked"
+    assert snapshot(f) == before
+    result = adapter.synchronize(f["config"], fetcher=f["fetch"])
+    assert result["status"] == "installed" and result["base_sha"] == f["base_sha"]
+    assert (f["config"].authority / legacy.LEDGER_FILENAME).read_bytes() == f["second_ledger"]
+    # A later sync from the renewal base must still prove the same collector prefix.
+    assert adapter.synchronize(f["config"], fetcher=f["fetch"]) == result
+    histories = [adapter.read_archive(f["config"], path.name)
+                 for path in (f["config"].state / adapter.HISTORY_NAME).iterdir()]
+    assert any(h[legacy.LEDGER_FILENAME] == installed for h in histories)
+
+
+@pytest.mark.parametrize("tamper,reason", [
+    ("archive", "admission-archive-mismatch"),
+    ("september-names", "git-proof-failed"),
+    ("receipt-path", "admission-archive-receipt-invalid"),
+    ("source-commit", "admission-contract-invalid"),
+    ("capture", "admission-capture-mismatch"),
+    ("unknown-fork", "candidate-base-ledger-prefix-invalid"),
+    ("ambiguous", "candidate-base-ledger-prefix-invalid"),
+    ("wrong-collector", "admission-collector-prefix-invalid"),
+    ("split", "admission-common-prefix-invalid"),
+])
+def test_unproved_renewal_admission_keeps_every_authority_byte(tmp_path, monkeypatch, tamper, reason):
+    f = renewal_successor(tmp_path, monkeypatch, tamper)
+    before = snapshot(f)
+    with pytest.raises(legacy.SyncFailure, match=reason):
+        adapter.synchronize(f["config"], fetcher=f["fetch"])
+    assert snapshot(f) == before
+
+
+def test_reviewed_forks_match_the_producer_pins_exactly():
+    from scripts import admit_publication_ledger as producer
+    assert adapter.REVIEWED_FORKS == (adapter.SEPTEMBER_FORK, adapter.UCDP_RENEWAL_FORK)
+    assert [{"target_sha256": spec.target_sha256, "target_entries": spec.target_entries,
+             "host_prefix_sha256": spec.host_prefix_sha256, "host_prefix_entries": spec.host_prefix_entries,
+             "common_entries": spec.common_entries, "source_commit": spec.source_commit,
+             "archive_path": "readings/audit/" + spec.archive_name,
+             "admission_path": "readings/audit/" + spec.receipt_name}
+            for spec in producer.REVIEWED_FORKS] == list(adapter.REVIEWED_FORKS)
+    assert adapter.SEPTEMBER_FORK["archive_path"] == adapter.BUILD_FORK_PATH
+    assert adapter.SEPTEMBER_FORK["admission_path"] == adapter.ADMISSION_PATH
 
 
 @pytest.mark.parametrize("stop_after", [legacy.LEDGER_FILENAME, legacy.OSINT_FILENAME, adapter.RECEIPT_NAME])
