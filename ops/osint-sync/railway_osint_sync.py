@@ -33,16 +33,33 @@ STATE_FILES = {legacy.OSINT_FILENAME: legacy.MAX_OSINT_BYTES,
                RECEIPT_NAME: 64 * 1024}
 ADMISSION_PATH = "readings/audit/readings-ledger-admission-20260925.json"
 BUILD_FORK_PATH = "readings/audit/readings-ledger-build-fork-20260925.jsonl"
-# The producer's exact, reviewed September 25 repair. This is not permission
-# to accept an arbitrary fork or a receipt supplied outside the sealed release.
-REVIEWED_FORK = {
+# The producer's exact, reviewed repairs (scripts/admit_publication_ledger.py).
+# This is not permission to accept an arbitrary fork or a receipt supplied
+# outside the sealed release.
+SEPTEMBER_FORK = {
     "target_sha256": "9a54fa4f296d215837778d70bcef8e4e4c53e7e92f1828be4c5e7f5643815df8",
     "target_entries": 5125,
     "host_prefix_sha256": "9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee",
     "host_prefix_entries": 5537,
     "common_entries": 5102,
     "source_commit": "0a6e89babffaa5f63aa722eca454918dcd7867fd",
+    "archive_path": BUILD_FORK_PATH,
+    "admission_path": ADMISSION_PATH,
 }
+# Commit 35bd6808b0 (the 23 October UCDP rights renewal) appended one seal to
+# that build fork. The producer archives it under its own names; its first
+# 5,125 entries are the September fork, with the same collector prefix and split.
+UCDP_RENEWAL_FORK = {
+    "target_sha256": "6a084ee215642b886c9eae1da309a51a77bfb3d7115d25b48b3b3919e4bb701f",
+    "target_entries": 5126,
+    "host_prefix_sha256": "9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee",
+    "host_prefix_entries": 5537,
+    "common_entries": 5102,
+    "source_commit": "35bd6808b0fae05fe575e1e10f769ce1fc4a3285",
+    "archive_path": "readings/audit/readings-ledger-build-fork-20261023.jsonl",
+    "admission_path": "readings/audit/readings-ledger-admission-20261023.json",
+}
+REVIEWED_FORKS = (SEPTEMBER_FORK, UCDP_RENEWAL_FORK)
 
 
 @dataclass(frozen=True)
@@ -192,15 +209,22 @@ def git(repo, args, *, maximum=legacy.MAX_LEDGER_BYTES, allowed_failure=False):
     return result.returncode, raw
 
 
+def reviewed_fork(base_ledger):
+    """Select the one reviewed repair whose exact build fork is the base ledger."""
+    digest = legacy._sha256(base_ledger)
+    matches = [spec for spec in REVIEWED_FORKS if spec["target_sha256"] == digest]
+    require(len(matches) == 1, "candidate-base-ledger-prefix-invalid")
+    return matches[0]
+
+
 def admitted_prefix(repo, base, release, base_ledger, candidate):
     """Prove the finite reviewed repair from immutable release Git objects."""
-    spec = REVIEWED_FORK
-    require(legacy._sha256(base_ledger) == spec["target_sha256"], "candidate-base-ledger-prefix-invalid")
-    archived = git(repo, ["show", release + ":" + BUILD_FORK_PATH])[1]
+    spec = reviewed_fork(base_ledger)
+    archived = git(repo, ["show", release + ":" + spec["archive_path"]])[1]
     require(archived == base_ledger, "admission-archive-mismatch")
     old_entries = legacy._validate_ledger(archived)
     entries = legacy._validate_ledger(candidate)
-    proof = document(git(repo, ["show", release + ":" + ADMISSION_PATH], maximum=64 * 1024)[1])
+    proof = document(git(repo, ["show", release + ":" + spec["admission_path"]], maximum=64 * 1024)[1])
     require(proof.get("schema") == "palimpsest.publication-ledger-admission.v1"
             and proof.get("method") == "retain-exact-collector-chain-and-archive-reviewed-build-fork"
             and proof.get("historical_records_rewritten") is False
@@ -209,7 +233,7 @@ def admitted_prefix(repo, base, release, base_ledger, candidate):
     require(git(repo, ["merge-base", "--is-ancestor", spec["source_commit"], base],
                 maximum=4096, allowed_failure=True)[0] == 0, "admission-source-ancestry-invalid")
     require(proof.get("archived_build_chain") == {
-        "path": BUILD_FORK_PATH, "sha256": spec["target_sha256"],
+        "path": spec["archive_path"], "sha256": spec["target_sha256"],
         "entries": spec["target_entries"], "head": old_entries[-1]["entry_hash"],
     } and len(old_entries) == spec["target_entries"], "admission-archive-receipt-invalid")
     lines = candidate.splitlines(keepends=True)
@@ -266,7 +290,8 @@ def extract(config, receipt, bundle, work, previous=None):
         previous_ledger = git(repo, ["show", previous_base + ":" + legacy.LEDGER_REPOSITORY_PATH])[1]
         legacy._validate_ledger(previous_ledger)
         require(base_ledger.startswith(previous_ledger), "base-ledger-prefix-invalid")
-        if admitted is not None and legacy._sha256(previous_ledger) == REVIEWED_FORK["target_sha256"]:
+        reviewed_targets = {spec["target_sha256"] for spec in REVIEWED_FORKS}
+        if admitted is not None and legacy._sha256(previous_ledger) in reviewed_targets:
             # Subsequent repaired editions must extend the same pinned collector
             # history in the installed authority, with predecessor proof intact.
             previous_ledger = admitted

@@ -25,19 +25,28 @@ publication receipt. Both source bases must have ancestor and byte-prefix
 continuity. Installed receipts, old seals, generation monotonicity and generation
 equivocation checks remain mandatory; no historical row is rewritten or merged.
 
-The September 25 producer repair has one finite additional proof path. Its
+The producer's reviewed ledger repairs have finite additional proof paths,
+selected by the exact SHA-256 of the source-base ledger. The September 25
 5,125-entry build fork must match SHA-256
 `9a54fa4f296d215837778d70bcef8e4e4c53e7e92f1828be4c5e7f5643815df8`
-and remain byte-identical in the release's audit archive. The candidate must
-extend the reviewed 5,537-entry collector prefix with SHA-256
+and remain byte-identical at
+`readings/audit/readings-ledger-build-fork-20260925.jsonl`, with its receipt at
+`readings/audit/readings-ledger-admission-20260925.json`. The 23 October UCDP
+renewal fork is that chain plus one seal from `35bd6808b0`: 5,126 entries with
+SHA-256 `6a084ee215642b886c9eae1da309a51a77bfb3d7115d25b48b3b3919e4bb701f`,
+archived at `readings/audit/readings-ledger-build-fork-20261023.jsonl` with its
+receipt at `readings/audit/readings-ledger-admission-20261023.json`. Either way
+the candidate must extend the reviewed 5,537-entry collector prefix with SHA-256
 `9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee`.
 Both chains are verified, their common 5,102 entries must match, and the sealed
 admission receipt must bind the entire captured collector prefix, its head and
-clock, the archived fork, and reviewed source ancestry. Unknown repairs refuse.
-Later editions still require the exact installed publication's predecessor
-chain and must retain that same collector prefix. This only teaches the private
-consumer to verify the producer's existing reviewed repair; it neither changes
-the publisher's ledger nor authorizes different public or private source values.
+clock, the archived fork under that repair's own path, and reviewed source
+ancestry. Unknown or ambiguous repairs refuse. Later editions still require the
+exact installed publication's predecessor chain and must retain that same
+collector prefix, including the first edition whose source base moves from the
+September fork to the renewal fork. This only teaches the private consumer to
+verify the producer's existing reviewed repairs; it neither changes the
+publisher's ledger nor authorizes different public or private source values.
 
 Before switching, retain both complete authority states (artifact, full ledger
 and Railway receipt) beneath the private `railway-history/<manifest-sha256>/`.
