@@ -1,13 +1,16 @@
-"""Admit the exact September 25 build fork against the retained collector chain.
+"""Admit an exact reviewed build fork against the retained collector chain.
 
 This is an incident-specific publication repair, not a general fork resolver.
-The alternate build chain remains public and byte-identical in the edition's
-audit directory. The collector history is copied intact; current derived
+Only the reviewed forks pinned below are admitted, each by its exact bytes, its
+exact collector prefix and its exact split point. The alternate build chain
+remains public and byte-identical in the edition's audit directory under that
+fork's own names. The collector history is copied intact; current derived
 readings are sealed later by the publisher's existing final validation step.
 """
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from dataclasses import dataclass
 import hashlib
 import json
@@ -24,16 +27,39 @@ class ReviewedFork:
     host_prefix_entries: int
     common_entries: int
     source_commit: str
+    archive_name: str
+    receipt_name: str
 
 
-INCIDENT = ReviewedFork(
+# The September 25 local build fork. Its pins, names and receipt are unchanged.
+SEPTEMBER_BUILD_FORK = ReviewedFork(
     target_sha256="9a54fa4f296d215837778d70bcef8e4e4c53e7e92f1828be4c5e7f5643815df8",
     target_entries=5125,
     host_prefix_sha256="9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee",
     host_prefix_entries=5537,
     common_entries=5102,
     source_commit="0a6e89babffaa5f63aa722eca454918dcd7867fd",
+    archive_name="readings-ledger-build-fork-20260925.jsonl",
+    receipt_name="readings-ledger-admission-20260925.json",
 )
+
+# Commit 35bd6808b0 (the 23 October UCDP rights renewal) appended one
+# ucdp-aggregate seal, seq 5125, to that build fork in Git. Its first 5,125
+# entries are exactly the September fork, and it splits from the same retained
+# collector prefix after the same 5,102 entries. It is archived under its own
+# names so the September evidence is never rewritten.
+UCDP_RENEWAL_BUILD_FORK = ReviewedFork(
+    target_sha256="6a084ee215642b886c9eae1da309a51a77bfb3d7115d25b48b3b3919e4bb701f",
+    target_entries=5126,
+    host_prefix_sha256="9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee",
+    host_prefix_entries=5537,
+    common_entries=5102,
+    source_commit="35bd6808b0fae05fe575e1e10f769ce1fc4a3285",
+    archive_name="readings-ledger-build-fork-20261023.jsonl",
+    receipt_name="readings-ledger-admission-20261023.json",
+)
+
+REVIEWED_FORKS = (SEPTEMBER_BUILD_FORK, UCDP_RENEWAL_BUILD_FORK)
 
 
 def digest(raw: bytes) -> str:
@@ -60,11 +86,21 @@ def retain(path: Path, raw: bytes) -> None:
     ledger.atomic_replace_bytes(path, raw)
 
 
-def admit(host: Path, target: Path, spec: ReviewedFork = INCIDENT) -> dict:
+def reviewed_fork(entries: int, raw: bytes, forks: Sequence[ReviewedFork]) -> ReviewedFork:
+    """Select the one reviewed fork whose exact bytes are the target."""
+    target_sha256 = digest(raw)
+    matches = [spec for spec in forks
+               if spec.target_entries == entries and spec.target_sha256 == target_sha256]
+    if len(matches) != 1:
+        raise ValueError("target is not the exact reviewed build fork")
+    return matches[0]
+
+
+def admit(host: Path, target: Path,
+          forks: Sequence[ReviewedFork] = REVIEWED_FORKS) -> dict:
     host_entries, host_raw = checked_snapshot(host)
     target_entries, target_raw = checked_snapshot(target)
-    if len(target_entries) != spec.target_entries or digest(target_raw) != spec.target_sha256:
-        raise ValueError("target is not the exact reviewed build fork")
+    spec = reviewed_fork(len(target_entries), target_raw, forks)
     host_lines = host_raw.splitlines(keepends=True)
     target_lines = target_raw.splitlines(keepends=True)
     retained_prefix = b"".join(host_lines[:spec.host_prefix_entries])
@@ -78,7 +114,7 @@ def admit(host: Path, target: Path, spec: ReviewedFork = INCIDENT) -> dict:
     audit = target.parent / "audit"
     if audit.is_symlink() or (audit.exists() and not audit.is_dir()):
         raise ValueError("audit directory is not a regular directory")
-    archive = audit / "readings-ledger-build-fork-20260925.jsonl"
+    archive = audit / spec.archive_name
     receipt = {
         "schema": "palimpsest.publication-ledger-admission.v1",
         "method": "retain-exact-collector-chain-and-archive-reviewed-build-fork",
@@ -102,7 +138,7 @@ def admit(host: Path, target: Path, spec: ReviewedFork = INCIDENT) -> dict:
     # Preserve both branches before replacing the disposable publication copy.
     # The host source and reviewed Git blob are never modified by this operation.
     retain(archive, target_raw)
-    retain(audit / "readings-ledger-admission-20260925.json",
+    retain(audit / spec.receipt_name,
            (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode())
     if target.read_bytes() != target_raw:
         raise ValueError("publication ledger changed during admission")
