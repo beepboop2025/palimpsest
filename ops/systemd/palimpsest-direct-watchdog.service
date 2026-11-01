@@ -8,6 +8,10 @@ Type=oneshot
 User=palimpsest
 Group=palimpsest
 ExecStart=/usr/local/sbin/palimpsest-direct-watchdog
+# 75 means the last publication is verified and the next one is in flight
+# inside its publisher-bounded window. Degraded and DATA HOLD keep exit 2 and
+# still fail this unit.
+SuccessExitStatus=75
 TimeoutStartSec=90s
 UMask=0077
 Nice=5
