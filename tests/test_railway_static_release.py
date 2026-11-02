@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from core.econ_ledger import MAX_LEDGER_BYTES
 from scripts import build_pages_wire_archive as wire_archive
 from scripts import stage_pages_rights
 
@@ -1556,6 +1557,36 @@ def test_independent_rights_scan_matches_only_exact_hex_sentinel_windows() -> No
     assert not rights_scan_module._contains_denied_sentinel(
         sentinel[:-1] + b"0", grouped
     )
+
+
+def test_independent_capture_reads_the_host_ledger_up_to_its_writer_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The standalone verifier cannot import core.econ_ledger, so its restated
+    # cap is pinned to the writer's cap here.
+    assert (
+        rights_scan_module.MAX_DENIED_LEDGER_BYTES
+        == MAX_LEDGER_BYTES
+        > rights_scan_module.MAX_PUBLIC_FILE_BYTES
+    )
+    # Small stand-in caps exercise the same boundary without a 64 MiB fixture.
+    monkeypatch.setattr(rights_scan_module, "MAX_PUBLIC_FILE_BYTES", 16 * 1024)
+    monkeypatch.setattr(rights_scan_module, "MAX_DENIED_LEDGER_BYTES", 64 * 1024)
+    public_root = tmp_path / "public"
+    ledger = public_root / rights_scan_module.LEDGER_PATH
+    ledger.parent.mkdir(parents=True)
+    row = json.dumps({"observation_id": "a" * 64, "raw_sha256": "b" * 64}).encode()
+    ledger.write_bytes(row.ljust(32 * 1024, b" ") + b"\n")
+    sentinels = tmp_path / "control" / "denied-sentinels.txt"
+
+    captured = rights_scan_module.capture_sentinels(public_root, sentinels)
+
+    assert captured == {"ledger_rows": 1, "sentinels": 2}
+    # Every served file, an unrestricted ledger included, keeps the public cap.
+    with pytest.raises(
+        rights_scan_module.RightsScanError, match="independent scan cap"
+    ):
+        rights_scan_module.verify_clean(public_root, sentinels)
 
 
 def test_static_mcp_topology_preserves_the_canonical_external_remote() -> None:

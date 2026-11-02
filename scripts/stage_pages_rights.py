@@ -41,6 +41,7 @@ from core import china_situation as china_situation_model
 from core import instrument_analysis as instrument_analysis_model
 from core import newswire as newswire_model
 from core.china_econ_export import SourcePolicy, load_source_policy
+from core.econ_ledger import MAX_LEDGER_BYTES
 from scripts import share_cards, site_nav
 
 
@@ -68,6 +69,11 @@ ENDPOINT_STATUS_SCHEMA_PATH = "protocol/restricted-publication-endpoint-v1.schem
 RELEASE_RECEIPT_SCHEMA = "palimpsest.pages-rights-release-receipt.v3"
 PUBLIC_TREE_PROOF_SCHEMA = "palimpsest.pages-rights-public-tree-proof.v1"
 MAX_PUBLIC_FILE_BYTES = 64 * 1024 * 1024
+# The host publication checkout carries the full private copy of the China econ
+# observation ledger until this gate restricts it, so that one file keeps its
+# writer's cap (core.econ_ledger.MAX_LEDGER_BYTES).  Every other staged file
+# keeps the public cap.
+CHINA_ECON_LEDGER_NAME = "china-econ-observations.jsonl"
 MAX_DECODED_BYTES = 16 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 256
 MAX_DECODE_DEPTH = 3
@@ -602,6 +608,14 @@ def _within_root(root: Path, path: Path) -> bool:
     return True
 
 
+def _scan_cap(path: Path) -> int:
+    """Return the byte cap for one staged file."""
+
+    if path.name == CHINA_ECON_LEDGER_NAME and path.parent.name == "readings":
+        return MAX_LEDGER_BYTES
+    return MAX_PUBLIC_FILE_BYTES
+
+
 def _read_bounded(path: Path) -> bytes:
     if path.is_symlink():
         raise PagesRightsError(f"refusing symbolic link in staged Pages tree: {path}")
@@ -609,7 +623,7 @@ def _read_bounded(path: Path) -> bytes:
         size = path.stat().st_size
     except OSError as exc:
         raise PagesRightsError(f"cannot inspect staged file {path}: {exc}") from exc
-    if size > MAX_PUBLIC_FILE_BYTES:
+    if size > _scan_cap(path):
         raise PagesRightsError(
             f"staged public file exceeds scan cap: {path} ({size} bytes)"
         )

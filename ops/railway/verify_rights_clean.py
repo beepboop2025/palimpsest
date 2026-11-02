@@ -21,6 +21,12 @@ SENTINEL_FIELDS = ("observation_id", "raw_sha256")
 SENTINEL_RE = re.compile(rb"[0-9a-f]{32,128}\Z")
 HEX_RUN_RE = re.compile(rb"[0-9a-f]{32,}")
 MAX_PUBLIC_FILE_BYTES = 64 * 1024 * 1024
+# capture reads the full private host copy of the China econ ledger before
+# staging restricts it.  Its writer caps it at core.econ_ledger.MAX_LEDGER_BYTES;
+# this standalone verifier imports no repository module, so the value is
+# restated here and a test pins the two together.  Served files keep the
+# public cap.
+MAX_DENIED_LEDGER_BYTES = 128 * 1024 * 1024
 MAX_FAILURES = 64
 DIRECT_VALUE_RE = re.compile(
     rb"""["'](?:fdr001|fdr007|fdr014|fr001|fr007|fr014|"""
@@ -47,11 +53,11 @@ def _inside(root: Path, path: Path) -> bool:
     return True
 
 
-def _regular_bytes(path: Path) -> bytes:
+def _regular_bytes(path: Path, max_bytes: int | None = None) -> bytes:
     if path.is_symlink() or not path.is_file():
         raise RightsScanError(f"refusing unsafe public path: {path}")
     size = path.stat().st_size
-    if size > MAX_PUBLIC_FILE_BYTES:
+    if size > (MAX_PUBLIC_FILE_BYTES if max_bytes is None else max_bytes):
         raise RightsScanError(f"public file exceeds independent scan cap: {path}")
     return path.read_bytes()
 
@@ -79,7 +85,8 @@ def capture_sentinels(root: Path, output: Path) -> dict[str, int]:
     ledger = root / LEDGER_PATH
     rows = 0
     sentinels: set[bytes] = set()
-    for line_number, raw_line in enumerate(_regular_bytes(ledger).splitlines(), 1):
+    raw_ledger = _regular_bytes(ledger, MAX_DENIED_LEDGER_BYTES)
+    for line_number, raw_line in enumerate(raw_ledger.splitlines(), 1):
         if not raw_line.strip():
             continue
         try:

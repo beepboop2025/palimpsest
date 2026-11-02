@@ -22,6 +22,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
 from core import newsroom
+from core.econ_ledger import MAX_LEDGER_BYTES
 from scripts import build_newsroom, share_cards, stage_pages_rights
 
 
@@ -2765,3 +2766,30 @@ def test_public_discovery_describes_restriction_instead_of_denied_values():
     assert "tool availability does not" in llms
     assert "grant value-publication rights" in llms
     assert "lineage-filtered rebuild" in llms
+
+
+def test_only_the_host_econ_ledger_reads_beyond_the_public_scan_cap(
+    tmp_path: Path, monkeypatch
+):
+    ledger = tmp_path / "readings" / stage_pages_rights.CHINA_ECON_LEDGER_NAME
+    assert (
+        stage_pages_rights._scan_cap(ledger)
+        == MAX_LEDGER_BYTES
+        > stage_pages_rights.MAX_PUBLIC_FILE_BYTES
+    )
+    # Small stand-in caps exercise the same boundary without a 64 MiB fixture.
+    monkeypatch.setattr(stage_pages_rights, "MAX_PUBLIC_FILE_BYTES", 16 * 1024)
+    monkeypatch.setattr(stage_pages_rights, "MAX_LEDGER_BYTES", 64 * 1024)
+    payload = b'{"value": 1}'.ljust(32 * 1024, b" ") + b"\n"
+    ledger.parent.mkdir()
+    ledger.write_bytes(payload)
+
+    assert stage_pages_rights._read_bounded(ledger) == payload
+    for other in (
+        tmp_path / "readings" / "china-econ-history.jsonl",
+        tmp_path / "elsewhere" / stage_pages_rights.CHINA_ECON_LEDGER_NAME,
+    ):
+        other.parent.mkdir(exist_ok=True)
+        other.write_bytes(payload)
+        with pytest.raises(stage_pages_rights.PagesRightsError, match="exceeds scan cap"):
+            stage_pages_rights._read_bounded(other)
