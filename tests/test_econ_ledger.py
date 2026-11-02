@@ -110,6 +110,105 @@ def test_append_assigns_only_value_revisions_and_keeps_new_provenance(tmp_path):
     assert len({row.observation_id for row in rows}) == 3
 
 
+def test_retain_same_value_skips_only_rejected_same_value_provenance(tmp_path):
+    ledger = tmp_path / "observations.jsonl"
+    t0 = datetime(2026, 2, 1, tzinfo=UTC)
+    older, newer, fresh = date(2026, 1, 1), date(2026, 1, 2), date(2026, 1, 3)
+    append_vintages(
+        ledger, [_obs(period=older, collected=t0), _obs(period=newer, collected=t0)]
+    )
+    asked: list[date] = []
+
+    def keep_newer(candidate: EconomicObservation) -> bool:
+        asked.append(candidate.period_end)
+        return candidate.period_end == newer
+
+    t1 = t0 + timedelta(hours=6)
+    kept = append_vintages(
+        ledger,
+        [
+            _obs(period=older, released=t1, collected=t1, raw="b" * 64),
+            _obs(period=newer, released=t1, collected=t1, raw="b" * 64),
+        ],
+        retain_same_value=keep_newer,
+    )
+    # Both candidates repeat a stored value under new provenance, so both are
+    # put to the predicate, and only the one it keeps is written.
+    assert sorted(asked) == [older, newer]
+    assert [(row.period_end, row.revision) for row in kept] == [(newer, 0)]
+
+    def reject_all(candidate: EconomicObservation) -> bool:
+        asked.append(candidate.period_end)
+        return False
+
+    asked.clear()
+    t2 = t1 + timedelta(hours=6)
+    changed = append_vintages(
+        ledger,
+        [
+            _obs(value=97.0, period=older, released=t2, collected=t2, raw="c" * 64),
+            _obs(period=fresh, released=t2, collected=t2, raw="c" * 64),
+        ],
+        retain_same_value=reject_all,
+    )
+    # A value revision and a new key are appended without asking the predicate.
+    assert asked == []
+    assert [(row.period_end, row.value, row.revision) for row in changed] == [
+        (older, 97.0, 1),
+        (fresh, 100.0, 0),
+    ]
+    assert [
+        (row.period_end, row.value, row.revision) for row in load_observations(ledger)
+    ] == [
+        (older, 100.0, 0),
+        (newer, 100.0, 0),
+        (newer, 100.0, 0),
+        (older, 97.0, 1),
+        (fresh, 100.0, 0),
+    ]
+
+
+def test_retain_same_value_default_is_byte_identical_and_fails_closed(tmp_path):
+    t0 = datetime(2026, 2, 1, tzinfo=UTC)
+    batches = [
+        [_obs(collected=t0)],
+        [_obs(released=t0 + timedelta(hours=1), collected=t0 + timedelta(hours=1))],
+        [
+            _obs(
+                released=t0 + timedelta(hours=2),
+                collected=t0 + timedelta(hours=2),
+                raw="b" * 64,
+            )
+        ],
+        [
+            _obs(
+                value=97.0,
+                released=t0 + timedelta(days=1),
+                collected=t0 + timedelta(days=1),
+                raw="c" * 64,
+            )
+        ],
+    ]
+    omitted = tmp_path / "omitted.jsonl"
+    explicit_none = tmp_path / "none.jsonl"
+    keep_all = tmp_path / "keep-all.jsonl"
+    for batch in batches:
+        append_vintages(omitted, batch)
+        append_vintages(explicit_none, batch, retain_same_value=None)
+        append_vintages(keep_all, batch, retain_same_value=lambda _row: True)
+    assert omitted.read_bytes() == explicit_none.read_bytes() == keep_all.read_bytes()
+    assert len(load_observations(omitted)) == 3
+
+    before = omitted.read_bytes()
+    later = t0 + timedelta(days=2)
+    repeat = [_obs(value=97.0, released=later, collected=later, raw="d" * 64)]
+    with pytest.raises(TypeError, match="must return a bool"):
+        append_vintages(omitted, repeat, retain_same_value=lambda _row: None)
+    with pytest.raises(TypeError, match="callable"):
+        append_vintages(omitted, repeat, retain_same_value="keep")
+    assert omitted.read_bytes() == before
+
+
 def test_strict_append_rejects_revision_gaps_and_same_value_increments(tmp_path):
     ledger = tmp_path / "observations.jsonl"
     t0 = datetime(2026, 2, 1, tzinfo=UTC)

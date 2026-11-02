@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from core.analytical_pieces import build_packet_set, build_template_draft_set
+from core.econ_ledger import MAX_LEDGER_BYTES
 from core.investigative_candidates import build_candidates, canonical_json_bytes
 from core.wire_claim_audits import (
     DELIVERY_POLICY as WIRE_DELIVERY_POLICY,
@@ -442,6 +443,48 @@ def test_snapshot_rejects_duplicate_json_and_symlinks(tmp_path: Path) -> None:
     link.symlink_to(target)
     with pytest.raises(runner.AnalysisRunnerError, match="cannot stat"):
         runner._stable_read(link)
+
+
+def test_snapshot_bounds_the_private_econ_ledger_by_its_writer_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The host bundle cannot import core.econ_ledger, so the restated cap is
+    # pinned to the writer's own cap here.
+    assert runner.MAX_ECON_LEDGER_BYTES == MAX_LEDGER_BYTES > runner.MAX_FILE_BYTES
+
+    readings, wire, _commit = _inputs(tmp_path)
+    # Small stand-in caps exercise the same boundary without a 64 MiB fixture.
+    monkeypatch.setattr(runner, "MAX_FILE_BYTES", 16 * 1024)
+    monkeypatch.setattr(runner, "MAX_ECON_LEDGER_BYTES", 64 * 1024)
+    oversized = b'{"value": 1}'.ljust(32 * 1024, b" ") + b"\n"
+    (readings / runner.ECON_LEDGER_NAME).write_bytes(oversized)
+
+    staging = tmp_path / "stage" / "readings"
+    _trigger, _lineage, manifest, _clock = runner.snapshot_inputs(
+        readings_dir=readings, newswire_dir=wire, staging_readings=staging
+    )
+    ledger_path = f"readings/{runner.ECON_LEDGER_NAME}"
+    assert next(row for row in manifest if row["path"] == ledger_path)["bytes"] == len(
+        oversized
+    )
+    runner._validate_frozen_sources(staging, manifest)
+
+    # Every other input keeps the general per-file cap, in both checks.
+    forged = [
+        {**row, "bytes": 16 * 1024 + 1}
+        if row["path"] == "readings/ooni-gfw-history.jsonl"
+        else row
+        for row in manifest
+    ]
+    with pytest.raises(runner.AnalysisRunnerError, match="byte receipt is invalid"):
+        runner._validate_frozen_sources(staging, forged)
+    (readings / "ooni-gfw-history.jsonl").write_bytes(oversized)
+    with pytest.raises(runner.AnalysisRunnerError, match="16384-byte boundary"):
+        runner.snapshot_inputs(
+            readings_dir=readings,
+            newswire_dir=wire,
+            staging_readings=tmp_path / "second" / "readings",
+        )
 
 
 def test_docker_command_has_hard_network_and_privilege_boundaries(
