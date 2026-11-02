@@ -898,6 +898,74 @@ def test_sanitized_osint_is_always_quarantined_by_designation(tmp_path: Path):
     }
 
 
+DERIVED_SIGNAL_HISTORIES = {
+    # Row shapes copied from the live files on 2026-11-02. Each carries a value
+    # or state derived from the withheld data-darkness index, keyed with an
+    # underscore that the hyphenated instrument detection does not match.
+    "readings/forecast-ledger-history.jsonl": {
+        "generated_at": "2026-11-02T09:21:47.159849+00:00",
+        "method_version": 1,
+        "n_signals_scored": 2,
+        "n_forecasts": 958,
+        "pooled_empirical_coverage": 0.8,
+        "nominal_coverage": 0.8,
+        "n_beating_baseline": 1,
+        "per_signal": {
+            "ooni_gfw": {"coverage": 0.8, "wis": 0.7896, "beats_baseline": True, "n": 881},
+            "data_darkness": {"coverage": 0.792, "wis": 0.0819, "beats_baseline": False, "n": 77},
+        },
+    },
+    "readings/event-flags-history.jsonl": {
+        "generated_at": "2026-11-02T09:21:46.498355+00:00",
+        "method_version": 2,
+        "states": {"ooni_gfw": "calm", "data_darkness": "calm"},
+        "active": [],
+    },
+    "readings/coverage-guard-history.jsonl": {
+        "generated_at": "2026-11-02T09:56:30.835076+00:00",
+        "method_version": 1,
+        "verdicts": {"ooni_gfw": "CONFIRMED", "data_darkness": "NO_MOVE"},
+        "confounded": [],
+    },
+    "readings/board-alarm-history.jsonl": {
+        "generated_at": "2026-11-02T09:56:30.565828+00:00",
+        "method_version": 2,
+        "board_e_value": 8.465,
+        "elevated_layers": ["network"],
+        "selected": [],
+        "coincidence": 1,
+    },
+}
+
+
+def test_derived_signal_histories_are_withheld_like_their_latest_files(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    for relative, row in DERIVED_SIGNAL_HISTORIES.items():
+        path = tmp_path / relative
+        path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+        latest = relative.replace("-history.jsonl", "-latest.json")
+        assert latest in stage_pages_rights.ALWAYS_RESTRICT
+        assert relative in stage_pages_rights.ALWAYS_RESTRICT
+
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+    for relative in DERIVED_SIGNAL_HISTORIES:
+        assert relative in status["quarantined_paths"]
+        raw = (tmp_path / relative).read_text(encoding="utf-8")
+        assert "data_darkness" not in raw
+        lines = [line for line in raw.splitlines() if line.strip()]
+        assert len(lines) == 1
+        stub = json.loads(lines[0])
+        assert stub["schema_version"] == "palimpsest-restricted-publication-endpoint.v1"
+        assert stub["status"] == "restricted"
+        assert stub["publication_allowed"] is False
+        assert stub["artifact"] == {
+            "path": relative,
+            "media_type": "application/x-ndjson",
+        }
+    assert _verify(tmp_path, evaluated_at=RIGHTS_CLOCK) == status
+
+
 def test_rights_derived_signal_closure_is_explicit_and_exact():
     assert stage_pages_rights.DERIVED_INSTRUMENTS == {
         "board-alarm",

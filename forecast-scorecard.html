@@ -52,6 +52,7 @@
     <tbody id="rows"><tr><td colspan="6">Loading.</td></tr></tbody>
   </table>
   <p>Canonical JSON: <a href="/readings/forecast-ledger-latest.json">readings/forecast-ledger-latest.json</a>. Method: <a href="/docs/NEW-METHODS.md">NEW-METHODS.md</a>.</p>
+  <p id="rights" class="fc-lede" hidden>Rights evidence for this restriction: <a href="/readings/china-publication-rights-latest.json">readings/china-publication-rights-latest.json</a>.</p>
 </main>
 <script>
 (function () {
@@ -80,10 +81,33 @@
     clearRows();
     addRow(["not reported"], 6);
   }
+  // The rights gate replaces a withheld reading with a metadata-only notice.
+  // Say that it is restricted and why; an empty ledger would be a different claim.
+  function isRestricted(data) {
+    return !!data && (data.status === "restricted" || data.publication_allowed === false);
+  }
+  function restricted(data) {
+    var reason = typeof data.reason === "string" && data.reason
+      ? data.reason : "The notice does not state a reason.";
+    var limits = (Array.isArray(data.limitations) ? data.limitations : []).filter(function (text) {
+      return typeof text === "string" && text;
+    });
+    headline.textContent = "Publication restricted. " + reason;
+    headline.className = "fc-lede";
+    clearRows();
+    addRow(["Scores withheld under the current source policy."], 6);
+    (limits.length ? limits : ["Restricted evidence is not zero, calm, healthy, or a directional signal."])
+      .forEach(function (text) { addRow([text], 6); });
+    if (typeof data.rights_evaluated_at === "string" && data.rights_evaluated_at) {
+      addRow(["Rights evaluated " + data.rights_evaluated_at + "."], 6);
+    }
+    document.getElementById("rights").hidden = false;
+  }
   fetch("/readings/forecast-ledger-latest.json", { cache: "no-store" }).then(function (res) {
     if (!res.ok) throw new Error("HTTP " + res.status);
     return res.json();
   }).then(function (data) {
+    if (isRestricted(data)) { restricted(data); return; }
     if (!data || !data.headline) { fail("Forecast ledger has no headline."); return; }
     headline.textContent = data.headline;
     headline.className = "fc-lede";

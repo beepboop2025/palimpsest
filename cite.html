@@ -59,7 +59,7 @@
     <pre id="apa"></pre>
     <h3>BibTeX</h3>
     <pre id="bibtex"></pre>
-    <p>Permanent JSON: <a id="json-link" href="/readings/catalog.json">readings/catalog.json</a></p>
+    <p>Permanent JSON: <a id="json-link" href="/readings/public-data-catalog-latest.json">readings/public-data-catalog-latest.json</a></p>
   </section>
 
   <section>
@@ -76,7 +76,10 @@
 </main>
 <script>
 (function () {
-  var atlas = "/readings/catalog.json";
+  // The public, rights-checked atlas. readings/catalog.json is the private build
+  // input and is published only as a restriction notice.
+  var atlasPath = "readings/public-data-catalog-latest.json";
+  var atlas = "/" + atlasPath;
   var select = document.getElementById("dataset");
   var accessed = document.getElementById("accessed");
   var apa = document.getElementById("apa");
@@ -98,6 +101,23 @@
     return "palimpsest-" + String(id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   }
 
+  function evidenceState(ds) {
+    var artifacts = ds && ds.artifacts && typeof ds.artifacts === "object" ? ds.artifacts : {};
+    return typeof artifacts.evidence_state === "string" && artifacts.evidence_state
+      ? artifacts.evidence_state : "not reported";
+  }
+
+  function describe(ds) {
+    var artifacts = ds.artifacts && typeof ds.artifacts === "object" ? ds.artifacts : {};
+    var built = "Built from the public atlas generated " + (catalog.generated_at || "at a time it does not report") + ". ";
+    if (ds.publication_allowed === false || evidenceState(ds) === "gated") {
+      return built + "Publication of this dataset's values is restricted, so the file at this URL is a metadata-only restriction notice, not a reading. Restricted evidence is not zero, calm or healthy.";
+    }
+    return built + "Evidence state: " + evidenceState(ds) + "; observed " +
+      (artifacts.observed_at || "at a time the atlas does not report") +
+      ". If a field is missing, this page says so instead of guessing.";
+  }
+
   function render() {
     if (!catalog) return;
     var ds = catalog.datasets.filter(function (row) { return row.id === select.value; })[0];
@@ -116,9 +136,9 @@
       "  note         = {Palimpsest dataset `" + ds.id + "`; accessed " + date + "}",
       "}"
     ].join("\n");
-    jsonLink.href = "/" + String(ds.latest || "readings/catalog.json").replace(/^\//, "");
-    jsonLink.textContent = ds.latest || "readings/catalog.json";
-    status.textContent = "Built from the atlas. If a field is missing, this page says so instead of guessing.";
+    jsonLink.href = "/" + String(ds.latest || atlasPath).replace(/^\//, "");
+    jsonLink.textContent = ds.latest || atlasPath;
+    status.textContent = describe(ds);
     status.className = "cite-lede";
   }
 
@@ -126,6 +146,10 @@
     if (!res.ok) throw new Error("atlas HTTP " + res.status);
     return res.json();
   }).then(function (data) {
+    if (data && (data.status === "restricted" || data.publication_allowed === false)) {
+      fail("The atlas is restricted: " + String(data.reason || "no reason was published").replace(/\.$/, "") + ".");
+      return;
+    }
     if (!data || !Array.isArray(data.datasets) || !data.datasets.length) {
       fail("The atlas has no datasets.");
       return;
@@ -134,8 +158,9 @@
     data.datasets.forEach(function (row) {
       if (!row.id) return;
       var opt = document.createElement("option");
+      var state = evidenceState(row);
       opt.value = row.id;
-      opt.textContent = row.id + ": " + (row.name || "");
+      opt.textContent = row.id + ": " + (row.name || "") + (state === "fresh" ? "" : " (" + state + ")");
       select.appendChild(opt);
     });
     var weekly = Array.prototype.some.call(select.options, function (opt) { return opt.value === "weekly-situation"; });

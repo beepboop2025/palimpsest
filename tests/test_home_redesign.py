@@ -264,6 +264,28 @@ assert.throws(() => countPublicReports({publication_allowed: false,
     subprocess.run([node, "-e", harness, str(ROOT / "assets/home.js")], check=True, capture_output=True, text=True)
 
 
+def test_collector_tile_counts_every_state_that_is_not_fresh():
+    node = shutil.which("node")
+    assert node is not None
+    harness = r"""
+const assert = require("node:assert/strict");
+const {collectorView} = require(process.argv[1]);
+const now = Date.parse("2026-11-02T09:08:33Z");
+// The live board on 2026-11-02: 44 of 98 datasets were not fresh.
+const board = {schema_version: "palimpsest-collector-health.v1", generated_at: "2026-11-02T09:07:33Z",
+  summary: {n_datasets: 98, by_state: {abstained: 2, disabled: 1, fresh: 54, gated: 28, partial: 1,
+    "private-node": 1, stale: 1, warming: 10}}};
+assert.equal(collectorView(board, now).coverage,
+  "44 not fresh: 1 stale; 28 gated; 1 partial; 10 warming; 2 abstained; 1 disabled; 1 private-node");
+// Counts come from the board: a new state is still shown and a zero is omitted.
+board.summary = {n_datasets: 10, by_state: {fresh: 6, gated: 0, quarantined: 2, warming: 2}};
+assert.equal(collectorView(board, now).coverage, "4 not fresh: 2 warming; 2 quarantined");
+board.summary = {n_datasets: 3, by_state: {fresh: 3, stale: 0}};
+assert.equal(collectorView(board, now).coverage, "0 not fresh");
+"""
+    subprocess.run([node, "-e", harness, str(ROOT / "assets/home.js")], check=True, capture_output=True, text=True)
+
+
 def test_home_refresh_handles_503_network_loss_and_release_changes():
     node = shutil.which("node")
     assert node is not None

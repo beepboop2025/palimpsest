@@ -1074,7 +1074,31 @@
 
     /* --------------------------------------------------- forecast ledger ---- */
     var FL = "/readings/forecast-ledger-latest.json";
+    /* The rights gate replaces a withheld reading with a metadata-only notice.
+       Say it is restricted and why, instead of reporting an empty ledger. */
+    function forecastRestricted(d) {
+      var why = "publication restricted: " + (typeof d.reason === "string" && d.reason
+        ? d.reason : "the notice does not state a reason");
+      var withheld = "scores withheld under the current source policy; restricted evidence is not zero, calm, healthy, or a directional signal";
+      ["hero-forecasts", "fl-cov", "fl-n", "fl-sig"].forEach(function (id) { set(id, "withheld", "f-warn"); });
+      set("hero-forecast-cov", why, "f-warn");
+      set("fl-headline", why, "f-warn");
+      stamp("hero-forecast-fresh", d.rights_evaluated_at, "rights evaluated");
+      stamp("fl-fresh", d.rights_evaluated_at, "rights evaluated");
+      ["fl-rows", "fl-miss-rows"].forEach(function (id) {
+        var row = document.createElement("tr");
+        cell(row, withheld, "f-warn").colSpan = 6;
+        fill(id, [row]);
+      });
+      ["fl-baseline", "fl-misstotal", "fl-excluded", "fl-caveats"].forEach(function (id) {
+        set(id, "withheld while publication is restricted; rights evidence: /readings/china-publication-rights-latest.json", "f-warn");
+      });
+    }
     S.loadReading(FL, function (d) {
+      if (d && (d.status === "restricted" || d.publication_allowed === false)) {
+        forecastRestricted(d);
+        return;
+      }
       num("hero-forecasts", d.n_forecasts);
       num("fl-n", d.n_forecasts);
       num("fl-sig", d.n_signals_scored);

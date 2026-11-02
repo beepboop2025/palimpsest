@@ -114,6 +114,10 @@ CHINA_ANALYSIS_AVAILABILITY_RSS_DESCRIPTION = (
 # These endpoints either carry CFETS values directly, derive a signal from
 # them, or advertise a value API that the current policy does not permit.
 # Automatic recursive detection below catches additional generated surfaces.
+# The four derived-signal histories are listed by path. Their rows carry
+# data-darkness results keyed as "data_darkness" (forecast scores, flag states,
+# coverage verdicts) or folded into the merged board e-value, which the
+# hyphenated instrument detection cannot see.
 ALWAYS_RESTRICT = frozenset(
     {
         "china-economy-api/index.html",
@@ -121,6 +125,7 @@ ALWAYS_RESTRICT = frozenset(
         "china/index.html",
         "china/money-markets/index.html",
         "china/sources/index.html",
+        "readings/board-alarm-history.jsonl",
         "readings/board-alarm-latest.json",
         "readings/china-econ-forecast-latest.json",
         "readings/china-econ-history.jsonl",
@@ -130,12 +135,15 @@ ALWAYS_RESTRICT = frozenset(
         "readings/china-economic-pulse-latest.json",
         "readings/china-index-latest.json",
         "readings/china-situation-latest.json",
+        "readings/coverage-guard-history.jsonl",
         "readings/coverage-guard-latest.json",
         "readings/cross-layer-latest.json",
         "readings/cny-fix-gap-history.jsonl",
         "readings/cny-fix-gap-latest.json",
         "readings/editorial-readiness-latest.json",
+        "readings/event-flags-history.jsonl",
         "readings/event-flags-latest.json",
+        "readings/forecast-ledger-history.jsonl",
         "readings/forecast-ledger-latest.json",
         "readings/catalog.json",
         "readings/investigations-latest.json",

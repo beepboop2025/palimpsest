@@ -613,6 +613,65 @@ def test_parser_rejects_oversize_documents_and_entry_counts():
         parse_feed(source, raw, now=NOW)
 
 
+def _padded_rss(source: SourceSpec, size: int) -> bytes:
+    """A valid one-item feed padded with whitespace to exactly ``size`` bytes."""
+
+    head = _rss(source)
+    return head.replace(b"</rss>", b" " * (size - len(head)) + b"</rss>")
+
+
+def test_only_reviewed_sources_get_a_larger_document_cap():
+    assert nw.feed_byte_cap("gfw-report") == 8 * 1024 * 1024
+    assert nw.feed_byte_cap("ooni") == nw.MAX_FEED_BYTES
+    assert nw.MAX_FEED_BYTES == 4 * 1024 * 1024
+    assert set(nw._REVIEWED_FEED_BYTE_CAPS) == {"gfw-report"}
+    for source_id, cap in nw._REVIEWED_FEED_BYTE_CAPS.items():
+        assert source_id in nw._CLOSED_SOURCES
+        assert nw.MAX_FEED_BYTES < cap <= nw.MAX_REVIEWED_FEED_BYTES
+
+    gfw = _source("gfw-report")
+    # The size measured for the GFW Report feed on 2026-11-02.
+    measured = _padded_rss(gfw, 4_623_846)
+    assert len(measured) > nw.MAX_FEED_BYTES
+    parsed = parse_feed(gfw, measured, now=NOW)
+    assert parsed.items_seen == 1
+    assert len(parsed.items) == 1
+
+    ooni = _source("ooni")
+    with pytest.raises(FeedParseError, match="document cap"):
+        parse_feed(ooni, _padded_rss(ooni, 4_623_846), now=NOW)
+    with pytest.raises(FeedParseError, match="document cap"):
+        parse_feed(gfw, _padded_rss(gfw, nw.feed_byte_cap("gfw-report") + 1), now=NOW)
+
+
+def test_reviewed_document_cap_keeps_every_other_feed_guard():
+    gfw = _source("gfw-report")
+    doctype = b'<!DOCTYPE rss [<!ENTITY x "boom">]>' + _padded_rss(gfw, 4_623_846)
+    with pytest.raises(FeedParseError, match="DOCTYPE"):
+        parse_feed(gfw, doctype, now=NOW)
+    with pytest.raises(FeedParseError, match="interstitial"):
+        parse_feed(gfw, b"<html>" + b" " * nw.MAX_FEED_BYTES + b"</html>", now=NOW)
+    nodes = "<x/>" * (nw.MAX_XML_NODES + 1)
+    with pytest.raises(FeedParseError, match="node cap"):
+        parse_feed(gfw, _rss(gfw, extra=nodes), now=NOW)
+    long_excerpt = parse_feed(gfw, _rss(gfw, excerpt="x" * (nw.MAX_XML_FIELD_CHARS + 1)), now=NOW)
+    assert long_excerpt.items == ()
+    assert long_excerpt.rejected_items == 1
+
+
+def test_reviewed_document_cap_must_stay_bounded_and_closed(monkeypatch):
+    monkeypatch.setitem(nw._REVIEWED_FEED_BYTE_CAPS, "gfw-report", nw.MAX_REVIEWED_FEED_BYTES + 1)
+    with pytest.raises(RegistryError, match="reviewed feed byte cap"):
+        load_source_registry()
+    monkeypatch.setitem(nw._REVIEWED_FEED_BYTE_CAPS, "gfw-report", nw.MAX_FEED_BYTES)
+    with pytest.raises(RegistryError, match="reviewed feed byte cap"):
+        load_source_registry()
+    monkeypatch.setitem(nw._REVIEWED_FEED_BYTE_CAPS, "gfw-report", 8 * 1024 * 1024)
+    monkeypatch.setitem(nw._REVIEWED_FEED_BYTE_CAPS, "not-a-registered-source", 8 * 1024 * 1024)
+    with pytest.raises(RegistryError, match="reviewed feed byte cap"):
+        load_source_registry()
+
+
 def test_parser_requires_utf8_rejects_oversize_titles_and_truncates_only_the_excerpt():
     source = _source("ooni")
     with pytest.raises(FeedParseError, match="strict UTF-8"):
@@ -1223,6 +1282,21 @@ def test_fetch_boundary_enforces_exact_no_redirect_transport_options():
     assert calls[0][1]["max_redirects"] == 0
     assert calls[0][1]["max_bytes"] == nw.MAX_FEED_BYTES
     assert "Palimpsest" in calls[0][1]["headers"]["User-Agent"]
+
+
+def test_fetch_boundary_passes_the_reviewed_cap_only_to_its_source():
+    gfw, ooni = _source("gfw-report"), _source("ooni")
+    calls = {}
+
+    def fetch(url, **kwargs):
+        calls[url] = kwargs
+        return _rss(gfw if url == gfw.feed_url else ooni)
+
+    collect_newswire(_registry(gfw, ooni), fetch, now=NOW)
+
+    assert calls[gfw.feed_url]["max_bytes"] == 8 * 1024 * 1024
+    assert calls[ooni.feed_url]["max_bytes"] == nw.MAX_FEED_BYTES
+    assert {kwargs["max_redirects"] for kwargs in calls.values()} == {0}
 
 
 def test_runtime_validator_rejects_unknown_fields_and_broken_accounting():

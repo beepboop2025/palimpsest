@@ -31,6 +31,7 @@ from core.newswire import (
     SourceRegistry,
     canonical_json_bytes,
     collect_newswire,
+    feed_byte_cap,
     load_source_registry,
     strict_json_loads,
     validate_active_source_registry,
@@ -384,7 +385,7 @@ class AcquisitionSnapshotWriter:
                     "sha256": None,
                 }
             raise AcquisitionFetchError("source acquisition failed") from exc
-        if type(raw) is not bytes or not raw or len(raw) > MAX_FEED_BYTES:
+        if type(raw) is not bytes or not raw or len(raw) > feed_byte_cap(source.id):
             with self._lock:
                 self._records[source.id] = {
                     "source_id": source.id,
@@ -493,7 +494,7 @@ class AcquisitionSnapshotReader:
                 if (
                     type(row["bytes"]) is not int
                     or row["bytes"] < 1
-                    or row["bytes"] > MAX_FEED_BYTES
+                    or row["bytes"] > feed_byte_cap(source.id)
                     or type(row["sha256"]) is not str
                     or not _SHA256_RE.fullmatch(row["sha256"])
                 ):
@@ -538,7 +539,7 @@ class AcquisitionSnapshotReader:
             raise AcquisitionFetchError("source acquisition failed")
         try:
             raw = _read_snapshot_file(
-                _snapshot_blob_path(self.root, source.id), MAX_FEED_BYTES
+                _snapshot_blob_path(self.root, source.id), feed_byte_cap(source.id)
             )
             if (
                 len(raw) != record["bytes"]
