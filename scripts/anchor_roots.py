@@ -81,7 +81,9 @@ ANCHOR_LOG = os.path.join(READINGS, "anchors.jsonl")
 ANCHOR_LATEST = os.path.join(READINGS, "anchors-latest.json")
 ANCHOR_DIR = os.path.join(READINGS, "anchors")
 
-SITE = os.environ.get("PALIMPSEST_SITE", "https://palimpsest.info")
+# The apex 301-redirects to www. A Wayback capture of an apex URL records
+# that redirect instead of the ledger bytes, so every byte check failed.
+SITE = os.environ.get("PALIMPSEST_SITE", "https://www.palimpsest.info")
 WAYBACK_TARGETS = (
     f"{SITE}/readings/eval-registry.jsonl",
     f"{SITE}/readings/erasure-ledger.jsonl",

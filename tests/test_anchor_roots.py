@@ -6,6 +6,7 @@ and the anchor log + latest summary carry what the site needs.
 from __future__ import annotations
 
 import gzip
+import importlib
 import io
 import json
 import os
@@ -794,3 +795,18 @@ def test_broken_chain_is_never_anchored(monkeypatch, tmp_path):
     except SystemExit as e:
         assert e.code == 1
     assert not os.path.exists(log)  # nothing was laundered into the log
+
+
+def test_default_wayback_targets_use_the_canonical_www_host(monkeypatch):
+    # palimpsest.info answers 301 to www.palimpsest.info; Wayback then archives
+    # the redirect, not the ledger bytes, and the anchor's byte check fails.
+    monkeypatch.delenv("PALIMPSEST_SITE", raising=False)
+    module = importlib.reload(anchor_roots)
+    try:
+        assert module.SITE == "https://www.palimpsest.info"
+        assert module.WAYBACK_TARGETS and all(
+            target.startswith("https://www.palimpsest.info/readings/")
+            for target in module.WAYBACK_TARGETS
+        )
+    finally:
+        importlib.reload(anchor_roots)
