@@ -81,6 +81,48 @@ def test_acquisition_snapshot_replays_exact_bytes_failures_and_clock(tmp_path):
     reader.finalize()
 
 
+def test_acquisition_snapshot_applies_the_reviewed_per_source_cap(tmp_path):
+    base = pull.load_source_registry()
+    by_id = {source.id: source for source in base.sources}
+    registry = pull.SourceRegistry(
+        schema_version=base.schema_version,
+        window_hours=base.window_hours,
+        max_items_per_source=base.max_items_per_source,
+        max_events=base.max_events,
+        sources=(by_id["gfw-report"], by_id["ooni"]),
+        sha256="b" * 64,
+    )
+
+    def padded(source, size):
+        head = _source_feed(source)
+        return head.replace(b"</rss>", b" " * (size - len(head)) + b"</rss>")
+
+    # 4,623,846 bytes is the GFW Report feed size measured on 2026-11-02.
+    large = {source.feed_url: padded(source, 4_623_846) for source in registry.sources}
+    writer = pull.AcquisitionSnapshotWriter(
+        tmp_path / "snapshot",
+        registry,
+        COLLECTION_TIME,
+        lambda url, **kwargs: large[url],
+    )
+    gfw, ooni = by_id["gfw-report"], by_id["ooni"]
+    assert writer(gfw.feed_url, max_bytes=nw.feed_byte_cap(gfw.id)) == large[gfw.feed_url]
+    with pytest.raises(pull.AcquisitionFetchError, match="invalid bytes"):
+        writer(ooni.feed_url, max_bytes=nw.feed_byte_cap(ooni.id))
+    writer.finalize()
+
+    manifest = json.loads((tmp_path / "snapshot" / "manifest.json").read_text())
+    rows = {row["source_id"]: row for row in manifest["sources"]}
+    assert rows["gfw-report"]["status"] == "success"
+    assert rows["gfw-report"]["bytes"] == 4_623_846
+    assert rows["ooni"]["status"] == "fetch_error"
+    reader = pull.AcquisitionSnapshotReader(tmp_path / "snapshot", registry)
+    assert reader(gfw.feed_url) == large[gfw.feed_url]
+    with pytest.raises(pull.AcquisitionFetchError):
+        reader(ooni.feed_url)
+    reader.finalize()
+
+
 def test_acquisition_snapshot_tampering_and_registry_drift_fail_closed(tmp_path):
     registry = _snapshot_registry()
     source = registry.sources[0]

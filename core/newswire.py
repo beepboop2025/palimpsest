@@ -36,6 +36,8 @@ SCHEMA_PATH = ROOT / "protocol" / "newswire-v1.schema.json"
 REGISTRY_SCHEMA_VERSION = "palimpsest-news-sources.v1"
 NEWSWIRE_SCHEMA_VERSION = "palimpsest-newswire.v1"
 MAX_FEED_BYTES = 4 * 1024 * 1024
+# Ceiling for any reviewed per-source exception to MAX_FEED_BYTES below.
+MAX_REVIEWED_FEED_BYTES = 8 * 1024 * 1024
 MAX_XML_NODES = 20_000
 MAX_FEED_ENTRIES = 1024
 MAX_TITLE_CHARS = 240
@@ -445,6 +447,23 @@ _CLOSED_SOURCES: dict[str, tuple[str, tuple[str, ...], str, str]] = {
     ),
 }
 
+# Reviewed per-source document caps. Every other source keeps MAX_FEED_BYTES.
+# Like the endpoints above, these live in code, not config, so registry edits
+# cannot raise a cap. Only the document byte cap moves; the DOCTYPE/ENTITY,
+# interstitial-HTML, XML node, entry-count and per-field caps still apply.
+#   gfw-report: the Hugo index.xml carries full article bodies. It measured
+#   4,623,846 bytes on 2026-11-02, so the global cap rejected the whole feed.
+_REVIEWED_FEED_BYTE_CAPS: dict[str, int] = {
+    "gfw-report": 8 * 1024 * 1024,
+}
+
+
+def feed_byte_cap(source_id: str) -> int:
+    """Return the reviewed document byte cap for one closed-registry source."""
+
+    return _REVIEWED_FEED_BYTE_CAPS.get(source_id, MAX_FEED_BYTES)
+
+
 # These publisher routes were removed during Arab News Pakistan's 2026-09-01
 # site migration, and no current scoped official RSS/Atom replacement existed at
 # review time. Keep the exact identities and endpoints as tombstones: historical
@@ -806,6 +825,13 @@ def load_source_registry(path: Path | str = DEFAULT_CONFIG_PATH) -> SourceRegist
         raise RegistryError("closed v1 registry reuses a retired source endpoint")
     if len(retired_urls) != len(_RETIRED_SOURCE_TOMBSTONES):
         raise RegistryError("retired source tombstones reuse an endpoint")
+    for capped_id, cap in _REVIEWED_FEED_BYTE_CAPS.items():
+        if (
+            capped_id not in _CLOSED_SOURCES
+            or type(cap) is not int
+            or not MAX_FEED_BYTES < cap <= MAX_REVIEWED_FEED_BYTES
+        ):
+            raise RegistryError(f"reviewed feed byte cap is invalid: {capped_id}")
 
     raw = Path(path).read_bytes()
     data = strict_json_loads(raw, label="news source registry")
@@ -1189,7 +1215,7 @@ def parse_feed(source: SourceSpec, raw: bytes, *, now: datetime) -> ParsedFeed:
 
     if type(raw) is not bytes:
         raise FeedParseError("feed body must be exact bytes")
-    if not raw or len(raw) > MAX_FEED_BYTES:
+    if not raw or len(raw) > feed_byte_cap(source.id):
         raise FeedParseError("feed body is empty or exceeds the document cap")
     try:
         decoded = raw.decode("utf-8-sig", "strict")
@@ -1648,7 +1674,7 @@ def _fetch_one(source: SourceSpec, fetcher: FetchBytes) -> tuple[bytes | None, s
     try:
         raw = fetcher(
             source.feed_url,
-            max_bytes=MAX_FEED_BYTES,
+            max_bytes=feed_byte_cap(source.id),
             timeout=20.0,
             max_redirects=0,
             headers={
@@ -2759,6 +2785,7 @@ __all__ = [
     "canonical_json_bytes",
     "canonicalize_article_url",
     "collect_newswire",
+    "feed_byte_cap",
     "format_timestamp",
     "load_source_registry",
     "parse_feed",
