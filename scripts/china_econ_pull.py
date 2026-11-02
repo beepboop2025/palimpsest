@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from collections.abc import Mapping
+from collections.abc import Callable, Iterable, Mapping
 from datetime import date, datetime, timedelta, timezone
 
 from collectors.china_econ import (
@@ -84,6 +84,39 @@ def validate_observation_ledger(path: str | None = None) -> int:
     return len(_load_observations(path or _observation_path()))
 
 
+def _series_identity(observation: EconomicObservation) -> tuple[object, ...]:
+    """One source's series slice: the ledger's vintage key without its period."""
+
+    return (*observation.slice_key, observation.source_id)
+
+
+def _newest_period_only(
+    candidates: Iterable[EconomicObservation],
+) -> Callable[[EconomicObservation], bool]:
+    """Bound same-value re-observations to each series' newest period.
+
+    ChinaMoney answers with a rolling history window, and its response bytes
+    differ on every poll even when no value moved.  Every row inherits that
+    response hash, so without this bound each poll would append the whole
+    window again as new provenance vintages.  Re-observing the newest period
+    still refreshes the collection clock the economic pulse reads for
+    freshness.  An older period re-served unchanged only restates its value
+    under a new response hash, so it is skipped.  The ledger never consults
+    this predicate for a new period or a value revision; those always append.
+    """
+
+    newest: dict[tuple[object, ...], date] = {}
+    for row in candidates:
+        identity = _series_identity(row)
+        if identity not in newest or row.period_end > newest[identity]:
+            newest[identity] = row.period_end
+
+    def retain(candidate: EconomicObservation) -> bool:
+        return newest.get(_series_identity(candidate)) == candidate.period_end
+
+    return retain
+
+
 def _append_vintages(
     fresh: Mapping[str, Mapping[str, float]],
     observed_at: datetime,
@@ -95,6 +128,8 @@ def _append_vintages(
     encountered during backfill, ``released_at`` is therefore the collector's
     first observation time, a conservative upper bound.  Assigning midnight on
     the data date would leak the value into a replay before Palimpsest knew it.
+    Unchanged older periods in the re-served window are not appended again; see
+    ``_newest_period_only``.
     """
     path = _observation_path()
     candidates = []
@@ -132,7 +167,13 @@ def _append_vintages(
                 },
             ))
 
-    return len(append_vintages(path, candidates))
+    return len(
+        append_vintages(
+            path,
+            candidates,
+            retain_same_value=_newest_period_only(candidates),
+        )
+    )
 
 
 def _load_history() -> dict[str, dict]:

@@ -61,6 +61,12 @@ BROKER_SCHEMA = "palimpsest-investigative-broker-request.v1"
 MAX_BROKER_RESPONSE_BYTES = 64 * 1024
 MAX_FILES = 256
 MAX_FILE_BYTES = 64 * 1024 * 1024
+# The China econ observation ledger is the one input with its own, larger cap:
+# its private host copy is bounded by its writer at
+# core.econ_ledger.MAX_LEDGER_BYTES.  This bundle does not ship that module, so
+# the value is restated here and a test pins the two together.
+ECON_LEDGER_NAME = "china-econ-observations.jsonl"
+MAX_ECON_LEDGER_BYTES = 128 * 1024 * 1024
 MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 MIN_FREE_BYTES = 10 * 1024 * 1024 * 1024
 MAX_RUNS = 48
@@ -195,6 +201,12 @@ def _file_signature(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
     )
 
 
+def _input_byte_limit(name: str) -> int:
+    """Return the per-file cap for one frozen input, keyed by its readings name."""
+
+    return MAX_ECON_LEDGER_BYTES if name == ECON_LEDGER_NAME else MAX_FILE_BYTES
+
+
 def _stable_read_with_signature(
     path: Path, *, attempts: int = 4, max_bytes: int = MAX_FILE_BYTES
 ) -> tuple[bytes, tuple[int, int, int, int, int]]:
@@ -302,7 +314,7 @@ def _source_files(readings_dir: Path, newswire_dir: Path) -> list[tuple[str, Pat
             ("-latest.json", "-history.jsonl")
         ) and path.name not in {
             "latest.json",
-            "china-econ-observations.jsonl",
+            ECON_LEDGER_NAME,
             "refusal-drift-churn.jsonl",
         }:
             continue
@@ -478,7 +490,9 @@ def snapshot_inputs(
     clocks: list[datetime] = []
     total_bytes = 0
     for name, source in _source_files(readings_dir, newswire_dir):
-        raw, signature = _stable_read_with_signature(source)
+        raw, signature = _stable_read_with_signature(
+            source, max_bytes=_input_byte_limit(name)
+        )
         total_bytes += len(raw)
         if total_bytes > MAX_SNAPSHOT_BYTES:
             raise AnalysisRunnerError("source snapshot exceeds the 512 MiB budget")
@@ -790,10 +804,11 @@ def _validate_frozen_sources(
         ):
             raise AnalysisRunnerError("input manifest path or role is invalid")
         seen.add(path_text)
+        name = path_text.removeprefix("readings/")
         if (
             not isinstance(receipt.get("bytes"), int)
             or isinstance(receipt.get("bytes"), bool)
-            or not 0 <= receipt["bytes"] <= MAX_FILE_BYTES
+            or not 0 <= receipt["bytes"] <= _input_byte_limit(name)
             or not re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("sha256", "")))
         ):
             raise AnalysisRunnerError("input manifest byte receipt is invalid")
@@ -809,7 +824,7 @@ def _validate_frozen_sources(
                 ) from exc
             if parsed_clock.tzinfo is None or parsed_clock.utcoffset() is None:
                 raise AnalysisRunnerError("input manifest source clock is naive")
-        raw = _stable_read(frozen_readings / path_text.removeprefix("readings/"))
+        raw = _stable_read(frozen_readings / name, max_bytes=_input_byte_limit(name))
         if (
             receipt.get("bytes") != len(raw)
             or receipt.get("sha256") != hashlib.sha256(raw).hexdigest()

@@ -19,12 +19,16 @@ import os
 import stat
 from dataclasses import dataclass, replace
 from datetime import datetime
-from typing import Iterable, Sequence
+from typing import Callable, Iterable, Sequence
 
 from core.econ_observation import EconomicObservation
 
 
-MAX_LEDGER_BYTES = 64 * 1024 * 1024
+# This byte cap guards the private host ledger.  The measurement host keeps the
+# complete China econ observation history, while git carries only a small
+# rights-clean projection, so the cap is sized for the host copy.  The other
+# economic ledgers written through this module share it.
+MAX_LEDGER_BYTES = 128 * 1024 * 1024
 MAX_LEDGER_ROWS = 1_000_000
 MAX_RECORD_BYTES = 1024 * 1024
 
@@ -404,10 +408,13 @@ def _append_transaction(
     max_bytes: int,
     max_rows: int,
     max_record_bytes: int,
+    retain_same_value: Callable[[EconomicObservation], bool] | None = None,
 ) -> list[EconomicObservation]:
     max_bytes = _positive_limit(max_bytes, "max_bytes")
     max_rows = _positive_limit(max_rows, "max_rows")
     max_record_bytes = _positive_limit(max_record_bytes, "max_record_bytes")
+    if retain_same_value is not None and not callable(retain_same_value):
+        raise TypeError("retain_same_value must be callable or None")
     candidates = _normalized_rows(observations)
     if not candidates:
         return []
@@ -443,6 +450,16 @@ def _append_transaction(
                 elif candidate.value != prior.value:
                     row = replace(candidate, revision=prior.revision + 1)
                 elif _provenance_signature(candidate) != _provenance_signature(prior):
+                    if retain_same_value is not None:
+                        # The caller sees a copy, so its predicate cannot edit
+                        # the metadata of the row this transaction may write.
+                        keep = retain_same_value(
+                            EconomicObservation.from_dict(candidate.to_dict())
+                        )
+                        if type(keep) is not bool:
+                            raise TypeError("retain_same_value must return a bool")
+                        if not keep:
+                            continue
                     row = replace(candidate, revision=prior.revision)
                 else:
                     # A later poll clock alone is not a new economic vintage.
@@ -518,12 +535,20 @@ def append_vintages(
     max_bytes: int = MAX_LEDGER_BYTES,
     max_rows: int = MAX_LEDGER_ROWS,
     max_record_bytes: int = MAX_RECORD_BYTES,
+    retain_same_value: Callable[[EconomicObservation], bool] | None = None,
 ) -> list[EconomicObservation]:
     """Append candidates while assigning value revisions inside the file lock.
 
     Same-value candidates are retained only when material provenance changes;
     those rows keep the current revision.  A changed value advances the
     source/vintage revision exactly once.
+
+    ``retain_same_value`` lets a caller bound those same-value provenance rows.
+    It is consulted inside the lock, and only for a candidate whose value equals
+    the latest stored vintage while its provenance differs.  ``True`` keeps the
+    candidate, ``False`` skips it, and any other result aborts the append before
+    a byte is written.  New vintages and value revisions never reach it.  The
+    default, ``None``, keeps every such row.
     """
 
     return _append_transaction(
@@ -533,6 +558,7 @@ def append_vintages(
         max_bytes=max_bytes,
         max_rows=max_rows,
         max_record_bytes=max_record_bytes,
+        retain_same_value=retain_same_value,
     )
 
 
