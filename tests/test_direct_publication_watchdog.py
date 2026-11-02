@@ -2426,3 +2426,463 @@ def test_data_hold_attempt_uses_exact_active_candidate(lineage: Fixture, case: s
     else:
         with pytest.raises(watchdog.WatchdogError):
             watchdog.validate_data_hold(lineage.config)
+
+
+# An ordinary publication in flight is "publishing", never healthy, and never a
+# cover for a real hold. Clocks below sit inside the fixture's wire budget.
+
+IN_FLIGHT_PREPARED = datetime(2026, 8, 30, 12, 10, 0, tzinfo=UTC)
+IN_FLIGHT_NOW = IN_FLIGHT_PREPARED + timedelta(minutes=2)
+PUBLISHER_STARTED = datetime(2026, 8, 30, 11, 57, 0, tzinfo=UTC)
+PUBLISHER_SCRIPT = ROOT / "ops" / "railway" / "palimpsest-railway-publish"
+WATCHDOG_SERVICE = ROOT / "ops" / "systemd" / "palimpsest-direct-watchdog.service"
+
+
+def _stamp(value: datetime) -> str:
+    return value.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _publisher_show(
+    *,
+    active: str = "activating",
+    sub: str = "start",
+    pid: str = "4242",
+    started: datetime | str = PUBLISHER_STARTED,
+) -> str:
+    clock = started if isinstance(started, str) else f"@{int(started.timestamp())}"
+    # systemd prints properties in its own order, not the requested one.
+    return f"MainPID={pid}\nExecMainStartTimestamp={clock}\nActiveState={active}\nSubState={sub}"
+
+
+def _pending_in_flight(
+    lineage: Fixture,
+    *,
+    prepared: datetime = IN_FLIGHT_PREPARED,
+    deadline_after: int = 600,
+    mode: int = 0o600,
+    **changes: Any,
+) -> dict[str, Any]:
+    archived = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived.read_bytes())
+    candidate["input_sha256"] = "6" * 64
+    candidate["message"] = (
+        f"palimpsest-hetzner-{lineage.release_sha[:12]}-{'6' * 12}-"
+        f"{candidate['submission_id']}"
+    )
+    candidate["prepared_at"] = _stamp(prepared)
+    candidate["receipt_deadline_at"] = _stamp(
+        prepared + timedelta(seconds=deadline_after)
+    )
+    candidate.update(changes)
+    _write(lineage.config.pending_candidate, _json_bytes(candidate), mode)
+    return candidate
+
+
+def _consumed_in_flight(lineage: Fixture, *, prepared: datetime) -> None:
+    """Rebind the receipt to a journal whose unlink is the only step left."""
+    archived = Path(lineage.receipt["candidate"]["archive_path"])
+    candidate = json.loads(archived.read_bytes())
+    candidate["prepared_at"] = _stamp(prepared)
+    candidate["receipt_deadline_at"] = _stamp(prepared + timedelta(seconds=600))
+    raw = _json_bytes(candidate)
+    archive = archived.with_name(f"{_sha(raw)}.json")
+    _write(archive, raw, 0o600)
+    lineage.receipt["candidate"] = {
+        "archive_path": str(archive),
+        "journal_sha256": _sha(raw),
+        "message": candidate["message"],
+    }
+    lineage.rewrite_receipt()
+    _write(lineage.config.pending_candidate, raw, 0o600)
+
+
+def _next_release_in_flight(
+    lineage: Fixture, *, prepared: datetime = IN_FLIGHT_PREPARED
+) -> tuple[dict[str, Any], bytes]:
+    """Prepare a real next-release journal whose own manifest anchor can go live."""
+    repository = lineage.config.source_repository
+    (repository / "next.txt").write_text("next edition\n")
+    _git(repository, "add", "next.txt")
+    _git(repository, "commit", "--quiet", "-m", "next edition")
+    release = _git(repository, "rev-parse", "HEAD")
+    ref = f"refs/palimpsest/releases/{release}"
+    _git(repository, "update-ref", ref, release)
+    bundle_path = lineage.bundle_path.with_name(f"{release}.bundle")
+    _git(repository, "bundle", "create", str(bundle_path), ref, f"^{lineage.base_sha}")
+    bundle_path.chmod(0o600)
+    metadata = json.loads(lineage.metadata_path.read_bytes())
+    metadata.update(path=str(bundle_path), sha256=_sha(bundle_path.read_bytes()),
+                    bytes=bundle_path.stat().st_size, release_sha=release)
+    metadata_path = lineage.metadata_path.with_name(f"{release}.json")
+    _write(metadata_path, _json_bytes(metadata), 0o600)
+    manifest = json.loads(lineage.manifest_raw)
+    manifest.update(source_commit=release, built_at=_stamp(prepared - timedelta(minutes=1)))
+    manifest_raw = _json_bytes(manifest)
+    manifest_path = lineage.manifest_path.with_name(f"{release}.json")
+    _write(manifest_path, manifest_raw, 0o600)
+    receipt_raw = lineage.receipt_path.read_bytes()
+    receipt_archive = lineage.config.state_root / "receipts" / f"{_sha(receipt_raw)}.json"
+    _write(receipt_archive, receipt_raw, 0o600)
+
+    candidate = json.loads(Path(lineage.receipt["candidate"]["archive_path"]).read_bytes())
+    candidate.update(
+        release_sha=release,
+        input_sha256="6" * 64,
+        prepared_at=_stamp(prepared),
+        receipt_deadline_at=_stamp(prepared + timedelta(seconds=600)),
+    )
+    candidate["message"] = (
+        f"palimpsest-hetzner-{release[:12]}-{'6' * 12}-{candidate['submission_id']}"
+    )
+    candidate["release_bundle"] = {
+        "path": str(bundle_path), "sha256": metadata["sha256"], "bytes": metadata["bytes"],
+        "metadata_path": str(metadata_path), "metadata_sha256": _sha(metadata_path.read_bytes()),
+    }
+    candidate["release_manifest"] = {
+        "path": str(manifest_path), "bytes": len(manifest_raw), "sha256": _sha(manifest_raw),
+        "tree_sha256": manifest["tree_sha256"], "file_count": manifest["file_count"],
+        "total_bytes": manifest["total_bytes"],
+    }
+    candidate["predecessor"] = _predecessor(lineage, receipt_raw, lineage.receipt, receipt_archive)
+    rollback = candidate["rollback_evidence"]
+    destination = lineage.config.state_root / "predecessors" / release
+    destination.mkdir(mode=0o700)
+    live_deployment = lineage.receipt["railway"]["deployment_id"]
+    for key in ("provider_manifest", "public_manifest", "topology"):
+        prior = Path(rollback[key]["path"])
+        body = lineage.manifest_raw
+        if key == "topology":
+            topology = json.loads(prior.read_bytes())
+            instance = topology["environments"]["edges"][0]["node"]["serviceInstances"]["edges"][0]["node"]
+            instance["latestDeployment"]["id"] = live_deployment
+            rollback[key]["deployment_id"] = live_deployment
+            body = _json_bytes(topology)
+        path = destination / prior.name
+        _write(path, body, 0o600)
+        rollback[key].update(path=str(path), sha256=_sha(body), bytes=len(body))
+    _write(lineage.config.pending_candidate, _json_bytes(candidate), 0o600)
+    return candidate, manifest_raw
+
+
+def _run_main(
+    lineage: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    now: datetime = IN_FLIGHT_NOW,
+    publisher: str | BaseException = _publisher_show(),
+    provider_raw: bytes | None = None,
+    public_raw: bytes | None = None,
+    wire_at: datetime | None = None,
+) -> tuple[int, dict[str, Any]]:
+    captured: dict[str, Any] = {}
+    origins = {
+        lineage.config.provider_origin: provider_raw or lineage.manifest_raw,
+        lineage.config.public_origin: public_raw or lineage.manifest_raw,
+    }
+    clock = _stamp(wire_at or now)
+    monkeypatch.setattr(watchdog, "utc_now", lambda: now)
+    monkeypatch.setattr(watchdog, "default_lineage_config", lambda: lineage.config)
+    monkeypatch.setattr(watchdog, "_load_prior_chain_checkpoint", lambda: None)
+    monkeypatch.setattr(watchdog, "fetch_manifest", lambda origin: origins[origin])
+    monkeypatch.setattr(watchdog, "load_json", lambda _path: {
+        "events": [{}], "generated_at": clock, "recorded_at": _stamp(now),
+        "succeeded": 1, "failed": 0, "promoted_files": [],
+    })
+
+    def command(*args: str) -> str:
+        if args[:2] == ("systemctl", "is-enabled"):
+            return "enabled"
+        if args[:2] == ("systemctl", "is-active"):
+            return "active"
+        if "--timestamp=unix" in args:
+            assert args[2] == watchdog.PUBLISHER_SERVICE
+            if isinstance(publisher, BaseException):
+                raise publisher
+            return publisher
+        name = next(arg for arg in args if arg.startswith("--property="))
+        return {"--property=ActiveState": "active", "--property=Result": "success"}[name]
+
+    monkeypatch.setattr(watchdog, "command", command)
+    monkeypatch.setattr(watchdog, "fetch_json_url", lambda _url: {
+        "schema_version": "palimpsest.regional-analysis.v1",
+        "revision_id": "revision",
+        "coverage": {"event_count": 1, "source_count": 1},
+        "wire": {"generated_at": clock},
+    })
+    monkeypatch.setattr(watchdog, "_write_status", captured.update)
+    return watchdog.main([]), captured
+
+
+def _candidate_problem(captured: dict[str, Any]) -> bool:
+    return {
+        "check": "publication/candidate",
+        "detail": "candidate journal status is mutation_unresolved",
+    } in captured["problems"]
+
+
+@pytest.mark.parametrize("state", ["mutation_unresolved", "consumed_pending_cleanup"])
+def test_fresh_in_flight_candidate_is_publishing_with_mapped_exit_75(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch, state: str,
+) -> None:
+    if state == "mutation_unresolved":
+        _pending_in_flight(lineage)
+        now = IN_FLIGHT_NOW
+    else:
+        prepared = datetime(2026, 8, 30, 12, 1, 0, tzinfo=UTC)
+        _consumed_in_flight(lineage, prepared=prepared)
+        now = prepared + timedelta(minutes=5)
+
+    code, captured = _run_main(lineage, monkeypatch, now=now)
+
+    assert code == 75
+    assert captured["status"] == "publishing"
+    assert watchdog.PUBLISHING_EXIT_STATUS == 75
+    assert captured["publishing"] is True and captured["data_hold"] is False
+    assert captured["problems"] == []
+    candidate = captured["checks"]["publication"]["candidate"]
+    assert candidate["status"] == state and candidate["data_hold"] is False
+    in_flight = candidate["in_flight"]
+    assert in_flight["status"] == "publishing"
+    assert in_flight["max_in_flight_seconds"] == 610
+    assert in_flight["publisher"] == {
+        "unit": "palimpsest-railway-publish.service",
+        "main_pid": 4242,
+        "started_at": _stamp(PUBLISHER_STARTED),
+    }
+    assert in_flight["deadline_remaining_seconds"] > 0
+
+
+@pytest.mark.parametrize("serving", ["both", "provider_only", "public_only"])
+def test_rollout_serving_the_exact_candidate_anchor_is_publishing(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch, serving: str,
+) -> None:
+    candidate, candidate_raw = _next_release_in_flight(lineage)
+    provider = candidate_raw if serving != "public_only" else lineage.manifest_raw
+    public = candidate_raw if serving != "provider_only" else lineage.manifest_raw
+
+    code, captured = _run_main(lineage, monkeypatch, provider_raw=provider, public_raw=public)
+
+    assert code == 75 and captured["status"] == "publishing"
+    assert captured["problems"] == []
+    live = captured["checks"]["publication"]["live"]
+    assert live["in_flight_release"]["release_sha"] == candidate["release_sha"]
+    assert live["origins"] == {
+        "provider": "receipt" if serving == "public_only" else "candidate",
+        "public": "receipt" if serving == "provider_only" else "candidate",
+    }
+    # A visitor who can still receive the receipt release ages the publication.
+    expected = candidate_raw if serving == "both" else lineage.manifest_raw
+    assert live["built_at"] == json.loads(expected)["built_at"]
+
+
+def test_live_candidate_without_an_in_flight_publisher_is_data_hold(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    candidate, candidate_raw = _next_release_in_flight(lineage)
+    code, captured = _run_main(
+        lineage, monkeypatch, provider_raw=candidate_raw, public_raw=candidate_raw,
+        publisher=_publisher_show(active="failed", sub="failed"),
+    )
+    assert code == 2 and captured["status"] == "DATA HOLD"
+    assert captured["publishing"] is False and _candidate_problem(captured)
+    assert {
+        "check": "publication/lineage",
+        "detail": f"live origins serve unreceipted candidate {candidate['release_sha']} "
+                  "without an in-flight publisher",
+    } in captured["problems"]
+
+
+def test_live_candidate_bytes_are_admitted_only_on_request_and_only_exactly(
+    lineage: Fixture,
+) -> None:
+    _candidate, candidate_raw = _next_release_in_flight(lineage)
+
+    def fetch(raw_by_origin: dict[str, bytes]) -> Callable[[str], bytes]:
+        return lambda origin: raw_by_origin[origin]
+
+    provider, public = lineage.config.provider_origin, lineage.config.public_origin
+    # --lineage-only and every other default caller keeps the strict check.
+    # The strict error for newer candidate bytes is unchanged from before.
+    with pytest.raises(watchdog.WatchdogError, match="receipt predates the live manifest"):
+        watchdog.validate_lineage(lineage.config, fetch_manifest=fetch({provider: candidate_raw, public: candidate_raw}))
+    with pytest.raises(watchdog.WatchdogError, match="not byte-identical"):
+        watchdog.validate_lineage(lineage.config, fetch_manifest=fetch({provider: candidate_raw, public: lineage.manifest_raw}))
+    # Admitted, bytes that are neither exact anchor keep the original error.
+    tampered = candidate_raw.replace(b'"file_count":123', b'"file_count":124')
+    assert tampered != candidate_raw
+    for raw_by_origin, error in (
+        ({provider: tampered, public: tampered}, "receipt predates the live manifest"),
+        ({provider: candidate_raw, public: tampered}, "not byte-identical"),
+        ({provider: lineage.manifest_raw, public: tampered}, "not byte-identical"),
+    ):
+        with pytest.raises(watchdog.WatchdogError, match=error):
+            watchdog.validate_lineage(lineage.config, fetch_manifest=fetch(raw_by_origin), allow_in_flight_live=True)
+
+
+def test_lineage_only_refuses_live_candidate_bytes(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
+    _candidate, candidate_raw = _next_release_in_flight(lineage)
+    monkeypatch.setattr(watchdog, "default_lineage_config", lambda: lineage.config)
+    monkeypatch.setattr(watchdog, "_load_prior_chain_checkpoint", lambda: None)
+    monkeypatch.setattr(watchdog, "fetch_manifest", lambda _origin: candidate_raw)
+    assert watchdog.main(["--lineage-only"]) == 1
+    assert "lineage refused" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "case,reason",
+    [
+        ("stale", "stale: its publisher-bounded receipt window closed"),
+        ("deadline_beyond_publisher_bound", "outside the publisher's own mutation bound"),
+        ("prepared_after_observation", "prepared after this observation"),
+        ("publisher_inactive", "not running: inactive/dead"),
+        ("publisher_failed", "not running: failed/failed"),
+        ("publisher_stopping", "not running: deactivating/stop-sigterm"),
+        ("later_invocation_same_second", "predates the running publisher invocation"),
+        ("later_invocation", "predates the running publisher invocation"),
+        ("no_main_pid", "invocation identity is unavailable"),
+        ("no_start_clock", "invocation identity is unavailable"),
+        ("systemctl_unavailable", "returned non-zero exit status 1"),
+        ("inexact_unit_state", "publisher unit state is not exact"),
+    ],
+)
+def test_unproven_in_flight_candidate_remains_data_hold(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch, case: str, reason: str,
+) -> None:
+    deadline = IN_FLIGHT_PREPARED + timedelta(seconds=600)
+    now, publisher, deadline_after = IN_FLIGHT_NOW, _publisher_show(), 600
+    if case == "stale":
+        now = deadline + timedelta(seconds=11)
+    elif case == "deadline_beyond_publisher_bound":
+        deadline_after = 601  # The general validator still admits up to 720 s.
+    elif case == "prepared_after_observation":
+        now = IN_FLIGHT_PREPARED - timedelta(seconds=1)
+    elif case == "publisher_inactive":
+        publisher = _publisher_show(active="inactive", sub="dead", pid="0")
+    elif case == "publisher_failed":
+        publisher = _publisher_show(active="failed", sub="failed", pid="0")
+    elif case == "publisher_stopping":
+        publisher = _publisher_show(active="deactivating", sub="stop-sigterm")
+    elif case == "later_invocation_same_second":
+        publisher = _publisher_show(started=IN_FLIGHT_PREPARED)
+    elif case == "later_invocation":
+        publisher = _publisher_show(started=IN_FLIGHT_PREPARED + timedelta(seconds=30))
+    elif case == "no_main_pid":
+        publisher = _publisher_show(pid="0")
+    elif case == "no_start_clock":
+        publisher = _publisher_show(started="")
+    elif case == "systemctl_unavailable":
+        publisher = subprocess.CalledProcessError(1, ["systemctl"])
+    elif case == "inexact_unit_state":
+        publisher = _publisher_show() + "\nActiveState=activating"
+    _pending_in_flight(lineage, deadline_after=deadline_after)
+
+    code, captured = _run_main(lineage, monkeypatch, now=now, publisher=publisher)
+
+    assert code == 2
+    assert captured["status"] == "DATA HOLD"
+    assert captured["data_hold"] is True and captured["publishing"] is False
+    assert _candidate_problem(captured)
+    in_flight = captured["checks"]["publication"]["candidate"]["in_flight"]
+    assert in_flight["status"] == "not_in_flight" and reason in in_flight["reason"]
+
+
+@pytest.mark.parametrize("marker", ["valid", "unreadable"])
+def test_root_hold_marker_wins_over_an_in_flight_publication(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch, marker: str,
+) -> None:
+    _pending_in_flight(lineage)
+    if marker == "valid":
+        _write_data_hold(lineage, attempted=False)
+    else:
+        _write(lineage.config.data_hold, b"not a hold\n", 0o640)
+
+    code, captured = _run_main(lineage, monkeypatch)
+
+    assert code == 2 and captured["status"] == "DATA HOLD"
+    assert captured["data_hold"] is True and captured["publishing"] is False
+    assert any(problem["check"] == "publication/data_hold" for problem in captured["problems"])
+
+
+@pytest.mark.parametrize("journal", ["unknown_status", "legacy_v1", "loose_mode", "not_json"])
+def test_unexpected_journal_state_remains_data_hold(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch, journal: str,
+) -> None:
+    if journal == "unknown_status":
+        _pending_in_flight(lineage, status="rollback_attempted")
+    elif journal == "legacy_v1":
+        _pending_in_flight(lineage, schema_version=watchdog.LEGACY_CANDIDATE_SCHEMA)
+    elif journal == "loose_mode":
+        _pending_in_flight(lineage, mode=0o640)
+    else:
+        _write(lineage.config.pending_candidate, b"{not json\n", 0o600)
+
+    code, captured = _run_main(lineage, monkeypatch)
+
+    assert code == 2 and captured["status"] == "DATA HOLD"
+    assert captured["data_hold"] is True and captured["publishing"] is False
+    assert [problem["check"] for problem in captured["problems"]] == ["publication/lineage"]
+
+
+def test_publishing_never_hides_another_problem(
+    lineage: Fixture, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _pending_in_flight(lineage)
+    code, captured = _run_main(
+        lineage, monkeypatch, wire_at=IN_FLIGHT_NOW - timedelta(seconds=1801),
+    )
+    assert code == 2 and captured["status"] == "degraded"
+    assert captured["publishing"] is True and captured["data_hold"] is False
+    assert [problem["check"] for problem in captured["problems"]] == ["wire/freshness"]
+
+
+def test_in_flight_bounds_are_exact_and_inclusive() -> None:
+    def candidate(deadline_after: int = 600) -> dict[str, Any]:
+        return {
+            "status": "mutation_unresolved",
+            "prepared_at": _stamp(IN_FLIGHT_PREPARED),
+            "receipt_deadline_at": _stamp(IN_FLIGHT_PREPARED + timedelta(seconds=deadline_after)),
+        }
+
+    def publisher(started: datetime = PUBLISHER_STARTED) -> dict[str, str]:
+        return {"ActiveState": "activating", "SubState": "start", "MainPID": "7",
+                "ExecMainStartTimestamp": f"@{int(started.timestamp())}"}
+
+    deadline = IN_FLIGHT_PREPARED + timedelta(seconds=600)
+    classify = watchdog.classify_in_flight_candidate
+    assert classify(candidate(), publisher=publisher(), observed_at=deadline + timedelta(seconds=10))["status"] == "publishing"
+    assert classify(candidate(), publisher=publisher(), observed_at=IN_FLIGHT_PREPARED)["age_seconds"] == 0
+    assert classify(candidate(), publisher=publisher(IN_FLIGHT_PREPARED - timedelta(seconds=1)),
+                    observed_at=IN_FLIGHT_NOW)["status"] == "publishing"
+    for kwargs, error in (
+        ({"observed_at": deadline + timedelta(seconds=11)}, "stale"),
+        ({"publisher": publisher(IN_FLIGHT_PREPARED)}, "predates the running publisher"),
+    ):
+        arguments = {"publisher": publisher(), "observed_at": IN_FLIGHT_NOW} | kwargs
+        with pytest.raises(watchdog.WatchdogError, match=error):
+            classify(candidate(), **arguments)
+    for broken, error in (
+        (candidate(601), "publisher's own mutation bound"),
+        (candidate() | {"status": "none"}, "not in an in-flight state"),
+        (candidate() | {"receipt_deadline_at": "soon"}, "clocks are invalid"),
+    ):
+        with pytest.raises(watchdog.WatchdogError, match=error):
+            classify(broken, publisher=publisher(), observed_at=IN_FLIGHT_NOW)
+
+
+def test_in_flight_window_mirrors_the_publisher_and_the_unit_maps_only_75() -> None:
+    publisher = PUBLISHER_SCRIPT.read_text(encoding="utf-8")
+    assert "readonly MAX_MUTATION_TO_RECEIPT_SECONDS=600\n" in publisher
+    assert "readonly RECEIPT_COMMIT_RESERVE_SECONDS=10\n" in publisher
+    assert watchdog.PUBLISHER_MAX_MUTATION_TO_RECEIPT_SECONDS == 600
+    assert watchdog.PUBLISHER_RECEIPT_COMMIT_RESERVE_SECONDS == 10
+    assert watchdog.MAX_IN_FLIGHT_CANDIDATE_SECONDS == 610
+    service = WATCHDOG_SERVICE.read_text(encoding="utf-8")
+    assert [line for line in service.splitlines() if line.startswith("SuccessExitStatus")] == [
+        "SuccessExitStatus=75"
+    ]
+    assert watchdog.PUBLISHING_EXIT_STATUS == 75
+    assert watchdog._outcome_status(problems=[], data_hold=False, publishing=True) == "publishing"
+    assert watchdog._outcome_status(problems=[{}], data_hold=False, publishing=True) == "degraded"
+    assert watchdog._outcome_status(problems=[], data_hold=True, publishing=True) == "DATA HOLD"

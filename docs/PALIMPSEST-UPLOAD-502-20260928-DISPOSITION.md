@@ -76,6 +76,23 @@ lock, so a long build does not delay them. After disposition, it uses the archiv
 reconciler dependency so a future routine-helper upgrade does not silently
 break its parser dependency.
 
+During an ordinary publication both deployments are briefly active, and the
+strict parser refuses with `Railway active deployment inventory is not
+singular`. By then the observer has already searched the bounded inventory and
+the topology for the retired message. It exits 75, which its unit maps through
+`SuccessExitStatus=75`, and logs `incident observation deferred`, only when the
+two active deployments are exactly the captured predecessor and the latest
+deployment, which carries the pending journal's own message; the pending
+journal passes the reviewed reconciler's validator, is not the retired
+submission, and has a receipt deadline at most 600 seconds after preparation;
+the observation is no later than that deadline plus the publisher's 10 second
+commit reserve; and `palimpsest-railway-publish.service` is `activating`/`start`
+with a main PID, running the invocation that prepared the journal. The proof
+reads only the pending journal and systemd, takes no lock, makes no further
+provider call and writes nothing. Any other non-singular topology, and every
+other refusal, still exits 1. A retired message seen during a rollout is still
+a late sighting.
+
 Any matching row, including a queued or terminal row, is retained and raises a
 root DATA HOLD through the existing strict hold writer under the ordinary
 publication lock. A busy writer lock records the match and an unsuccessful
@@ -117,3 +134,11 @@ was used for the disposition and is retained with the immutable incident
 evidence. The later observer concurrency revision changes only observation and
 hold-lock timing. It does not rewrite the durable decision, re-run disposition,
 change the ordinary publisher or relax predecessor capture.
+
+## Observer in-flight revision
+
+This later revision changes only how the observer classifies the non-singular
+topology of an ordinary rollout, as described above, and lands identically in
+the 20 October helper. It does not rewrite the durable decision, re-run
+disposition, change message matching, the hold writer, the observer units or
+the reviewed reconciler dependency.

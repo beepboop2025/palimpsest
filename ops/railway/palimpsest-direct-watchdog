@@ -6,6 +6,13 @@ base.  This observer proves both identities, walks the immutable predecessor
 receipt chain, fully reconstructs the current incremental Git bundle, preserves
 checkpointed integrity for historical bundles, and compares the provider and
 public release manifests byte-for-byte.
+
+A pending candidate journal is a DATA HOLD unless it is the ordinary
+publication in flight: fresh inside the publisher's own receipt window, in an
+expected journal state, and prepared by the publisher invocation that is still
+running. Only then is the status "publishing", with exit 75 for systemd to map
+through SuccessExitStatus. A root DATA HOLD marker or any other problem still
+wins, with exit 2.
 """
 
 from __future__ import annotations
@@ -54,6 +61,28 @@ MAX_PIN_GENERATIONS = 256
 MAX_CANDIDATE_RECEIPT_AFTER_PREPARED_SECONDS = 720
 MAX_CANDIDATE_RECEIPT_AFTER_WIRE_SECONDS = 1500
 MAX_FUTURE_CLOCK_SKEW_SECONDS = 120
+# A pending journal is an ordinary publication in flight, not a DATA HOLD, only
+# inside the window the publisher enforces on itself. Immediately before it
+# stamps prepared_at, the publisher persists receipt_deadline_at as at most
+# MAX_MUTATION_TO_RECEIPT_SECONDS later, bounds every post-mutation step by that
+# deadline less RECEIPT_COMMIT_RESERVE_SECONDS, and unlinks the journal right
+# after its last pre-deadline check. A journal still present once the reserve
+# has also elapsed can no longer be consumed by that run. Both values mirror
+# ops/railway/palimpsest-railway-publish; a test fails if either one moves.
+PUBLISHER_MAX_MUTATION_TO_RECEIPT_SECONDS = 600
+PUBLISHER_RECEIPT_COMMIT_RESERVE_SECONDS = 10
+MAX_IN_FLIGHT_CANDIDATE_SECONDS = (
+    PUBLISHER_MAX_MUTATION_TO_RECEIPT_SECONDS
+    + PUBLISHER_RECEIPT_COMMIT_RESERVE_SECONDS
+)
+PUBLISHER_SERVICE = "palimpsest-railway-publish.service"
+IN_FLIGHT_CANDIDATE_STATES = frozenset(
+    {"mutation_unresolved", "consumed_pending_cleanup"}
+)
+# EX_TEMPFAIL: the last publication is fully verified and the next one is in
+# flight. The unit maps only this code through SuccessExitStatus; degraded and
+# DATA HOLD keep exit 2.
+PUBLISHING_EXIT_STATUS = 75
 
 V1_SCHEMA = "palimpsest.hetzner-railway-publication.v1"
 V2_SCHEMA = "palimpsest.hetzner-railway-publication.v2"
@@ -2699,7 +2728,113 @@ def _candidate_status(
         "data_hold": True,
         "journal_sha256": digest,
         "release_sha": release_sha,
+        # Already validated above; exposed only to classify an in-flight run.
+        "submission_id": candidate["submission_id"],
+        "prepared_at": candidate["prepared_at"],
+        "receipt_deadline_at": candidate["receipt_deadline_at"],
+        "release_manifest": candidate["release_manifest"],
     }
+
+
+def _validate_live_origins(
+    config: LineageConfig,
+    provider_raw: bytes,
+    public_raw: bytes,
+    receipt: dict[str, Any],
+    *,
+    pin: dict[str, Any] | None,
+    candidate: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Prove the live bytes against the receipt, or against one rollout.
+
+    The unchanged strict check runs first and its error stands unless an
+    admitted pending candidate explains the bytes: each origin must serve
+    exactly the receipt's anchored manifest or that candidate's own
+    pre-mutation anchor, and at least one must serve the candidate. The caller
+    must still prove that candidate is in flight.
+    """
+    try:
+        if provider_raw != public_raw:
+            raise WatchdogError(
+                "provider and public live manifests are not byte-identical"
+            )
+        return _validate_live_manifest(config, provider_raw, receipt, pin=pin)
+    except WatchdogError:
+        rollout = _rollout_live_proof(
+            config,
+            provider_raw,
+            public_raw,
+            receipt,
+            pin=pin,
+            candidate=candidate,
+        )
+        if rollout is None:
+            raise
+        return rollout
+
+
+def _rollout_live_proof(
+    config: LineageConfig,
+    provider_raw: bytes,
+    public_raw: bytes,
+    receipt: dict[str, Any],
+    *,
+    pin: dict[str, Any] | None,
+    candidate: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Admit only the receipt anchor or the pending candidate's own anchor."""
+    if (
+        candidate is None
+        or candidate.get("status") != "mutation_unresolved"
+        or receipt.get("schema_version") != V2_SCHEMA
+    ):
+        return None
+    try:
+        candidate_raw, _manifest = _validate_release_manifest_anchor(
+            config,
+            candidate["release_manifest"],
+            release_sha=candidate["release_sha"],
+        )
+        if candidate_raw not in (provider_raw, public_raw):
+            return None
+        proofs = {
+            "candidate": _validate_live_manifest(
+                config,
+                candidate_raw,
+                {
+                    "schema_version": V2_SCHEMA,
+                    "release_sha": candidate["release_sha"],
+                    "recorded_at": candidate["prepared_at"],
+                    "live_manifest": candidate["release_manifest"],
+                },
+                pin=pin,
+            )
+        }
+    except (KeyError, OSError, ValueError, WatchdogError):
+        return None
+    served: dict[str, str] = {}
+    for origin, raw in (("provider", provider_raw), ("public", public_raw)):
+        if raw == candidate_raw:
+            served[origin] = "candidate"
+            continue
+        try:
+            proofs["receipt"] = _validate_live_manifest(config, raw, receipt, pin=pin)
+        except (OSError, ValueError, WatchdogError):
+            # Bytes that are neither anchor keep the original strict error.
+            return None
+        served[origin] = "receipt"
+    # Age the publication by the oldest bytes a visitor can still receive.
+    live = dict(proofs.get("receipt", proofs["candidate"]))
+    live["public_catalog_expected"] = any(
+        proof["public_catalog_expected"] for proof in proofs.values()
+    )
+    live["origins"] = served
+    live["in_flight_release"] = {
+        "release_sha": proofs["candidate"]["release_sha"],
+        "manifest_sha256": proofs["candidate"]["manifest_sha256"],
+        "built_at": proofs["candidate"]["built_at"],
+    }
+    return live
 
 
 def validate_data_hold(config: LineageConfig) -> dict[str, Any]:
@@ -3055,6 +3190,7 @@ def validate_lineage(
     *,
     fetch_manifest: ManifestFetcher,
     chain_checkpoint: dict[str, Any] | None = None,
+    allow_in_flight_live: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Validate one stable publication observation, retrying a replaced input once."""
     for attempt in range(2):
@@ -3064,6 +3200,7 @@ def validate_lineage(
                 config,
                 fetch_manifest=fetch_manifest,
                 chain_checkpoint=chain_checkpoint,
+                allow_in_flight_live=allow_in_flight_live,
             )
         except (OSError, ValueError, WatchdogError):
             if attempt == 0 and _lineage_input_versions(config) != before:
@@ -3079,6 +3216,7 @@ def _validate_lineage_once(
     *,
     fetch_manifest: ManifestFetcher,
     chain_checkpoint: dict[str, Any] | None,
+    allow_in_flight_live: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Validate the complete direct-publication lineage and live byte proof."""
 
@@ -3176,9 +3314,6 @@ def _validate_lineage_once(
 
     provider_raw = fetch_manifest(config.provider_origin)
     public_raw = fetch_manifest(config.public_origin)
-    if provider_raw != public_raw:
-        raise WatchdogError("provider and public live manifests are not byte-identical")
-    live = _validate_live_manifest(config, provider_raw, receipt, pin=pin)
     candidate = _candidate_status(
         config,
         receipt,
@@ -3186,6 +3321,14 @@ def _validate_lineage_once(
         # is authenticated against its archived predecessor during rotation.
         pin=pin,
         pin_sha256=pin_sha256,
+    )
+    live = _validate_live_origins(
+        config,
+        provider_raw,
+        public_raw,
+        receipt,
+        pin=pin,
+        candidate=candidate if allow_in_flight_live else None,
     )
     return (
         {
@@ -3366,6 +3509,117 @@ def unit_property(unit: str, name: str) -> str:
     return command("systemctl", "show", unit, f"--property={name}", "--value")
 
 
+def _publisher_run_state() -> dict[str, str]:
+    """Read the publisher's current invocation from systemd, never its lock."""
+    output = command(
+        "systemctl",
+        "show",
+        PUBLISHER_SERVICE,
+        "--timestamp=unix",
+        "--property=ActiveState",
+        "--property=SubState",
+        "--property=MainPID",
+        "--property=ExecMainStartTimestamp",
+    )
+    state: dict[str, str] = {}
+    for line in output.splitlines():
+        key, separator, value = line.partition("=")
+        if not separator or key in state:
+            raise WatchdogError("publisher unit state is not exact")
+        state[key] = value
+    if set(state) != {"ActiveState", "SubState", "MainPID", "ExecMainStartTimestamp"}:
+        raise WatchdogError("publisher unit state is incomplete")
+    return state
+
+
+def classify_in_flight_candidate(
+    candidate: dict[str, Any],
+    *,
+    publisher: dict[str, str],
+    observed_at: datetime,
+) -> dict[str, Any]:
+    """Prove that a validated pending journal belongs to the running publisher.
+
+    Every condition must hold. Any WatchdogError leaves the journal reported as
+    DATA HOLD, exactly as before this classification existed.
+    """
+    if candidate.get("status") not in IN_FLIGHT_CANDIDATE_STATES:
+        raise WatchdogError("candidate journal is not in an in-flight state")
+    try:
+        prepared_at = parse_timestamp(candidate.get("prepared_at"))
+        deadline = parse_timestamp(candidate.get("receipt_deadline_at"))
+    except ValueError as exc:
+        raise WatchdogError("in-flight candidate clocks are invalid") from exc
+    if not (
+        timedelta(0)
+        < deadline - prepared_at
+        <= timedelta(seconds=PUBLISHER_MAX_MUTATION_TO_RECEIPT_SECONDS)
+    ):
+        raise WatchdogError(
+            "candidate receipt deadline is outside the publisher's own mutation bound"
+        )
+    if observed_at < prepared_at:
+        raise WatchdogError("candidate journal was prepared after this observation")
+    age = (observed_at - prepared_at).total_seconds()
+    if age > MAX_IN_FLIGHT_CANDIDATE_SECONDS or observed_at > deadline + timedelta(
+        seconds=PUBLISHER_RECEIPT_COMMIT_RESERVE_SECONDS
+    ):
+        raise WatchdogError(
+            "candidate journal is stale: its publisher-bounded receipt window closed"
+        )
+    if (publisher.get("ActiveState"), publisher.get("SubState")) != (
+        "activating",
+        "start",
+    ):
+        raise WatchdogError(
+            "direct publisher is not running: "
+            f"{publisher.get('ActiveState')}/{publisher.get('SubState')}"
+        )
+    main_pid = publisher.get("MainPID", "")
+    started = publisher.get("ExecMainStartTimestamp", "")
+    if (
+        re.fullmatch(r"[1-9][0-9]*", main_pid) is None
+        or re.fullmatch(r"@[1-9][0-9]*", started) is None
+    ):
+        raise WatchdogError("direct publisher invocation identity is unavailable")
+    started_at = datetime.fromtimestamp(int(started[1:]), timezone.utc)
+    # Both clocks are whole seconds. A journal from an earlier invocation was
+    # prepared no later than this invocation began, so only a strictly later
+    # preparation binds the journal to the running publisher.
+    if prepared_at <= started_at:
+        raise WatchdogError(
+            "candidate journal predates the running publisher invocation"
+        )
+    return {
+        "status": "publishing",
+        "observed_at": observed_at.isoformat().replace("+00:00", "Z"),
+        "prepared_at": candidate["prepared_at"],
+        "receipt_deadline_at": candidate["receipt_deadline_at"],
+        "age_seconds": round(age, 3),
+        "deadline_remaining_seconds": round(
+            (deadline - observed_at).total_seconds(), 3
+        ),
+        "max_in_flight_seconds": MAX_IN_FLIGHT_CANDIDATE_SECONDS,
+        "publisher": {
+            "unit": PUBLISHER_SERVICE,
+            "main_pid": int(main_pid),
+            "started_at": started_at.isoformat().replace("+00:00", "Z"),
+        },
+    }
+
+
+def _in_flight_publication(candidate: dict[str, Any]) -> dict[str, Any]:
+    """Classify a pending journal right after the lineage proof that read it."""
+    try:
+        publisher = _publisher_run_state()
+        # Read the clock after systemd so the journal can only look older.
+        return classify_in_flight_candidate(
+            candidate, publisher=publisher, observed_at=utc_now()
+        )
+    except (OSError, ValueError, subprocess.SubprocessError, WatchdogError) as exc:
+        return {"status": "not_in_flight", "reason": str(exc)}
+
+
 def _write_status(document: dict[str, Any]) -> None:
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
@@ -3382,10 +3636,14 @@ def _write_status(document: dict[str, Any]) -> None:
     os.replace(temporary, OUTPUT_PATH)
 
 
-def _outcome_status(*, problems: list[dict[str, Any]], data_hold: bool) -> str:
+def _outcome_status(
+    *, problems: list[dict[str, Any]], data_hold: bool, publishing: bool = False
+) -> str:
     if data_hold:
         return "DATA HOLD"
-    return "healthy" if not problems else "degraded"
+    if problems:
+        return "degraded"
+    return "publishing" if publishing else "healthy"
 
 
 def _load_prior_chain_checkpoint() -> dict[str, Any] | None:
@@ -3509,6 +3767,9 @@ def main(argv: list[str] | None = None) -> int:
         or lineage_config.data_hold.exists()
         or lineage_config.data_hold.is_symlink()
     )
+    # Only a complete lineage proof plus an in-flight classification can set
+    # this; every failure path leaves it false and keeps the hold flag above.
+    publishing_active = False
     try:
         prior_chain_checkpoint = _load_prior_chain_checkpoint()
     except WatchdogError as exc:
@@ -3570,6 +3831,14 @@ def main(argv: list[str] | None = None) -> int:
             lineage_config,
             fetch_manifest=fetch_manifest,
             chain_checkpoint=prior_chain_checkpoint,
+            allow_in_flight_live=True,
+        )
+        # Classify a pending journal at once, while the publisher run that
+        # wrote it is still observable; slower checks below must not age it.
+        if candidate["status"] != "none":
+            candidate["in_flight"] = _in_flight_publication(candidate)
+        candidate_in_flight = (
+            candidate.get("in_flight", {}).get("status") == "publishing"
         )
         live = lineage.get("live")
         if not isinstance(live, dict):
@@ -3613,9 +3882,10 @@ def main(argv: list[str] | None = None) -> int:
                     if attempt:
                         add_problem(problems, "datasets/publication", str(exc))
         # A consumed journal may disappear during validation. Only a complete,
-        # stable lineage proof can replace the conservative entry-time flag.
+        # stable lineage proof can replace the conservative entry-time flag,
+        # and only a proven in-flight publication keeps a journal out of it.
         data_hold_active = (
-            candidate["status"] != "none"
+            (candidate["status"] != "none" and not candidate_in_flight)
             or lineage_config.data_hold.exists()
             or lineage_config.data_hold.is_symlink()
         )
@@ -3625,13 +3895,24 @@ def main(argv: list[str] | None = None) -> int:
                 "publication/base_rotation_bridge",
                 "successor base is waiting for a same-generation publication receipt",
             )
-        if candidate["status"] != "none":
+        if candidate["status"] != "none" and not candidate_in_flight:
             data_hold_active = True
             add_problem(
                 problems,
                 "publication/candidate",
                 f"candidate journal status is {candidate['status']}",
             )
+            if "in_flight_release" in live:
+                add_problem(
+                    problems,
+                    "publication/lineage",
+                    "live origins serve unreceipted candidate "
+                    f"{live['in_flight_release']['release_sha']} without an "
+                    "in-flight publisher",
+                )
+        if candidate_in_flight:
+            candidate["data_hold"] = False
+            publishing_active = True
     except (OSError, ValueError, WatchdogError) as exc:
         add_problem(problems, "publication/lineage", str(exc))
         if prior_chain_checkpoint is not None:
@@ -3737,15 +4018,18 @@ def main(argv: list[str] | None = None) -> int:
             add_problem(problems, f"analysis/{route}", str(exc))
     checks["analysis"] = analysis_results
 
+    publishing = publishing_active and not data_hold_active
     status_value = _outcome_status(
         problems=problems,
         data_hold=data_hold_active,
+        publishing=publishing,
     )
     document = {
         "schema_version": "palimpsest.direct-watchdog.v2",
         "generated_at": now.isoformat().replace("+00:00", "Z"),
         "status": status_value,
         "data_hold": data_hold_active,
+        "publishing": publishing,
         "problem_count": len(problems),
         "problems": problems,
         "checks": checks,
@@ -3756,7 +4040,9 @@ def main(argv: list[str] | None = None) -> int:
         f"problems={len(problems)} "
         f"wire_events={checks.get('wire', {}).get('event_count', 0)}"
     )
-    return 2 if data_hold_active or problems else 0
+    if data_hold_active or problems:
+        return 2
+    return PUBLISHING_EXIT_STATUS if publishing else 0
 
 
 if __name__ == "__main__":

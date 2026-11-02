@@ -20,11 +20,12 @@ import json
 import os
 from pathlib import Path
 import pwd
+import re
 import runpy
 import subprocess
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 INCIDENT = "palimpsest-upload-502-20261020"
 SUBMISSION = "f0e823dcc632569cbfcff69f2b1eef78"
@@ -75,8 +76,25 @@ REVIEWED_LATER_EVENTS = {
 }
 
 
+PUBLISHER_UNIT = "palimpsest-railway-publish.service"
+# The ordinary publisher persists receipt_deadline_at at most 600 s after
+# prepared_at and unlinks its journal by that deadline, keeping a 10 s commit
+# reserve: MAX_MUTATION_TO_RECEIPT_SECONDS and RECEIPT_COMMIT_RESERVE_SECONDS
+# in ops/railway/palimpsest-railway-publish.
+PUBLISHER_MUTATION_SECONDS = 600
+PUBLISHER_COMMIT_RESERVE_SECONDS = 10
+NOT_SINGULAR = "Railway active deployment inventory is not singular"
+# EX_TEMPFAIL. The observer unit maps it through SuccessExitStatus=75; only
+# a proven in-flight publication returns it in observer mode.
+IN_FLIGHT_EXIT = 75
+
+
 class Refused(RuntimeError):
     pass
+
+
+class PublicationInFlight(RuntimeError):
+    """Two active deployments are exactly one ordinary rollout, and no match."""
 
 
 def digest(raw: bytes) -> str:
@@ -407,6 +425,77 @@ def hold_if_idle(n: dict, candidate: dict, gid: int) -> bool:
         os.close(fd)
 
 
+def publisher_unit() -> dict[str, str]:
+    """Read the publisher's current invocation from systemd, never its lock."""
+    output = subprocess.run(
+        ["/usr/bin/systemctl", "show", PUBLISHER_UNIT, "--timestamp=unix",
+         "--property=ActiveState", "--property=SubState", "--property=MainPID",
+         "--property=ExecMainStartTimestamp"],
+        capture_output=True, text=True, timeout=10, check=True).stdout
+    state: dict[str, str] = {}
+    for line in output.splitlines():
+        key, separator, value = line.partition("=")
+        if not separator or key in state:
+            raise Refused("publisher unit state is not exact")
+        state[key] = value
+    if set(state) != {"ActiveState", "SubState", "MainPID", "ExecMainStartTimestamp"}:
+        raise Refused("publisher unit state is incomplete")
+    return state
+
+
+def in_flight_publication(n: dict, status: bytes, retired: dict, uid: int, gid: int) -> dict:
+    """Prove that a non-singular topology is exactly one ordinary rollout.
+
+    Reads the live pending journal and the publisher's systemd state; takes no
+    lock and makes no provider call. Every check must hold, or the refusal
+    stands. The retired submission can never be the in-flight publication.
+    """
+    raw = n["_read"](STATE / "pending-candidate.json", uid=uid, gid=gid, mode=0o600)
+    pending = n["_object"](raw, "pending candidate journal")
+    n["_validate_candidate"](pending)
+    if digest(raw) == JOURNAL or pending["message"] == retired["message"]:
+        raise Refused("the retired submission is never an in-flight publication")
+    prepared, deadline = clock(pending["prepared_at"]), clock(pending["receipt_deadline_at"])
+    if not timedelta(0) < deadline - prepared <= timedelta(seconds=PUBLISHER_MUTATION_SECONDS):
+        raise Refused("pending journal deadline exceeds the publisher's own mutation bound")
+    unit = publisher_unit()
+    started = unit.get("ExecMainStartTimestamp", "")
+    # Whole-second clocks: an earlier invocation's journal was prepared no later
+    # than this invocation began, so only a strictly later preparation binds.
+    if ((unit.get("ActiveState"), unit.get("SubState")) != ("activating", "start")
+            or re.fullmatch(r"[1-9][0-9]*", unit.get("MainPID", "")) is None
+            or re.fullmatch(r"@[1-9][0-9]*", started) is None
+            or prepared <= datetime.fromtimestamp(int(started[1:]), UTC)):
+        raise Refused("pending journal is not bound to the running publisher")
+    now = datetime.now(UTC)
+    if not prepared <= now <= deadline + timedelta(seconds=PUBLISHER_COMMIT_RESERVE_SECONDS):
+        raise Refused("pending journal is outside its publisher-bounded window")
+    document = n["_object"](status, "Railway topology")
+    if document.get("id") != PROJECT:
+        raise Refused("topology project differs")
+    environment = n["_one"](n["_edges"](document.get("environments"), "environments"),
+                            "id", ENVIRONMENT, "environment")
+    instance = n["_one"](n["_edges"](environment.get("serviceInstances"), "service instances"),
+                         "serviceId", SERVICE, "service instance")
+    active, latest = instance.get("activeDeployments"), instance.get("latestDeployment")
+    if (not isinstance(active, list) or len(active) != 2
+            or not all(isinstance(row, dict) for row in active) or not isinstance(latest, dict)):
+        raise Refused("active topology is not exactly two deployments")
+    own = [row for row in active
+           if isinstance(row.get("meta"), dict) and row["meta"].get("cliMessage") == pending["message"]]
+    prior = [row for row in active if row.get("id") == pending["predecessor"]["deployment_id"]]
+    if (len(own) != 1 or len(prior) != 1 or own[0] is prior[0]
+            or pending["rollback_evidence"]["topology"]["deployment_id"] != prior[0]["id"]
+            or prior[0].get("status") != "SUCCESS" or prior[0].get("deploymentStopped") is not False
+            or latest.get("id") != own[0].get("id") or not isinstance(latest.get("meta"), dict)
+            or latest["meta"].get("cliMessage") != pending["message"]):
+        raise Refused("active deployments are not exactly the captured predecessor and the in-flight publication")
+    return {"submission_id": pending["submission_id"], "prepared_at": pending["prepared_at"],
+            "receipt_deadline_at": pending["receipt_deadline_at"], "publisher_pid": int(unit["MainPID"]),
+            "predecessor_deployment_id": prior[0]["id"],
+            "in_flight_deployment_id": n["_uuid"](own[0].get("id"), "in-flight deployment")}
+
+
 def observe_retired() -> dict:
     """Observe even while publishing; serialize only the local DATA HOLD write.
 
@@ -438,7 +527,18 @@ def observe_retired() -> dict:
     if not matches:
         # A malformed/ambiguous topology must not produce a healthy
         # observation merely because its message could not be found.
-        n["_topology"](status)
+        try:
+            n["_topology"](status)
+        except Exception as exc:
+            if not (isinstance(exc, n["ReconciliationError"]) and str(exc) == NOT_SINGULAR):
+                raise
+            # The only explained ambiguity: the captured predecessor and the
+            # ordinary publication now in flight. Anything else still refuses.
+            try:
+                proof = in_flight_publication(n, status, candidate, uid, gid)
+            except Exception as reason:
+                raise Refused(f"{exc}; no in-flight publication explains it: {reason}") from exc
+            raise PublicationInFlight(json.dumps(proof, sort_keys=True)) from exc
     value = {"schema_version": "palimpsest.retired-submission-observation.v1", "incident": INCIDENT,
              "journal_sha256": JOURNAL, "observed_at": datetime.now(UTC).isoformat(),
              "helper_sha256": digest(Path(__file__).read_bytes()),
@@ -551,6 +651,13 @@ def main() -> int:
         if args.observe and (args.retire or args.acknowledge):
             raise Refused("observer and disposition modes cannot be combined")
         result = observe_retired() if args.observe else execute(args.retire, args.acknowledge)
+    except PublicationInFlight as exc:
+        if not args.observe:
+            print(f"incident disposition refused: {exc}", file=sys.stderr)
+            return 1
+        print("incident observation deferred: no deployment carries the retired message; "
+              f"the second active deployment is the ordinary publication in flight {exc}", file=sys.stderr)
+        return IN_FLIGHT_EXIT
     except BlockingIOError as exc:
         if args.observe:
             print(f"incident observation failed: {exc}", file=sys.stderr)

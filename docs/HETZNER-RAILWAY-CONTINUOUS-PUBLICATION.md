@@ -109,6 +109,34 @@ restoration is re-proved. Immutable recovery receipts make this idempotent even
 if the helper dies after writing the recovery receipt but before journal
 consumption.
 
+### An ordinary publication in flight is not a DATA HOLD
+
+Every successful publication holds `pending-candidate.json` for the few
+minutes between its Railway mutation and its receipt. The direct watchdog
+reports that journal as `publishing`, not DATA HOLD, and exits 75, which its
+unit maps through `SuccessExitStatus=75`, only when every one of these holds:
+
+- the journal validates and is in state `mutation_unresolved` or
+  `consumed_pending_cleanup`;
+- its persisted `receipt_deadline_at` is at most 600 seconds after
+  `prepared_at`, the publisher's own `MAX_MUTATION_TO_RECEIPT_SECONDS`;
+- the observation is no later than that deadline plus the publisher's
+  10 second `RECEIPT_COMMIT_RESERVE_SECONDS`, so at most 610 seconds after
+  preparation (a test fails if either publisher constant moves);
+- `palimpsest-railway-publish.service` is `activating`/`start` with a main
+  PID, read from systemd without touching the publication lock;
+- the journal was prepared strictly after that invocation's
+  `ExecMainStartTimestamp`, so a journal left by an earlier run never counts.
+
+While that publication rolls out, each origin may serve byte for byte either
+the receipt's anchored manifest or the journal's own pre-mutation manifest
+anchor, and the publication is aged by the oldest bytes still served. A stale
+journal, a journal without its running publisher, any other journal state,
+live bytes that are neither anchor, or a root DATA HOLD marker still report
+DATA HOLD with exit 2, and any other problem still reports `degraded` with exit
+2. `--lineage-only`, which the publisher runs before every mutation, keeps the
+strict single-receipt live check.
+
 ### Recovery when Railway retains a failed newest attempt
 
 Railway may report a terminal, stopped `latestDeployment` while one earlier

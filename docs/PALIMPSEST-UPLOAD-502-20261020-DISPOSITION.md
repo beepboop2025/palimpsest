@@ -151,11 +151,34 @@ acquire the publication lock, so a long build does not delay them. After
 disposition, it uses the archived exact reconciler dependency so a future
 routine-helper upgrade does not silently break its parser dependency.
 
-While a newer deployment is still building or both deployments are briefly
-active, the strict topology parser refuses the topology. An observer that found
-no match then exits unsuccessfully until the deployment settles. That is a
-visible parser refusal, not a match: a match is always reported as one of the
-`late_candidate_observed` states.
+While a newer deployment is still building, the strict topology parser refuses
+the topology, and an observer that found no match exits unsuccessfully until
+the deployment settles. That is a visible parser refusal, not a match: a match
+is always reported as one of the `late_candidate_observed` states.
+
+During an ordinary publication both deployments are briefly active, and the
+parser refuses with `Railway active deployment inventory is not singular`. By
+then the observer has already searched the bounded inventory and the topology
+for the retired message. It exits 75, which its unit maps through
+`SuccessExitStatus=75`, and logs `incident observation deferred`, only when
+every one of these holds:
+
+- the two active deployments are exactly the captured predecessor and the
+  deployment that carries the pending journal's own message, and that
+  deployment is the latest one;
+- the pending journal passes the reviewed reconciler's validator, is not the
+  retired submission, and has a receipt deadline at most 600 seconds after
+  preparation;
+- the observation is no later than that deadline plus the publisher's 10 second
+  commit reserve;
+- `palimpsest-railway-publish.service` is `activating`/`start` with a main PID,
+  and the journal was prepared strictly after that invocation started.
+
+The proof reads only the pending journal and systemd. It takes no lock, makes
+no further provider call, and writes no observation, evidence or hold, so the
+last clean observation keeps its clock. Any other non-singular topology, and
+every other refusal, still exits 1. A retired message seen during a rollout is
+still a late sighting.
 
 Any matching row, including a queued or terminal row, is retained and raises a
 root DATA HOLD through the existing strict hold writer under the ordinary
@@ -205,3 +228,15 @@ The September helper installed on the host hashes to
 completion remain the only authority for that incident. Neither helper can
 consume the other's journal or hold: each is pinned to its own digests,
 incident directory, acknowledgement and observer timer.
+
+## Observer in-flight revision
+
+After publication resumed on 2026-11-01, both observers refused two or three
+times during every rollout, about every 16 minutes, because the parser refuses
+two active deployments; each refusal left its unit briefly failed. This
+revision changes only how an observer classifies that one refusal, as described
+under the delayed candidate response, and lands identically in the September
+helper. The disposition path, the durable decision and completion, message
+matching, the hold writer, both observer units and the reviewed reconciler
+dependency are unchanged. Both units already declared `SuccessExitStatus=75`,
+which observation never returned before this revision.
