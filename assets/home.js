@@ -68,6 +68,26 @@
     };
   }
 
+  // Reading order for the states the board reports today. A state added later
+  // is still counted, after these, so the tile never hides a dataset.
+  var COVERAGE_ORDER = ["stale", "gated", "partial", "warming", "abstained", "disabled", "private-node"];
+
+  function coverageText(states, total) {
+    var names = Object.keys(states).filter(function (name) {
+      return name !== "fresh" && states[name] > 0;
+    });
+    names.sort(function (a, b) {
+      var left = COVERAGE_ORDER.indexOf(a);
+      var right = COVERAGE_ORDER.indexOf(b);
+      if (left === -1 && right === -1) return a < b ? -1 : (a > b ? 1 : 0);
+      if (left === -1) return 1;
+      if (right === -1) return -1;
+      return left - right;
+    });
+    var parts = names.map(function (name) { return states[name] + " " + name; });
+    return (total - states.fresh) + " not fresh" + (parts.length ? ": " + parts.join("; ") : "");
+  }
+
   function collectorView(board, now) {
     if (!isPublicDocument(board, "palimpsest-collector-health.v1")) throw new Error("invalid collector receipt");
     var summary = board.summary || {};
@@ -82,7 +102,7 @@
     }
     return { state: age <= 3600000 ? "live" : "delayed", fresh: states.fresh, total: summary.n_datasets,
       asOf: new Date(board.generated_at).toISOString().slice(0, 16).replace("T", " ") + " UTC",
-      coverage: (states.stale || 0) + " stale; " + (states.gated || 0) + " gated; " + (states.partial || 0) + " partial" };
+      coverage: coverageText(states, summary.n_datasets) };
   }
 
   if (typeof module === "object" && module && module.exports) {

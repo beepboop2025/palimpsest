@@ -154,12 +154,27 @@
     return NaN;
   }
 
+  /* The rights gate replaces a withheld history with one metadata-only notice.
+     Report it as a restriction with its reason, never as an empty history. */
+  const RESTRICTED_ENDPOINT = "palimpsest-restricted-publication-endpoint.v1";
+  function restrictedNotice(txt) {
+    let doc;
+    try { doc = JSON.parse(txt); } catch (e) { return null; }
+    if (!doc || typeof doc !== "object" || doc.schema_version !== RESTRICTED_ENDPOINT) return null;
+    const err = new Error(typeof doc.reason === "string" && doc.reason
+      ? doc.reason : "the notice does not state a reason");
+    err.restricted = true;
+    return err;
+  }
+
   const CACHE = {};
   function loadHistory(url) {
     if (CACHE[url]) return CACHE[url];
     CACHE[url] = fetch(url, { cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(txt => {
+        const notice = restrictedNotice(txt.trim());
+        if (notice) throw notice;
         const rows = [];
         for (const line of txt.split("\n")) {
           const s = line.trim();
@@ -190,6 +205,16 @@
     a.href = url;
     e.appendChild(a);
     (fallbackEl(host) || host).appendChild(e);
+  }
+  function failFrom(host, url, err) {
+    if (!(err && err.restricted)) { failNote(host, url); return; }
+    if (host.querySelector(".pc__err")) return;
+    const e = el("span", "pc__err", "Publication restricted: " + err.message + " · ");
+    const a = el("a", null, "rights evidence");
+    a.href = "/readings/china-publication-rights-latest.json";
+    e.appendChild(a);
+    const fb = fallbackEl(host);
+    if (fb) { fb.textContent = ""; fb.appendChild(e); } else host.appendChild(e);
   }
   function shortNote(host, url, n, min) {
     const fb = fallbackEl(host);
@@ -335,7 +360,7 @@
       const min = cfg.minPoints || 8;
       if (master.length < min) { shortNote(host, cfg.url, master.length, min); return; }
       mount(host, cfg, series, t);
-    }).catch(() => failNote(host, cfg.url));
+    }).catch(err => failFrom(host, cfg.url, err));
   }
 
   function mount(host, cfg, series, t) {
@@ -731,7 +756,7 @@
         "not a quiet country."));
 
       shareKit(host, { title: cfg.shareTitle, dataUrl: cfg.url });
-    }).catch(() => failNote(host, cfg.url));
+    }).catch(err => failFrom(host, cfg.url, err));
   }
 
   /* ====================================================== DRIFT MATRIX =====
@@ -798,7 +823,7 @@
                  : "No model newly refused a probe this run — the grid is the evidence either way.")));
 
       shareKit(host, { title: cfg.shareTitle, dataUrl: cfg.url });
-    }).catch(() => failNote(host, cfg.url));
+    }).catch(err => failFrom(host, cfg.url, err));
   }
 
   /* ======================================================= VANTAGE MAP =====
@@ -1083,7 +1108,7 @@
       }
       draw();
       return agg;
-    }).catch(err => { failNote(host, cfg.url); throw err; });
+    }).catch(err => { failFrom(host, cfg.url, err); throw err; });
   }
 
   /* The second angle on the same data: who operates the networks the probes
@@ -1215,7 +1240,7 @@
         clock: isFinite(rowTime(d)) ? "scored through " + fmtD(rowTime(d)) : null,
         dataUrl: cfg.url
       });
-    }).catch(() => failNote(host, cfg.url));
+    }).catch(err => failFrom(host, cfg.url, err));
   }
 
   /* ========================================================= SHARE KIT =====
