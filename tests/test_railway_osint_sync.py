@@ -8,7 +8,7 @@ from dataclasses import replace
 
 import pytest
 
-import test_public_osint_sync as fixtures
+from tests import test_public_osint_sync as fixtures
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("railway_osint_sync", ROOT / "ops/osint-sync/railway_osint_sync.py")

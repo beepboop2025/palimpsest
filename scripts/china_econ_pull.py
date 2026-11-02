@@ -25,6 +25,7 @@ from collectors.china_econ import (
 from core.econ_ledger import (
     LedgerIntegrityError,
     append_vintages,
+    check_china_ledger_budget,
     load_observations,
 )
 from core.econ_observation import EconomicObservation
@@ -153,6 +154,8 @@ def _load_history() -> dict[str, dict]:
 
 
 def main() -> None:
+    # Fail before network requests when this lane cannot preserve its reserve.
+    check_china_ledger_budget(_observation_path())
     now = datetime.now(timezone.utc)
     start = (now - timedelta(days=WINDOW_DAYS)).strftime("%Y-%m-%d")
     end = now.strftime("%Y-%m-%d")

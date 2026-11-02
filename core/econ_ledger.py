@@ -15,6 +15,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import logging
 import os
 import stat
 from dataclasses import dataclass, replace
@@ -27,10 +28,70 @@ from core.econ_observation import EconomicObservation
 MAX_LEDGER_BYTES = 64 * 1024 * 1024
 MAX_LEDGER_ROWS = 1_000_000
 MAX_RECORD_BYTES = 1024 * 1024
+# A finite operational allowance for this one cumulative artifact. Other
+# ledgers retain the existing bounds; no record is rotated or discarded.
+CHINA_LEDGER_NAME = "china-econ-observations.jsonl"
+MAX_CHINA_LEDGER_BYTES = 128 * 1024 * 1024
+MAX_CHINA_LEDGER_ROWS = 200_000
+MIN_CHINA_DISK_FREE_BYTES = 10 * 1024 * 1024 * 1024
+_LOG = logging.getLogger(__name__)
 
 
 class LedgerIntegrityError(RuntimeError):
     """The ledger cannot be trusted as a complete observation history."""
+
+
+def is_china_ledger(path: str | os.PathLike[str]) -> bool:
+    """Match only the named artifact directly beneath a readings directory."""
+    location = os.path.normpath(os.fspath(path))
+    return (os.path.basename(location) == CHINA_LEDGER_NAME
+            and os.path.basename(os.path.dirname(location)) == "readings")
+
+
+def ledger_byte_limit(path: str | os.PathLike[str]) -> int:
+    return MAX_CHINA_LEDGER_BYTES if is_china_ledger(path) else MAX_LEDGER_BYTES
+
+
+def ledger_row_limit(path: str | os.PathLike[str]) -> int:
+    return MAX_CHINA_LEDGER_ROWS if is_china_ledger(path) else MAX_LEDGER_ROWS
+
+
+def check_china_ledger_budget(
+    path: str | os.PathLike[str], *, additional_bytes: int = 0, records: int | None = None
+) -> None:
+    """Fail before collection/writes if the China lane would breach disk reserve.
+
+    Threshold messages go to the service journal. This allowance is finite:
+    reaching its byte/row limit still fails closed, without deleting history.
+    """
+    if not is_china_ledger(path):
+        return
+    if type(additional_bytes) is not int or additional_bytes < 0:
+        raise ValueError("additional_bytes must be a nonnegative integer")
+    location = os.fspath(path)
+    filesystem = os.statvfs(os.path.dirname(os.path.abspath(location)))
+    available = filesystem.f_bavail * filesystem.f_frsize
+    if available - additional_bytes < MIN_CHINA_DISK_FREE_BYTES:
+        raise LedgerIntegrityError(
+            f"{location}: China collection requires 10 GiB free after append; "
+            f"available={available}, pending={additional_bytes}"
+        )
+    try:
+        size = os.stat(location).st_size
+    except FileNotFoundError:
+        size = 0
+    projected = size + additional_bytes
+    utilization = projected / MAX_CHINA_LEDGER_BYTES
+    if records is not None:
+        utilization = max(utilization, records / MAX_CHINA_LEDGER_ROWS)
+    if utilization >= 0.75:
+        level = logging.ERROR if utilization >= 0.90 else logging.WARNING
+        _LOG.log(
+            level, "China ledger capacity %s: %.1f%%; bytes=%d/%d; records=%s/%d; "
+            "disk_available=%d. Finite allowance; plan archival before the hard limit.",
+            "critical" if utilization >= 0.90 else "warning", utilization * 100,
+            projected, MAX_CHINA_LEDGER_BYTES, records, MAX_CHINA_LEDGER_ROWS, available,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,14 +314,14 @@ def _snapshot_from_raw(
 def load_snapshot(
     path: str | os.PathLike[str],
     *,
-    max_bytes: int = MAX_LEDGER_BYTES,
-    max_rows: int = MAX_LEDGER_ROWS,
+    max_bytes: int | None = None,
+    max_rows: int | None = None,
     max_record_bytes: int = MAX_RECORD_BYTES,
 ) -> LedgerSnapshot:
     """Load a bounded, locked snapshot and authenticate every row and revision."""
 
-    max_bytes = _positive_limit(max_bytes, "max_bytes")
-    max_rows = _positive_limit(max_rows, "max_rows")
+    max_bytes = _positive_limit(ledger_byte_limit(path) if max_bytes is None else max_bytes, "max_bytes")
+    max_rows = _positive_limit(ledger_row_limit(path) if max_rows is None else max_rows, "max_rows")
     max_record_bytes = _positive_limit(max_record_bytes, "max_record_bytes")
     location = os.fspath(path)
     try:
@@ -401,12 +462,12 @@ def _append_transaction(
     observations: Iterable[EconomicObservation],
     *,
     assign_revisions: bool,
-    max_bytes: int,
-    max_rows: int,
+    max_bytes: int | None,
+    max_rows: int | None,
     max_record_bytes: int,
 ) -> list[EconomicObservation]:
-    max_bytes = _positive_limit(max_bytes, "max_bytes")
-    max_rows = _positive_limit(max_rows, "max_rows")
+    max_bytes = _positive_limit(ledger_byte_limit(path) if max_bytes is None else max_bytes, "max_bytes")
+    max_rows = _positive_limit(ledger_row_limit(path) if max_rows is None else max_rows, "max_rows")
     max_record_bytes = _positive_limit(max_record_bytes, "max_record_bytes")
     candidates = _normalized_rows(observations)
     if not candidates:
@@ -415,6 +476,7 @@ def _append_transaction(
     location = os.fspath(path)
     parent = os.path.dirname(os.path.abspath(location))
     os.makedirs(parent, exist_ok=True)
+    check_china_ledger_budget(location)
     descriptor = os.open(location, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o644)
     try:
         fcntl.flock(descriptor, fcntl.LOCK_EX)
@@ -469,6 +531,8 @@ def _append_transaction(
                 f"{location}: append would exceed the {max_bytes} byte limit"
             )
 
+        check_china_ledger_budget(location, additional_bytes=len(payload), records=len(combined))
+
         offset = 0
         while offset < len(payload):
             written = os.write(descriptor, payload[offset:])
@@ -495,8 +559,8 @@ def append_observations(
     path: str | os.PathLike[str],
     observations: Iterable[EconomicObservation],
     *,
-    max_bytes: int = MAX_LEDGER_BYTES,
-    max_rows: int = MAX_LEDGER_ROWS,
+    max_bytes: int | None = None,
+    max_rows: int | None = None,
     max_record_bytes: int = MAX_RECORD_BYTES,
 ) -> list[EconomicObservation]:
     """Append already revisioned rows after a locked full-ledger validation."""
@@ -515,8 +579,8 @@ def append_vintages(
     path: str | os.PathLike[str],
     observations: Iterable[EconomicObservation],
     *,
-    max_bytes: int = MAX_LEDGER_BYTES,
-    max_rows: int = MAX_LEDGER_ROWS,
+    max_bytes: int | None = None,
+    max_rows: int | None = None,
     max_record_bytes: int = MAX_RECORD_BYTES,
 ) -> list[EconomicObservation]:
     """Append candidates while assigning value revisions inside the file lock.
@@ -537,6 +601,10 @@ def append_vintages(
 
 
 __all__ = [
+    "CHINA_LEDGER_NAME",
+    "MAX_CHINA_LEDGER_BYTES",
+    "MAX_CHINA_LEDGER_ROWS",
+    "MIN_CHINA_DISK_FREE_BYTES",
     "MAX_LEDGER_BYTES",
     "MAX_LEDGER_ROWS",
     "MAX_RECORD_BYTES",
@@ -544,6 +612,10 @@ __all__ = [
     "LedgerSnapshot",
     "append_observations",
     "append_vintages",
+    "check_china_ledger_budget",
+    "is_china_ledger",
+    "ledger_byte_limit",
+    "ledger_row_limit",
     "load_observations",
     "load_snapshot",
     "observations_as_of",

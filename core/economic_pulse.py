@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from core.econ_observation import EconomicObservation
+from core.econ_ledger import ledger_byte_limit, ledger_row_limit
 from processors.china_econ_coverage import coverage_report, load_registry
 from processors.china_econ_vintages import (
     latest_as_of,
@@ -431,7 +432,11 @@ def _load_observations(path: Path) -> tuple[list[EconomicObservation], bytes | N
     if not path.exists():
         return [], None
     try:
-        raw = path.read_bytes()
+        maximum = ledger_byte_limit(path)
+        with path.open("rb") as handle:
+            raw = handle.read(maximum + 1)
+        if len(raw) > maximum:
+            _fail("economic observation ledger exceeds its bounded byte contract")
         text = raw.decode("utf-8")
     except (OSError, UnicodeError) as exc:
         raise EconomicPulseError(f"cannot read economic observation ledger: {path}") from exc
@@ -440,6 +445,8 @@ def _load_observations(path: Path) -> tuple[list[EconomicObservation], bytes | N
     rows: list[EconomicObservation] = []
     seen: set[str] = set()
     for line_no, line in enumerate(text.splitlines(), 1):
+        if line_no > ledger_row_limit(path):
+            _fail("economic observation ledger exceeds its bounded row contract")
         if not line.strip():
             _fail(f"economic observation ledger line {line_no} is blank")
         try:
