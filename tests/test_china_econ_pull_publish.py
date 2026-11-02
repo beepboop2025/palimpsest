@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -51,7 +51,7 @@ def _family(metric):
     raise AssertionError(metric)
 
 
-def _collection(rows):
+def _collection(rows, raw_hashes=RAW_HASHES):
     family_values = {}
     for day, values in rows.items():
         for metric, value in values.items():
@@ -61,7 +61,7 @@ def _collection(rows):
     provenance = {
         family: FamilyCollection(
             values=values,
-            raw_sha256=RAW_HASHES[family],
+            raw_sha256=raw_hashes[family],
             evidence_url=f"https://www.chinamoney.com.cn/ags/test/{family}",
         )
         for family, values in family_values.items()
@@ -89,10 +89,12 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "datetime", _Clock())
     monkeypatch.setattr(pull, "REQUIRED_BENCHMARK_KEYS", frozenset(BENCHMARKS))
 
-    def run(rows):
+    def run(rows, raw_hashes=RAW_HASHES):
         # The whole input the writer needs is a date -> benchmarks mapping, so
         # the three throttle-spaced portal calls never happen.
-        monkeypatch.setattr(pull, "collect", lambda start, end: _collection(rows))
+        monkeypatch.setattr(
+            pull, "collect", lambda start, end: _collection(rows, raw_hashes)
+        )
         pull.main()
         return _reading(tmp_path)
 
@@ -260,6 +262,64 @@ def test_long_form_vintages_are_bitemporal_and_revision_preserving(publish):
     assert "/ags/" in fdr[0]["evidence_url"]
     assert fdr[0]["raw_sha256"] == RAW_HASHES["repo_fixing"]
     assert _history(tmp_path)[0]["fdr007"] == 1.61
+
+
+def _poll_hashes(poll):
+    """ChinaMoney responses carry volatile bytes: every poll hashes anew."""
+    return {
+        family: hashlib.sha256(f"{family}:poll-{poll}".encode()).hexdigest()
+        for family in RAW_HASHES
+    }
+
+
+def _window(days=20, start=date(2026, 7, 1)):
+    window = {}
+    for offset in range(days):
+        day = (start + timedelta(days=offset)).isoformat()
+        window[day] = {
+            metric: round(value + offset / 1000, 4)
+            for metric, value in BENCHMARKS.items()
+        }
+    return window
+
+
+def test_a_reserved_window_appends_only_each_series_newest_period(publish):
+    """The portal re-serves its rolling window on every poll under a new
+    response hash. Re-appending every unchanged day filled the host ledger to
+    its byte cap, so a repeat poll keeps only each series' newest period, which
+    carries the freshness clock. A changed older value is still a revision."""
+    run, tmp_path = publish
+    window = _window()
+    newest = max(window)
+    run(window, _poll_hashes(1))
+    first = _observations(tmp_path)
+    assert len(first) == len(window) * len(BENCHMARKS)
+
+    run(window, _poll_hashes(2))
+    second = _observations(tmp_path)[len(first):]
+    assert sorted((row["series_id"], row["period_end"]) for row in second) == sorted(
+        (f"cn.cfets.{metric}", newest) for metric in BENCHMARKS
+    )
+    assert {row["revision"] for row in second} == {0}
+    assert {row["raw_sha256"] for row in second} == set(_poll_hashes(2).values())
+    assert len({row["collected_at"] for row in second}) == 1
+    assert second[0]["collected_at"] > first[-1]["collected_at"]
+
+    revised_day = "2026-07-05"
+    revised = {day: dict(values) for day, values in window.items()}
+    revised[revised_day]["fdr007"] = 1.61
+    run(revised, _poll_hashes(3))
+    third = _observations(tmp_path)[len(first) + len(second):]
+    assert sorted(
+        (row["series_id"], row["period_end"], row["revision"], row["value"])
+        for row in third
+    ) == sorted(
+        [
+            (f"cn.cfets.{metric}", newest, 0, window[newest][metric])
+            for metric in BENCHMARKS
+        ]
+        + [("cn.cfets.fdr007", revised_day, 1, 1.61)]
+    )
 
 
 def test_a_revised_parity_updates_the_compatibility_consumer(publish):
