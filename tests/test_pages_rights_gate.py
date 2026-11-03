@@ -2793,3 +2793,110 @@ def test_only_the_host_econ_ledger_reads_beyond_the_public_scan_cap(
         other.write_bytes(payload)
         with pytest.raises(stage_pages_rights.PagesRightsError, match="exceeds scan cap"):
             stage_pages_rights._read_bounded(other)
+
+
+# OpenTimestamps proofs of the anchors roots file ----------------------------
+
+_OTS_MAGIC = b"\x00OpenTimestamps\x00\x00Proof\x00\xbf\x89\xe2\xe8\x84\xe8\x92\x94"
+_OTS_PENDING_TAG = bytes.fromhex("83dfe30d2ef90c8e")
+_ANCHOR_ROOTS = "readings/anchors/roots-20261102T232329Z.txt"
+_ANCHOR_TEXT = b"erasure_root aa\nreadings_root bb\nregistry_root cc\nanchored_at 2026-11-02T23:23:29Z\n"
+_CALENDARS = (
+    b"https://alice.btc.calendar.opentimestamps.org",
+    b"https://bob.btc.calendar.opentimestamps.org",
+)
+
+
+def _ots_pending(uri: bytes, tag: bytes = _OTS_PENDING_TAG) -> bytes:
+    inner = bytes([len(uri)]) + uri
+    return tag + bytes([len(inner)]) + inner
+
+
+def _ots_proof(text: bytes, calendars=_CALENDARS, *, tag: bytes = _OTS_PENDING_TAG) -> bytes:
+    """A detached proof shaped like `ots stamp` output: nonce, hash, one fork per calendar."""
+
+    branches = [
+        b"\xf0\x08" + bytes([index % 255 + 1]) * 8 + b"\x08\x00" + _ots_pending(uri, tag)
+        for index, uri in enumerate(calendars)
+    ]
+    tree = b"".join(b"\xff" + branch for branch in branches[:-1]) + branches[-1]
+    nonce = bytes(range(16))
+    return (
+        _OTS_MAGIC
+        + b"\x01\x08"
+        + hashlib.sha256(text).digest()
+        + b"\xf0"
+        + bytes([len(nonce)])
+        + nonce
+        + b"\x08"
+        + tree
+    )
+
+
+def _write_anchor(root: Path, proof: bytes, *, text: bytes | None = _ANCHOR_TEXT, relative: str = _ANCHOR_ROOTS) -> None:
+    roots = root / relative
+    roots.parent.mkdir(parents=True, exist_ok=True)
+    if text is not None:
+        roots.write_bytes(text)
+    roots.with_name(roots.name + ".ots").write_bytes(proof)
+
+
+def test_anchor_proof_bound_to_its_staged_roots_text_is_published(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    _write_anchor(tmp_path, _ots_proof(_ANCHOR_TEXT))
+
+    denied = stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+    assert _ANCHOR_ROOTS not in denied
+    assert _ANCHOR_ROOTS + ".ots" not in denied
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "digest of other text",
+        "roots text missing",
+        "trailing denied value",
+        "denied value in calendar uri",
+        "plain http calendar",
+        "unknown attestation",
+        "nested too deeply",
+        "oversize",
+        "path outside the anchors pattern",
+    ],
+)
+def test_anchor_proof_fails_closed_unless_it_is_exactly_a_proof_of_that_text(
+    tmp_path: Path, case: str
+):
+    _write_minimal_denied_tree(tmp_path)
+    proof = _ots_proof(_ANCHOR_TEXT)
+    text: bytes | None = _ANCHOR_TEXT
+    relative = _ANCHOR_ROOTS
+    if case == "digest of other text":
+        proof = _ots_proof(b"registry_root other\n")
+    elif case == "roots text missing":
+        text = None
+    elif case == "trailing denied value":
+        proof += b"cfets_benchmarks value 987654.321"
+    elif case == "denied value in calendar uri":
+        proof = _ots_proof(_ANCHOR_TEXT, (b"https://alice.example/cfets_benchmarks?value=987654.321",))
+    elif case == "plain http calendar":
+        proof = _ots_proof(_ANCHOR_TEXT, (b"http://alice.btc.calendar.opentimestamps.org",))
+    elif case == "unknown attestation":
+        proof = _ots_proof(_ANCHOR_TEXT, tag=b"\x01" * 8)
+    elif case == "nested too deeply":
+        proof = (
+            _OTS_MAGIC + b"\x01\x08" + hashlib.sha256(_ANCHOR_TEXT).digest()
+            + b"\x08" * 300 + b"\x00" + _ots_pending(_CALENDARS[0])
+        )
+    elif case == "oversize":
+        proof = _ots_proof(_ANCHOR_TEXT, _CALENDARS * 800)
+    elif case == "path outside the anchors pattern":
+        relative = "readings/anchors/notes-20261102T232329Z.txt"
+    _write_anchor(tmp_path, proof, text=text, relative=relative)
+
+    with pytest.raises(
+        stage_pages_rights.PagesRightsError,
+        match="opaque public artifact lacks exact path-and-digest review",
+    ):
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)

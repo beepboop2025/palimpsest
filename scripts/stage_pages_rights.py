@@ -676,6 +676,129 @@ def _load_binary_allowlist(root: Path) -> dict[str, tuple[str, int]]:
     return allowed
 
 
+# OpenTimestamps proofs of the anchors roots file. scripts/anchor_roots.py
+# publishes them on purpose so anyone can run `ots verify` against Bitcoin
+# rather than trusting Palimpsest. They are binary, so the gate accepts one
+# only at its exact path, only as a strict whole-file OpenTimestamps proof, and
+# only when its file digest is the SHA-256 of the roots text staged beside it,
+# which this gate scans as public text like any other file. Every other shape
+# stays an opaque artifact and is refused.
+ANCHOR_PROOF_RELATIVE_PATTERN = re.compile(
+    r"readings/anchors/roots-[0-9]{8}T[0-9]{6}Z\.txt\.ots"
+)
+_OTS_HEADER = (
+    b"\x00OpenTimestamps\x00\x00Proof\x00\xbf\x89\xe2\xe8\x84\xe8\x92\x94"
+    + b"\x01"  # major version 1
+    + b"\x08"  # the stamped file is identified by its SHA-256
+)
+_OTS_MAX_PROOF_BYTES = 64 * 1024
+_OTS_MAX_ARGUMENT_BYTES = 4096
+_OTS_MAX_DEPTH = 256
+_OTS_UNARY_OPS = frozenset({0x02, 0x03, 0x08, 0x67})  # SHA-1, RIPEMD-160, SHA-256, KECCAK-256
+_OTS_ARGUMENT_OPS = frozenset({0xF0, 0xF1})  # append, prepend
+_OTS_PENDING_TAG = bytes.fromhex("83dfe30d2ef90c8e")
+_OTS_BITCOIN_TAG = bytes.fromhex("0588960d73d71901")
+_OTS_CALENDAR_URI = re.compile(rb"https://[A-Za-z0-9._/:-]{1,992}")
+
+
+class _OtsProofError(ValueError):
+    """The bytes are not a well-formed OpenTimestamps proof."""
+
+
+class _OtsReader:
+    def __init__(self, raw: bytes, offset: int = 0) -> None:
+        self.raw = raw
+        self.offset = offset
+
+    def take(self, size: int) -> bytes:
+        end = self.offset + size
+        if end > len(self.raw):
+            raise _OtsProofError("truncated proof")
+        chunk = self.raw[self.offset:end]
+        self.offset = end
+        return chunk
+
+    def byte(self) -> int:
+        return self.take(1)[0]
+
+    def varuint(self) -> int:
+        value = 0
+        for shift in range(0, 64, 7):
+            current = self.byte()
+            value |= (current & 0x7F) << shift
+            if not current & 0x80:
+                return value
+        raise _OtsProofError("varuint is too long")
+
+    def varbytes(self, limit: int) -> bytes:
+        size = self.varuint()
+        if size > limit:
+            raise _OtsProofError("length exceeds its bound")
+        return self.take(size)
+
+    def finished(self) -> bool:
+        return self.offset == len(self.raw)
+
+
+def _parse_ots_attestation(reader: _OtsReader) -> None:
+    tag = reader.take(8)
+    payload = _OtsReader(reader.varbytes(8192))
+    if tag == _OTS_PENDING_TAG:
+        if _OTS_CALENDAR_URI.fullmatch(payload.varbytes(1000)) is None:
+            raise _OtsProofError("pending attestation is not an https calendar URI")
+    elif tag == _OTS_BITCOIN_TAG:
+        payload.varuint()
+    else:
+        raise _OtsProofError("unsupported attestation")
+    if not payload.finished():
+        raise _OtsProofError("attestation payload has trailing bytes")
+
+
+def _parse_ots_timestamp(reader: _OtsReader, depth: int) -> None:
+    if depth > _OTS_MAX_DEPTH:
+        raise _OtsProofError("proof is nested too deeply")
+
+    def branch(tag: int) -> None:
+        if tag == 0x00:
+            _parse_ots_attestation(reader)
+        elif tag in _OTS_UNARY_OPS:
+            _parse_ots_timestamp(reader, depth + 1)
+        elif tag in _OTS_ARGUMENT_OPS:
+            if not reader.varbytes(_OTS_MAX_ARGUMENT_BYTES):
+                raise _OtsProofError("operation argument is empty")
+            _parse_ots_timestamp(reader, depth + 1)
+        else:
+            raise _OtsProofError("unsupported operation")
+
+    tag = reader.byte()
+    while tag == 0xFF:
+        branch(reader.byte())
+        tag = reader.byte()
+    branch(tag)
+
+
+def _is_anchor_timestamp_proof(root: Path, path: Path, raw: bytes) -> bool:
+    """Accept a published OpenTimestamps proof of the staged anchors roots text."""
+
+    relative = path.relative_to(root).as_posix()
+    if ANCHOR_PROOF_RELATIVE_PATTERN.fullmatch(relative) is None:
+        return False
+    if len(raw) > _OTS_MAX_PROOF_BYTES or not raw.startswith(_OTS_HEADER):
+        return False
+    sibling = path.with_suffix("")
+    if sibling.is_symlink() or not sibling.is_file() or not _within_root(root, sibling):
+        return False
+    start = len(_OTS_HEADER)
+    if raw[start:start + 32] != hashlib.sha256(_read_bounded(sibling)).digest():
+        return False
+    reader = _OtsReader(raw, start + 32)
+    try:
+        _parse_ots_timestamp(reader, 0)
+    except (_OtsProofError, RecursionError):
+        return False
+    return reader.finished()
+
+
 def _is_reviewed_binary(
     root: Path,
     path: Path,
@@ -3221,16 +3344,18 @@ def _inspect_rights_candidate(
     reviewed_binary = _is_reviewed_binary(
         root, path, raw, allowed=binary_allowlist
     )
+    anchor_proof = decoded_text is None and _is_anchor_timestamp_proof(root, path, raw)
     if (
         decoded_text is None
         and not raw.startswith((b"\x1f\x8b", b"PK\x03\x04"))
         and not reviewed_binary
         and not generated_share_card
+        and not anchor_proof
     ):
         raise PagesRightsError(
             "opaque public artifact lacks exact path-and-digest review: " + relative
         )
-    if reviewed_binary or generated_share_card:
+    if reviewed_binary or generated_share_card or anchor_proof:
         return None, digest, size
     if _contains_denied_value(
         root,
