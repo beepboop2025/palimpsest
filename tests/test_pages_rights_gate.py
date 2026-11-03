@@ -2812,7 +2812,13 @@ def _ots_pending(uri: bytes, tag: bytes = _OTS_PENDING_TAG) -> bytes:
     return tag + bytes([len(inner)]) + inner
 
 
-def _ots_proof(text: bytes, calendars=_CALENDARS, *, tag: bytes = _OTS_PENDING_TAG) -> bytes:
+def _ots_proof(
+    text: bytes,
+    calendars=_CALENDARS,
+    *,
+    tag: bytes = _OTS_PENDING_TAG,
+    nonce: bytes = bytes(range(16)),
+) -> bytes:
     """A detached proof shaped like `ots stamp` output: nonce, hash, one fork per calendar."""
 
     branches = [
@@ -2820,7 +2826,6 @@ def _ots_proof(text: bytes, calendars=_CALENDARS, *, tag: bytes = _OTS_PENDING_T
         for index, uri in enumerate(calendars)
     ]
     tree = b"".join(b"\xff" + branch for branch in branches[:-1]) + branches[-1]
-    nonce = bytes(range(16))
     return (
         _OTS_MAGIC
         + b"\x01\x08"
@@ -2858,6 +2863,10 @@ def test_anchor_proof_bound_to_its_staged_roots_text_is_published(tmp_path: Path
         "roots text missing",
         "trailing denied value",
         "denied value in calendar uri",
+        "denied value in a charset-clean calendar uri",
+        "unlisted calendar",
+        "denied marker in an operation argument",
+        "too many attestations",
         "plain http calendar",
         "unknown attestation",
         "nested too deeply",
@@ -2880,6 +2889,14 @@ def test_anchor_proof_fails_closed_unless_it_is_exactly_a_proof_of_that_text(
         proof += b"cfets_benchmarks value 987654.321"
     elif case == "denied value in calendar uri":
         proof = _ots_proof(_ANCHOR_TEXT, (b"https://alice.example/cfets_benchmarks?value=987654.321",))
+    elif case == "denied value in a charset-clean calendar uri":
+        proof = _ots_proof(_ANCHOR_TEXT, (b"https://alice.example/cfets_benchmarks/987654.321",))
+    elif case == "unlisted calendar":
+        proof = _ots_proof(_ANCHOR_TEXT, (b"https://calendar.example.org",))
+    elif case == "denied marker in an operation argument":
+        proof = _ots_proof(_ANCHOR_TEXT, nonce=b"cfets_benchmarks")
+    elif case == "too many attestations":
+        proof = _ots_proof(_ANCHOR_TEXT, _CALENDARS * 10)
     elif case == "plain http calendar":
         proof = _ots_proof(_ANCHOR_TEXT, (b"http://alice.btc.calendar.opentimestamps.org",))
     elif case == "unknown attestation":

@@ -679,10 +679,12 @@ def _load_binary_allowlist(root: Path) -> dict[str, tuple[str, int]]:
 # OpenTimestamps proofs of the anchors roots file. scripts/anchor_roots.py
 # publishes them on purpose so anyone can run `ots verify` against Bitcoin
 # rather than trusting Palimpsest. They are binary, so the gate accepts one
-# only at its exact path, only as a strict whole-file OpenTimestamps proof, and
-# only when its file digest is the SHA-256 of the roots text staged beside it,
-# which this gate scans as public text like any other file. Every other shape
-# stays an opaque artifact and is refused.
+# only at its exact path, only as a strict whole-file OpenTimestamps proof whose
+# pending attestations name one of the listed calendars, only when its file
+# digest is the SHA-256 of the roots text staged beside it (which this gate
+# scans as public text like any other file), and only when the proof bytes
+# carry no denied lineage marker or value key at all. Every other shape stays
+# an opaque artifact and is refused.
 ANCHOR_PROOF_RELATIVE_PATTERN = re.compile(
     r"readings/anchors/roots-[0-9]{8}T[0-9]{6}Z\.txt\.ots"
 )
@@ -691,14 +693,25 @@ _OTS_HEADER = (
     + b"\x01"  # major version 1
     + b"\x08"  # the stamped file is identified by its SHA-256
 )
-_OTS_MAX_PROOF_BYTES = 64 * 1024
-_OTS_MAX_ARGUMENT_BYTES = 4096
+_OTS_MAX_PROOF_BYTES = 16 * 1024
+_OTS_MAX_ARGUMENT_BYTES = 1024
 _OTS_MAX_DEPTH = 256
+_OTS_MAX_NODES = 2048
+_OTS_MAX_ATTESTATIONS = 16
 _OTS_UNARY_OPS = frozenset({0x02, 0x03, 0x08, 0x67})  # SHA-1, RIPEMD-160, SHA-256, KECCAK-256
 _OTS_ARGUMENT_OPS = frozenset({0xF0, 0xF1})  # append, prepend
 _OTS_PENDING_TAG = bytes.fromhex("83dfe30d2ef90c8e")
 _OTS_BITCOIN_TAG = bytes.fromhex("0588960d73d71901")
-_OTS_CALENDAR_URI = re.compile(rb"https://[A-Za-z0-9._/:-]{1,992}")
+# The calendars the standard client's pools hand pending proofs to. A new
+# calendar is a reviewed change to this list, never an inference.
+_OTS_CALENDAR_URIS = frozenset(
+    {
+        b"https://alice.btc.calendar.opentimestamps.org",
+        b"https://bob.btc.calendar.opentimestamps.org",
+        b"https://finney.calendar.eternitywall.com",
+        b"https://btc.calendar.catallaxy.com",
+    }
+)
 
 
 class _OtsProofError(ValueError):
@@ -709,6 +722,8 @@ class _OtsReader:
     def __init__(self, raw: bytes, offset: int = 0) -> None:
         self.raw = raw
         self.offset = offset
+        self.nodes = 0
+        self.attestations = 0
 
     def take(self, size: int) -> bytes:
         end = self.offset + size
@@ -741,11 +756,14 @@ class _OtsReader:
 
 
 def _parse_ots_attestation(reader: _OtsReader) -> None:
+    reader.attestations += 1
+    if reader.attestations > _OTS_MAX_ATTESTATIONS:
+        raise _OtsProofError("proof has too many attestations")
     tag = reader.take(8)
-    payload = _OtsReader(reader.varbytes(8192))
+    payload = _OtsReader(reader.varbytes(1024))
     if tag == _OTS_PENDING_TAG:
-        if _OTS_CALENDAR_URI.fullmatch(payload.varbytes(1000)) is None:
-            raise _OtsProofError("pending attestation is not an https calendar URI")
+        if payload.varbytes(1000) not in _OTS_CALENDAR_URIS:
+            raise _OtsProofError("pending attestation names an unlisted calendar")
     elif tag == _OTS_BITCOIN_TAG:
         payload.varuint()
     else:
@@ -759,6 +777,9 @@ def _parse_ots_timestamp(reader: _OtsReader, depth: int) -> None:
         raise _OtsProofError("proof is nested too deeply")
 
     def branch(tag: int) -> None:
+        reader.nodes += 1
+        if reader.nodes > _OTS_MAX_NODES:
+            raise _OtsProofError("proof has too many nodes")
         if tag == 0x00:
             _parse_ots_attestation(reader)
         elif tag in _OTS_UNARY_OPS:
@@ -777,13 +798,46 @@ def _parse_ots_timestamp(reader: _OtsReader, depth: int) -> None:
     branch(tag)
 
 
-def _is_anchor_timestamp_proof(root: Path, path: Path, raw: bytes) -> bool:
+# Value-field tokens of five bytes or more. A proof is mostly random hash
+# bytes, where a three-byte token such as "gap" turns up by chance about once
+# in two thousand proofs and would block publication for no reason.
+_ANCHOR_PROOF_VALUE_FIELD_BYTES = re.compile(
+    b"|".join(
+        re.escape(key.encode("ascii")) for key in sorted(VALUE_FIELDS) if len(key) >= 5
+    ),
+    re.IGNORECASE,
+)
+
+
+def _anchor_proof_carries_denied_marker(
+    raw: bytes, lineage_pattern: re.Pattern[bytes]
+) -> bool:
+    """A proof is hashes, nonces and calendar URIs: any one marker refuses it.
+
+    This is stricter than the generic binary rule, which needs a lineage
+    marker and a value key together.
+    """
+
+    lowered = raw.lower().replace(b"\x00", b"")
+    return (
+        lineage_pattern.search(lowered) is not None
+        or DIRECT_KEY_BYTES.search(lowered) is not None
+        or _ANCHOR_PROOF_VALUE_FIELD_BYTES.search(lowered) is not None
+        or DERIVED_INSTRUMENT_BYTES.search(lowered) is not None
+    )
+
+
+def _is_anchor_timestamp_proof(
+    root: Path, path: Path, raw: bytes, *, lineage_pattern: re.Pattern[bytes]
+) -> bool:
     """Accept a published OpenTimestamps proof of the staged anchors roots text."""
 
     relative = path.relative_to(root).as_posix()
     if ANCHOR_PROOF_RELATIVE_PATTERN.fullmatch(relative) is None:
         return False
     if len(raw) > _OTS_MAX_PROOF_BYTES or not raw.startswith(_OTS_HEADER):
+        return False
+    if _anchor_proof_carries_denied_marker(raw, lineage_pattern):
         return False
     sibling = path.with_suffix("")
     if sibling.is_symlink() or not sibling.is_file() or not _within_root(root, sibling):
@@ -3344,7 +3398,9 @@ def _inspect_rights_candidate(
     reviewed_binary = _is_reviewed_binary(
         root, path, raw, allowed=binary_allowlist
     )
-    anchor_proof = decoded_text is None and _is_anchor_timestamp_proof(root, path, raw)
+    anchor_proof = decoded_text is None and _is_anchor_timestamp_proof(
+        root, path, raw, lineage_pattern=lineage_pattern
+    )
     if (
         decoded_text is None
         and not raw.startswith((b"\x1f\x8b", b"PK\x03\x04"))
