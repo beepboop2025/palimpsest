@@ -1,11 +1,17 @@
-"""A live integrity record (anchors) is its own instrument kind, never a crash.
+"""A live integrity record without a metric renders as its own kind, never a crash.
 
 Regression for 2026-11-02 23:44Z. Once OpenTimestamps stamping was repaired,
 the anchors signal went live for the first time since the strict record-kind
-check arrived (70b569bbe3). Its story carries the all-null metric and one
-``integrity`` claim, as core/newsroom.py builds it and the feed protocol
-allows, but the renderer accepted only measurements and availability notices,
-so every publication failed at render_evidence_index.
+check arrived (70b569bbe3). It declared no metric, so core/newsroom.py built a
+live story with the all-null metric and one ``integrity`` claim, which the
+renderer could not classify, and every publication failed at
+render_evidence_index.
+
+Anchors now declares its Internet Archive witness count as its metric,
+because the publisher binds every live record to one, so a live anchors record
+is an ordinary measurement-kind record. These tests keep the renderer's
+fail-safe for a metric-less integrity record: it renders and is labelled,
+while the publisher still refuses to ship it.
 """
 
 from __future__ import annotations
@@ -32,7 +38,10 @@ def _live_anchors_source(tmp_path: Path) -> Path:
     anchors = next(signal for signal in source["signals"] if signal["id"] == "anchors")
     previous = anchors["status"]
     assert previous != "live", "fixture assumption: committed anchors is not live"
-    assert anchors["metric"] is None, "anchors declares no metric by design"
+    # Live anchors now publish their Internet Archive witness count, because
+    # the publisher binds every live record to a metric. A live integrity
+    # record without one is the renderer's fail-safe path, so build it here.
+    anchors["metric"] = None
     # Borrow the clocks and health shape of a signal that is live in the same
     # snapshot, so every cross-field check in core/newsroom.py still holds.
     reference = next(signal for signal in source["signals"] if signal["status"] == "live")

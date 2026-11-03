@@ -671,7 +671,12 @@ SIGNALS: tuple[SignalSpec, ...] = (
         source_fallback="Palimpsest Generative Firewall controlled model evaluation",
         method_fallback="Repeated prompt cells with controls and Wilson uncertainty",
     ),
-    # Integrity is part of the command surface, not counted as a substantive measurement.
+    # Integrity anchors are part of the command surface, not a substantive finding.
+    # The publication contract still binds every live record to a numeric metric
+    # (ops/railway/palimpsest-railway-publish counts each live record as a
+    # measurement-kind record and re-derives its feed item), so a live anchors
+    # record publishes its count of Internet Archive witnesses. A declared metric
+    # also keeps the signal from going live without that count.
     _s(
         "anchors",
         "Integrity anchors",
@@ -680,6 +685,9 @@ SIGNALS: tuple[SignalSpec, ...] = (
         6,
         14,
         "Publishes ledger roots and external witness status for independent integrity checks.",
+        metric_label="Internet Archive witnesses",
+        metric_path=("wayback_ok",),
+        metric_unit="count",
         timestamp_paths=(("ts",),),
         source_fallback="Palimpsest sealed ledgers, OpenTimestamps and Internet Archive witnesses",
         method_fallback="Merkle roots over committed ledgers with external timestamp witnesses",
@@ -1437,6 +1445,11 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
             reason = "source timestamp is within its declared freshness deadline"
 
     live = status == "live"
+    # An integrity witness count is evidence only while the anchor is current. A
+    # stale or degraded anchors record publishes no retained count, so nothing
+    # reads an old witness tally as the present state of the record.
+    if spec.id == "anchors" and not live:
+        metric = None
     payload_method_version = payload.get("method_version")
     if payload_method_version is None:
         payload_method_version = _at(payload, ("summary", "method_version"))

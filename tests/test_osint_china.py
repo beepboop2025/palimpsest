@@ -775,6 +775,36 @@ def test_fresh_anchors_with_failed_semantic_health_are_degraded(
     assert reason_fragment in signal["summary"]
 
 
+def test_live_anchors_publish_their_internet_archive_witness_count(mod, tmp_path):
+    """The publication contract binds every live record to a numeric metric.
+
+    ops/railway/palimpsest-railway-publish counts each live record as a
+    measurement-kind record, so a live anchors record with no metric was
+    rejected as ambiguous (2026-11-03) once its proofs began to verify.
+    """
+    payload = _valid_anchor_payload()
+    payload["wayback_ok"] = 2
+    _write_json(tmp_path / "anchors-latest.json", payload)
+
+    signal = _signal(mod.build_document(tmp_path, NOW), "anchors")
+
+    assert signal["status"] == "live" and signal["live"] is True
+    assert signal["metric"]["label"] == "Internet Archive witnesses"
+    assert signal["metric"]["value"] == 2
+    assert signal["metric"]["unit"] == "count"
+
+
+def test_anchors_without_a_witness_count_are_never_live(mod, tmp_path):
+    payload = _valid_anchor_payload()
+    payload.pop("wayback_ok")
+    _write_json(tmp_path / "anchors-latest.json", payload)
+
+    signal = _signal(mod.build_document(tmp_path, NOW), "anchors")
+
+    assert signal["status"] == "degraded" and signal["live"] is False
+    assert "metric /wayback_ok is absent" in signal["health"]["reason"]
+
+
 def test_nemesis_uses_evidence_time_and_nested_health_not_export_time(mod, tmp_path):
     """A newly serialized file must not make stale or unready evidence live."""
     _write_json(
