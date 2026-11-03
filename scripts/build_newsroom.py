@@ -1362,11 +1362,99 @@ def _is_rights_safe_availability_story(story: Mapping[str, Any]) -> bool:
     )
 
 
+def _is_integrity_story(story: Mapping[str, Any]) -> bool:
+    """Recognize a live integrity record: ledger roots and witness status, no value.
+
+    Integrity anchors are part of the command surface, not a substantive
+    measurement (see ``scripts/build_osint_china.py``), so a live anchors story
+    carries the all-null metric and exactly one ``integrity`` claim. The feed
+    protocol already allows both the story type and the claim type.
+    """
+
+    metric = story.get("metric")
+    claims = story.get("claims")
+    return (
+        story.get("type") == "integrity"
+        and story.get("status") == "live"
+        and metric
+        == {
+            "label": None,
+            "value": None,
+            "unit": None,
+            "denominator": {"label": None, "value": None},
+        }
+        and isinstance(claims, list)
+        and len(claims) == 1
+        and isinstance(claims[0], Mapping)
+        and claims[0].get("type") == "integrity"
+    )
+
+
+def _instrument_item_kind(story: Mapping[str, Any]) -> str:
+    """Return the label kind for reader and machine outputs.
+
+    Unlike ``_instrument_record_kind`` this never raises; renderers that must
+    reject ambiguous records call ``_instrument_record_counts`` first.
+    """
+
+    if _is_availability_story(story):
+        return "availability"
+    if _is_integrity_story(story):
+        return "integrity"
+    return "measurement"
+
+
+_INSTRUMENT_ITEM_LABELS: Mapping[str, Mapping[str, str]] = {
+    "measurement": {
+        "title": "[Palimpsest measurement] ",
+        "summary": "Palimpsest measurement. ",
+        "item_type": "ITEM TYPE: PALIMPSEST MEASUREMENT",
+        "claim": "Result: ",
+        "tag": "palimpsest-measurement",
+        "kind": "instrument_measurement",
+        "verification_status": "palimpsest_measurement",
+        "rss_item_type": "Palimpsest measurement",
+        "rss_claim": "Result",
+        "lead": "Palimpsest measurement",
+    },
+    "availability": {
+        "title": "[Palimpsest availability] ",
+        "summary": "Palimpsest availability notice. ",
+        "item_type": "ITEM TYPE: PALIMPSEST AVAILABILITY",
+        "claim": "Availability: ",
+        "tag": "palimpsest-availability",
+        "kind": "instrument_availability",
+        "verification_status": "current_result_unavailable",
+        "rss_item_type": "Palimpsest availability",
+        "rss_claim": "Availability",
+        "lead": "Palimpsest availability notice",
+    },
+    "integrity": {
+        "title": "[Palimpsest integrity] ",
+        "summary": "Palimpsest integrity record. ",
+        "item_type": "ITEM TYPE: PALIMPSEST INTEGRITY",
+        "claim": "Record: ",
+        "tag": "palimpsest-integrity",
+        "kind": "instrument_integrity",
+        "verification_status": "palimpsest_integrity_record",
+        "rss_item_type": "Palimpsest integrity",
+        "rss_claim": "Record",
+        "lead": "Palimpsest integrity record",
+    },
+}
+
+
+def _item_label(story: Mapping[str, Any], field: str) -> str:
+    return _INSTRUMENT_ITEM_LABELS[_instrument_item_kind(story)][field]
+
+
 def _instrument_record_kind(story: Mapping[str, Any]) -> str:
     """Return the reader-visible kind, rejecting ambiguous result semantics."""
 
     if _is_availability_story(story):
         return "availability"
+    if _is_integrity_story(story):
+        return "integrity"
     metric = story.get("metric")
     claims = story.get("claims")
     if (
@@ -1380,13 +1468,17 @@ def _instrument_record_kind(story: Mapping[str, Any]) -> str:
     ):
         return "measurement"
     raise newsroom.NewsroomError(
-        f"instrument {story.get('signal_id')!r} is neither a measurement nor an "
-        "availability notice"
+        f"instrument {story.get('signal_id')!r} is neither a measurement, an "
+        "availability notice nor an integrity record"
     )
 
 
 def _instrument_record_counts(feed: Mapping[str, Any]) -> tuple[int, int]:
-    """Return measurement and availability counts from the rendered item shape."""
+    """Return measurement and availability counts from the rendered item shape.
+
+    Integrity records are validated here but counted in neither total: they
+    publish ledger roots and witnesses, not a result.
+    """
 
     stories = feed["stories"]
     kinds = [_instrument_record_kind(story) for story in stories]
@@ -1490,7 +1582,7 @@ def _edition_share_card_spec(feed: Mapping[str, Any]) -> dict[str, Any]:
     unrestricted = [
         story
         for story in feed["stories"]
-        if not _is_availability_story(story)
+        if not _is_availability_story(story) and not _is_integrity_story(story)
     ]
     if not unrestricted:
         raise newsroom.NewsroomError(
@@ -1971,8 +2063,15 @@ def _story_card(story: Mapping[str, Any], section_title: str) -> str:
     short_hash = digest[:12] if digest else "no-source-hash"
     status_class = "" if story["status"] == "live" else " nw-kicker--warning"
     availability_only = _is_availability_story(story)
+    integrity_only = _is_integrity_story(story)
     rights_restricted = _is_rights_safe_availability_story(story)
     claim_type = ""
+    if integrity_only:
+        claim_type = (
+            ' data-claim-type="integrity"'
+            ' data-palimpsest-kind="instrument-integrity"'
+            f' data-signal-id="{_h(story["signal_id"])}"'
+        )
     if availability_only:
         claim_type = (
             ' data-claim-type="availability"'
@@ -1986,12 +2085,18 @@ def _story_card(story: Mapping[str, Any], section_title: str) -> str:
     availability_label = (
         "Public value unavailable" if rights_restricted else "Current result unavailable"
     )
-    result = (
-        f'<p class="nw-card__availability"><strong>{availability_label}</strong>'
-        "<span>Not zero; no current result is published.</span></p>"
-        if availability_only
-        else f'<p class="nw-card__metric"><strong>{_h(_metric_value(story))}</strong>{_h(_metric_caption(story))}</p>'
-    )
+    if availability_only:
+        result = (
+            f'<p class="nw-card__availability"><strong>{availability_label}</strong>'
+            "<span>Not zero; no current result is published.</span></p>"
+        )
+    elif integrity_only:
+        result = (
+            '<p class="nw-card__integrity"><strong>Integrity record</strong>'
+            "<span>Ledger roots and external witness status; not a measurement.</span></p>"
+        )
+    else:
+        result = f'<p class="nw-card__metric"><strong>{_h(_metric_value(story))}</strong>{_h(_metric_caption(story))}</p>'
     return f"""<article class="nw-card" data-status="{_h(story["status"])}"{claim_type}>
   <p class="nw-card__kicker{status_class}">{_h(section_title)} · {_h(_status_label(story["status"]))}</p>
   <h3><a class="nw-card__link" href="/{_h(story["url"].removeprefix(SITE).lstrip("/"))}">{_h(story["headline"])}</a></h3>
@@ -2013,11 +2118,7 @@ def _lead(
     heading = f"h{heading_level}"
     qualifier = story["limitations"][0]
     status_class = "" if story["status"] == "live" else " nw-kicker--warning"
-    item_type = (
-        "Palimpsest availability notice"
-        if _is_availability_story(story)
-        else "Palimpsest measurement"
-    )
+    item_type = _item_label(story, "lead")
     return f"""<section class="nw-lead" aria-labelledby="{_h(heading_id)}">
   <div>
     <p class="nw-kicker{status_class}">{item_type} · {_h(section_title)} · {_h(_status_label(story["status"]))}</p>
@@ -2037,18 +2138,23 @@ def _lead(
 def _select_instrument_lead(
     stories: Sequence[Mapping[str, Any]],
 ) -> Mapping[str, Any]:
+    # An integrity record is part of the command surface, not a result, so it
+    # never leads an edition while any other instrument record exists.
+    candidates = [
+        story for story in stories if not _is_integrity_story(story)
+    ] or list(stories)
     lead = next(
         (
             story
-            for story in stories
+            for story in candidates
             if story["priority"] == "lead" and story["status"] == "live"
         ),
         None,
     )
     if lead is None:
-        lead = next((story for story in stories if story["status"] == "live"), None)
+        lead = next((story for story in candidates if story["status"] == "live"), None)
     if lead is None:
-        lead = stories[0]
+        lead = candidates[0]
     return lead
 
 
@@ -5555,33 +5661,12 @@ def build_json_feed(
             "id": story["id"] + ":" + story["claim_fingerprint"],
             "url": story["url"],
             "external_url": story["evidence"]["url"],
-            "title": (
-                "[Palimpsest availability] "
-                if _is_availability_story(story)
-                else "[Palimpsest measurement] "
-            )
-            + story["headline"],
-            "summary": (
-                "Palimpsest availability notice. "
-                if _is_availability_story(story)
-                else "Palimpsest measurement. "
-            )
-            + story["dek"],
+            "title": _item_label(story, "title") + story["headline"],
+            "summary": _item_label(story, "summary") + story["dek"],
             "content_text": "\n\n".join(
-                [
-                    (
-                        "ITEM TYPE: PALIMPSEST AVAILABILITY"
-                        if _is_availability_story(story)
-                        else "ITEM TYPE: PALIMPSEST MEASUREMENT"
-                    )
-                ]
+                [_item_label(story, "item_type")]
                 + [
-                    (
-                        "Availability: "
-                        if _is_availability_story(story)
-                        else "Result: "
-                    )
-                    + claim["statement"]
+                    _item_label(story, "claim") + claim["statement"]
                     for claim in story["claims"]
                 ]
                 + [
@@ -5593,11 +5678,7 @@ def build_json_feed(
             "date_modified": story["modified_at"],
             "tags": _deduplicated_tags(
                 [
-                    (
-                        "palimpsest-availability"
-                        if _is_availability_story(story)
-                        else "palimpsest-measurement"
-                    ),
+                    _item_label(story, "tag"),
                     sections[story["section"]],
                     story["signal_id"],
                     story["status"],
@@ -5620,11 +5701,7 @@ def build_json_feed(
                 }
             ],
             "_palimpsest": {
-                "kind": (
-                    "instrument_availability"
-                    if _is_availability_story(story)
-                    else "instrument_measurement"
-                ),
+                "kind": _item_label(story, "kind"),
                 "revision_id": _revision_id(story, "storyv"),
                 **(
                     {
@@ -5640,11 +5717,7 @@ def build_json_feed(
                 "verification_status": (
                     "public_value_unavailable"
                     if _is_rights_safe_availability_story(story)
-                    else (
-                        "current_result_unavailable"
-                        if _is_availability_story(story)
-                        else "palimpsest_measurement"
-                    )
+                    else _item_label(story, "verification_status")
                 ),
             },
         }
@@ -5685,11 +5758,10 @@ def build_rss(feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None) ->
     self_url = f"{SITE}/news/feed.xml" if mixed else f"{SITE}/news/instruments/feed.xml"
     for story in feed["stories"]:
         availability_only = _is_availability_story(story)
+        integrity_only = _is_integrity_story(story)
         rights_restricted = _is_rights_safe_availability_story(story)
-        item_type = (
-            "Palimpsest availability" if availability_only else "Palimpsest measurement"
-        )
-        result_label = "Availability" if availability_only else "Result"
+        item_type = _item_label(story, "rss_item_type")
+        result_label = _item_label(story, "rss_claim")
         description = (
             f"Item type: {item_type}. {result_label}: "
             + " ".join(claim["statement"] for claim in story["claims"])
@@ -5712,6 +5784,12 @@ def build_rss(feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None) ->
                     "    <palimpsest:publicationDisposition>rights-restricted-availability-v1</palimpsest:publicationDisposition>\n"
                     "    <palimpsest:valueState>withheld</palimpsest:valueState>"
                 )
+        elif integrity_only:
+            availability_metadata = (
+                "\n"
+                "    <palimpsest:kind>instrument_integrity</palimpsest:kind>\n"
+                f"    <palimpsest:signal>{xml_escape(story['signal_id'])}</palimpsest:signal>"
+            )
         items.append(f"""  <item>
     <title>{xml_escape(f"[{item_type}] " + story["headline"])}</title>
     <link>{xml_escape(story["url"])}</link>
