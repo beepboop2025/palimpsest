@@ -533,6 +533,11 @@ artifacts independently.
   an unadvertised compatibility alias with validated historical filters; it performs
   only rights inspection and cannot expose observations. Publication counts are not
   economic values. The rights resource is palimpsest://china-economic/publication-rights.
+  The fixed Pages endpoints remain metadata-only restricted stubs, so agents must read
+  https://www.palimpsest.info/readings/china-publication-rights-latest.json and must not
+  infer observations, zero, calm or direction. A client that expects the historical
+  observation schema must fail closed with no partial rows. Tool availability does not
+  grant value-publication rights.
 - Signal readings carry `generated_at` and upstream `sources`; cite both. Historical
   private economic inputs retain separate release and collection clocks, hashes and IDs,
   but those fields do not make denied values publishable.
