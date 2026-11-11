@@ -3367,12 +3367,6 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Transfer-Encoding") is not None:
             return self._send(400, _error(
                 None, INVALID_REQUEST, "Transfer-Encoding is not supported"))
-        protocol_version = self.headers.get("MCP-Protocol-Version")
-        if (protocol_version is not None
-                and protocol_version not in SUPPORTED_PROTOCOL_VERSIONS):
-            return self._send(400, _error(
-                None, INVALID_REQUEST,
-                f"unsupported MCP protocol version: {protocol_version}"))
         declared_length = self.headers.get("Content-Length")
         if declared_length is None:
             return self._send(411, _error(
@@ -3399,6 +3393,15 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(raw or b"null")
         except (UnicodeError, json.JSONDecodeError, RecursionError):
             return self._send(400, _error(None, PARSE_ERROR, "empty or non-JSON body"))
+        # initialize negotiates the version in its body, so a client may send its own preferred
+        # version there and receive ours back; every later request must carry a supported one.
+        protocol_version = self.headers.get("MCP-Protocol-Version")
+        negotiating = isinstance(body, dict) and body.get("method") == "initialize"
+        if (protocol_version is not None and not negotiating
+                and protocol_version not in SUPPORTED_PROTOCOL_VERSIONS):
+            return self._send(400, _error(
+                None, INVALID_REQUEST,
+                f"unsupported MCP protocol version: {protocol_version}"))
         response = dispatch(body)
         if response is None:
             return self._send(202)

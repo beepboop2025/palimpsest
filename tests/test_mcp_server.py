@@ -1978,6 +1978,21 @@ def test_http_rejects_an_unsupported_mcp_protocol_header():
     assert "unsupported MCP protocol version" in handler.sent[1]["error"]["message"]
 
 
+def test_initialize_negotiates_when_the_client_header_names_a_newer_version(monkeypatch):
+    body = json.dumps(_rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
+                                          "clientInfo": {"name": "claude-ai", "version": "1"}})).encode()
+    handler = _handler_for()
+    handler.headers = {"Content-Length": str(len(body)), "MCP-Protocol-Version": "2025-11-25"}
+    handler.rfile = io.BytesIO(body)
+    handler._send = lambda code, payload=None: setattr(handler, "sent", (code, payload))
+    monkeypatch.setattr(mcp, "_log_mcp_activation", lambda *args, **kwargs: None)
+
+    handler.do_POST()
+
+    assert handler.sent[0] == 200
+    assert handler.sent[1]["result"]["protocolVersion"] == mcp.PROTOCOL_VERSION
+
+
 def test_http_rejects_short_or_transfer_encoded_request_bodies():
     handler = _handler_for()
     handler.headers = {"Content-Length": "20"}
