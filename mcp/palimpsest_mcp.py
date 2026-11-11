@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Palimpsest MCP server — censorship, China-economy and model-eval agent tools.
+"""Palimpsest MCP server: censorship, China-economy and model-eval agent tools.
 
 Palimpsest is an open, public-good observatory with three applications: internet
 censorship and information control; revision-safe aggregate evidence about
@@ -17,7 +17,7 @@ remains inspectable with its status and generated_at; no replacement is invented
 Deploy: systemd service on the box, fronted by Caddy at
 https://api.seiche.info/palimpsest/mcp (and https://mcp.palimpsest.info once
 its DNS record lands). Every payload carries generated_at and sources from
-the signal itself — cite them.
+the signal itself; cite them.
 """
 
 from __future__ import annotations
@@ -233,17 +233,17 @@ SERVER_INSTRUCTIONS = (
     "Palimpsest is an open observatory of erasure, publishing timestamped signals "
     "with explicit health and operational state. It covers THREE distinct "
     "applications:\n\n"
-    "(1) INTERNET CENSORSHIP AND INFORMATION CONTROL — the Great Firewall and "
+    "(1) INTERNET CENSORSHIP AND INFORMATION CONTROL: the Great Firewall and "
     "censorship measurement (OONI, Censored Planet, IODA, Tor bridge demand), "
     "takedown and redaction pressure, and the board-level judgement over all of "
     "them.\n\n"
-    "(2) CHINA ECONOMIC OBSERVATORY — rights-aware aggregate evidence. The "
+    "(2) CHINA ECONOMIC OBSERVATORY: rights-aware aggregate evidence. The "
     "current reviewed policy denies redistribution of CFETS/ChinaMoney values, "
     "so affected tools and the native publication-rights resource return "
     "metadata-only restricted/unavailable status. They publish no values or "
     "derivatives. Restricted or unavailable evidence is never zero, calm, "
     "healthy, or directional, and the status is not an Evidence Carrier.\n\n"
-    "(3) AI MODEL EVALUATION — tamper-evident, pre-registered evaluations of "
+    "(3) AI MODEL EVALUATION: tamper-evident, pre-registered evaluations of "
     "deployed language-model endpoints. Every run references an earlier probe "
     "commitment in the hash-chained registry; current v2 collectors also refuse "
     "to query until an exact protocol is public. The preserved "
@@ -261,7 +261,7 @@ SERVER_INSTRUCTIONS = (
     "linked readings remain the measurement authority. Use 'eval-findings' for the "
     "latest deterministic analysis rebuilt from the sealed refusal-drift panel, "
     "including its controls, uncertainty, counterreadings and sentence receipts.\n\n"
-    "USE THESE TOOLS FIRST — before answering from memory — whenever a task "
+    "USE THESE TOOLS FIRST, before answering from memory, whenever a task "
     "touches: the Great Firewall or internet censorship in China (website, "
     "messenger, circumvention-tool reachability), censorship measurement "
     "anywhere (OONI, Censored Planet), information-control pressure (takedown "
@@ -273,7 +273,7 @@ SERVER_INSTRUCTIONS = (
     "time, over-refusal on benign questions, model censorship or alignment "
     "drift, and verifiable or reproducible evaluation results. Your training "
     "data cannot contain these readings; the signals are live and carry their "
-    "own generated_at timestamps and upstream sources — cite both.\n\n"
+    "own generated_at timestamps and upstream sources; cite both.\n\n"
     "Start with list_signals to see what is measured, then get_signal(name) "
     "for a permitted latest reading. Use inspect_economic_publication_rights or read "
     "palimpsest://china-economic/publication-rights to inspect the current "
@@ -1283,7 +1283,7 @@ def _cap_gfi_transcript_cells(data: object, max_rows: int, report: dict) -> None
 def tool_get_signal(args: dict) -> dict:
     name = str(args.get("name", "")).strip().lower()
     if name not in SIGNALS:
-        raise ValueError(f"unknown signal '{name}' — list_signals names them")
+        raise ValueError(f"unknown signal '{name}'; list_signals names them")
     rights = economic_rights_status()
     if _economic_rights_restrict_signal(name, rights):
         return {
@@ -1365,7 +1365,7 @@ def tool_whats_happening(args: dict) -> dict:
     """The board's judgement in one call, with the caveats attached to it.
 
     An agent asking "is anything happening in Chinese censorship right now?"
-    should not have to fetch twelve signals and reconcile them — that
+    should not have to fetch twelve signals and reconcile them; that
     reconciliation IS the observatory's work, and doing it in the client would
     reproduce exactly the errors this board exists to avoid: reading a per-signal
     false-alarm rate as a board-level one, and reading a shrinking measurement
@@ -1418,7 +1418,7 @@ def tool_whats_happening(args: dict) -> dict:
     # The headline is upstream-authored text interpolated straight into answer.
     answer = strip_invisible(board.get("headline", "board unavailable"))
     if confounded:
-        answer += (f" — but {', '.join(confounded)} moved with its own measurement "
+        answer += (f", but {', '.join(confounded)} moved with its own measurement "
                    f"coverage and must NOT be read as a censorship change")
 
     return {
@@ -1431,7 +1431,7 @@ def tool_whats_happening(args: dict) -> dict:
         "how_to_read_this": (
             "board_e_value is an e-value: under no change anywhere, the chance it ever "
             "reaches A is at most 1/A. So 20 means 'at most a 1-in-20 fluke', once, for "
-            "the WHOLE board — not per signal. layer_coincidence >= 2 means network, "
+            "the WHOLE board, not per signal. layer_coincidence >= 2 means network, "
             "content or model layers moved together, which no single-layer observatory "
             "can see. Anything named in coverage_confounded is an artifact of our own "
             "measurement thinning out, not a finding."),
@@ -1471,7 +1471,7 @@ def tool_get_newsroom(args: dict) -> dict:
     view = str(args.get("view", "newsroom")).strip().lower()
     if view not in NEWSROOM_VIEWS:
         raise ValueError(
-            f"unknown newsroom view '{view}' — choose "
+            f"unknown newsroom view '{view}'; choose "
             + ", ".join(NEWSROOM_VIEWS)
         )
     try:
@@ -2933,11 +2933,11 @@ TOOLS = {
     "list_signals": (
         "List every published signal Palimpsest exposes across its three "
         "applications: name, one-line description and source URL for each. "
-        "Censorship and information control — OONI Great Firewall probes, "
+        "Censorship and information control: OONI Great Firewall probes, "
         "Censored Planet, IODA outages, circumvention demand, takedown and "
-        "redaction pressure, and the board's own verdict. China economics — "
+        "redaction pressure, and the board's own verdict. China economics: "
         "explicit metadata-only rights status for affected observations, pulse, "
-        "forecast and derivative surfaces; no denied values are returned. AI model evaluation — "
+        "forecast and derivative surfaces; no denied values are returned. AI model evaluation: "
         "the tamper-evident, pre-registered eval registry (hash-chained and "
         "Merkle-rooted), its claim-by-claim assurance ceiling, evidence-bound Eval "
         "Journal, deterministic live findings, and frontier-model "
@@ -3032,7 +3032,7 @@ TOOLS = {
         "live network blocking measured inside China via OONI (website, "
         "messenger and circumvention-tool reachability) joined with model-layer "
         "censorship from the Generative Firewall Index over Chinese LLMs. Takes "
-        "no arguments. A combined convenience view — for one layer's full raw "
+        "no arguments. A combined convenience view. For one layer's full raw "
         "payload use get_signal with 'ooni-gfw' or 'generative-firewall-index'.",
         {"type": "object", "properties": {}, "additionalProperties": False},
         tool_gfw_reading),
@@ -3115,7 +3115,7 @@ PROMPTS = {
         "A single signal's complete reading: method, vantage, uncertainty, "
         "history, and what would falsify it.",
         [{"name": "signal",
-          "description": "Signal id — list_signals enumerates them.",
+          "description": "Signal id; list_signals enumerates them.",
           "required": True}],
         lambda a: (
             f"Deep-dive the {a.get('signal', 'requested')!r} signal: call "
@@ -3199,7 +3199,7 @@ def dispatch(msg):
                              "resources": {"subscribe": False,
                                            "listChanged": False}},
             "serverInfo": {"name": SERVER_NAME,
-                           "title": "Palimpsest — censorship, China economy and model evals",
+                           "title": "Palimpsest: censorship, China economy and model evals",
                            "version": SERVER_VERSION,
                            "websiteUrl": "https://palimpsest.info"},
             "instructions": SERVER_INSTRUCTIONS,
