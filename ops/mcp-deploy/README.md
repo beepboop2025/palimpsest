@@ -25,7 +25,9 @@ The controller enforces all of these before replacing runtime bytes:
   after promotion restores the previous server file and restarts it.
 
 The wrapper also pins the SHA-256 of its installed verifier, GitHub signing key,
-smoke client, and systemd unit. Candidate inspection and live probing run as the separate,
+smoke client, and systemd unit, and accepts no systemd drop-in except
+fleet-guard's restart-pacing file, matched by exact path, owner, mode, link count
+and SHA-256 (see "The fleet-guard self-heal drop-in"). Candidate inspection and live probing run as the separate,
 unprivileged `palimpsest-mcp-verify` account with an empty environment; candidate
 Python is never imported by the root controller process and does not share a UID
 with the running service.
@@ -373,6 +375,26 @@ cannot bootstrap or broaden its own authority.
    secrets, enable required-reviewer protection, and test that the dedicated key
    cannot open a shell or run anything except the exact forced command.
 
+## The fleet-guard self-heal drop-in
+
+fleet-guard, in `beepboop2025/fleet-bots` under `ops/fleet-guard`, installs
+`zz-fleet-self-heal.conf` on always-on services so that a transient failure such
+as a full disk pauses a service instead of stopping it for good. It sets
+`StartLimitIntervalSec=0` and restart pacing (`RestartSec`, `RestartSteps`,
+`RestartMaxDelaySec`) and nothing else. It reached this unit on 2026-10-31, and
+from then on the old empty-only check refused every release.
+
+The controller accepts exactly that file. The value of `DropInPaths` must equal
+`/etc/systemd/system/palimpsest-mcp.service.d/zz-fleet-self-heal.conf`
+literally, never split or glob-expanded; the directory must be root-owned and not
+group/other-writable; and the file must be a root:root `0644` single-link regular
+file whose SHA-256 matches `ops/mcp-deploy/fleet-guard-self-heal.conf`, a
+byte-identical copy of fleet-bots `ops/fleet-guard/config/self-heal.conf`. Any
+other drop-in, a second drop-in beside it, or any edit to it still refuses. If
+fleet-guard changes the file, update the copy and the wrapper pin together
+through the trust-bundle upgrade below. The tests reject a copy that sets
+anything beyond restart pacing.
+
 ## Updating the installed controller trust bundle
 
 Controller changes are a separate root-admin transaction, never a capability of
@@ -400,7 +422,8 @@ match the four staged trust roots exactly.
 While still holding the lock, install the signing key `0444`, verifier `0755`,
 smoke client `0755`, and systemd unit `0644`; run `systemctl daemon-reload`,
 restart the currently deployed MCP runtime, and prove the service is active,
-uses the exact `FragmentPath`, has no drop-ins, retains the expected process
+uses the exact `FragmentPath`, has no drop-ins other than the pinned fleet-guard
+self-heal file, retains the expected process
 user/group and every required hardening property, and has
 `NeedDaemonReload=no`. Re-prove that the runtime digest and deployed marker did
 not change. Run the new smoke client with `--basic` against the
@@ -411,7 +434,7 @@ modes, and digests for all five installed files before releasing the lock.
 If any check fails, restore every captured preimage and its recorded mode while
 still holding the lock; remove a newly introduced key when the prior state
 recorded it as absent. Run `systemctl daemon-reload`, restart the prior runtime,
-restore its prior active state, re-prove the effective unit, drop-in absence,
+restore its prior active state, re-prove the effective unit, the reviewed drop-in set,
 process identity, hardening, runtime digest, and deployed marker, and re-run the prior basic smoke
 against the prior deployed manifest. Preserve the backup and transaction
 evidence, and report a rollback failure explicitly if any restored invariant

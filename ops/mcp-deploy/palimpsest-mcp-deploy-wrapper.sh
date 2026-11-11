@@ -51,6 +51,14 @@ readonly EXPECTED_VERIFY_SHA256="91c4ee4946f6bd4858ccb384adb84d1bae0a67b8e798ed9
 readonly EXPECTED_GITHUB_SIGNING_KEY_SHA256="c135dfc1e3add3eb84e6119af7095dec97e0e92730a468d234f925a72bacaf74" # gitleaks:allow -- public trust-root digest
 readonly EXPECTED_SMOKE_SHA256="c0ac2eeb0b34944c8988c0e18915ae28a7227648d4951908f270eb0716228ac9"
 readonly EXPECTED_UNIT_SHA256="dbdabb3b736d39d1e2d3c3ed0d1b49609b1481f2f0697ebe550f32825a79443a"
+# fleet-guard (beepboop2025/fleet-bots, ops/fleet-guard) gives always-on services
+# a never-give-up restart policy as zz-fleet-self-heal.conf. That one drop-in is
+# accepted only at its exact path, as a root:root 0644 single-link regular file
+# byte-identical to ops/mcp-deploy/fleet-guard-self-heal.conf, a copy of
+# fleet-bots ops/fleet-guard/config/self-heal.conf. It paces restarts and sets
+# nothing else. Any other drop-in, or any edit to this one, still refuses.
+readonly FLEET_GUARD_SELF_HEAL_DROPIN="/etc/systemd/system/palimpsest-mcp.service.d/zz-fleet-self-heal.conf"
+readonly EXPECTED_FLEET_GUARD_SELF_HEAL_SHA256="d69c1da21ba6440f39533fb1493e1f16ff43bceb17bd460d7dda0d63c68435f8"
 
 stage_dir=""
 api_json=""
@@ -129,6 +137,28 @@ require_hardened_runtime() {
     || fail "cannot inspect the service process owner"
   [[ "$process_uid" = "$runtime_uid" ]] \
     || fail "service PID is not owned by the unprivileged runtime account"
+}
+
+require_reviewed_drop_ins() {
+  local drop_ins metadata
+  drop_ins=$(systemctl show --property=DropInPaths --value "$SERVICE")
+  if [[ -z "$drop_ins" ]]; then
+    return 0
+  fi
+  # The whole value must equal the one accepted path, compared literally. It is
+  # never split or glob-expanded, so a second drop-in of any name, or a file
+  # named like a pattern such as "[z]z-fleet-self-heal.conf", still refuses.
+  [[ "$drop_ins" == "$FLEET_GUARD_SELF_HEAL_DROPIN" ]] \
+    || fail "service has unreviewed systemd drop-ins"
+  require_root_directory "${FLEET_GUARD_SELF_HEAL_DROPIN%/*}"
+  [[ -f "$FLEET_GUARD_SELF_HEAL_DROPIN" && ! -L "$FLEET_GUARD_SELF_HEAL_DROPIN" ]] \
+    || fail "fleet-guard self-heal drop-in is not a regular file"
+  metadata=$(stat -c '%u:%g:%a:%h' -- "$FLEET_GUARD_SELF_HEAL_DROPIN")
+  [[ "$metadata" = "0:0:644:1" ]] \
+    || fail "fleet-guard self-heal drop-in is ${metadata@Q}, expected 0:0:644:1"
+  [[ "$(sha256sum -- "$FLEET_GUARD_SELF_HEAL_DROPIN" | awk '{print $1}')" = \
+    "$EXPECTED_FLEET_GUARD_SELF_HEAL_SHA256" ]] \
+    || fail "fleet-guard self-heal drop-in differs from the reviewed bytes"
 }
 
 restore_file_if_present() {
@@ -311,8 +341,7 @@ service_exec=$(systemctl show --property=ExecStart --value "$SERVICE")
   || fail "service does not use the pinned unit file"
 [[ "$(systemctl show --property=NeedDaemonReload --value "$SERVICE")" = "no" ]] \
   || fail "systemd has not loaded the pinned unit bytes"
-[[ -z "$(systemctl show --property=DropInPaths --value "$SERVICE")" ]] \
-  || fail "service has unreviewed systemd drop-ins"
+require_reviewed_drop_ins
 require_hardened_runtime
 
 version=$(python3 -c \

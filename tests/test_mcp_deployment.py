@@ -30,6 +30,7 @@ REGISTRY_WORKFLOW = ROOT / ".github/workflows/registry-publish.yml"
 UNIT = ROOT / "ops/systemd/palimpsest-mcp.service"
 RUNBOOK = ROOT / "ops/mcp-deploy/README.md"
 GITHUB_SIGNING_KEY = ROOT / "ops/mcp-deploy/github-web-flow-signing-key.asc"
+FLEET_GUARD_SELF_HEAL = ROOT / "ops/mcp-deploy/fleet-guard-self-heal.conf"
 GITHUB_COMMIT_FIXTURE_SHA = "ad52601de621edfd7a9b8fd221fb030a0cfab273"
 
 
@@ -744,6 +745,174 @@ def test_host_wrapper_bounded_provenance_reader(tmp_path: Path) -> None:
         assert error in result.stderr.decode()
 
 
+def test_host_wrapper_pins_the_reviewed_fleet_guard_self_heal_dropin() -> None:
+    text = WRAPPER.read_text(encoding="utf-8")
+    digest = hashlib.sha256(FLEET_GUARD_SELF_HEAL.read_bytes()).hexdigest()
+    assert f'readonly EXPECTED_FLEET_GUARD_SELF_HEAL_SHA256="{digest}"' in text
+    assert (
+        'readonly FLEET_GUARD_SELF_HEAL_DROPIN="/etc/systemd/system/'
+        'palimpsest-mcp.service.d/zz-fleet-self-heal.conf"' in text
+    )
+    # The pinned copy may only pace restarts. A key that could change what the
+    # service runs, as whom, or with what access must never ride on this pin.
+    body = FLEET_GUARD_SELF_HEAL.read_text(encoding="utf-8")
+    assert body.startswith("# Installed by fleet-bots ops/fleet-guard.\n")
+    settings: dict[str, set[str]] = {}
+    section = ""
+    for line in body.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith("["):
+            section = stripped
+            settings.setdefault(section, set())
+            continue
+        settings.setdefault(section, set()).add(stripped.split("=", 1)[0])
+    assert settings == {
+        "[Unit]": {"StartLimitIntervalSec"},
+        "[Service]": {"RestartSec", "RestartSteps", "RestartMaxDelaySec"},
+    }
+    # One literal gate reads the drop-in set, before the hardening proof.
+    assert text.count("--property=DropInPaths") == 1
+    assert "require_reviewed_drop_ins\nrequire_hardened_runtime" in text
+
+
+@pytest.mark.parametrize(
+    ("case", "refusal"),
+    [
+        ("absent", None),
+        ("exact", None),
+        ("edited", "differs from the reviewed bytes"),
+        ("other-name", "service has unreviewed systemd drop-ins"),
+        ("plus-unreviewed", "service has unreviewed systemd drop-ins"),
+        ("glob-named", "service has unreviewed systemd drop-ins"),
+        ("star-named", "service has unreviewed systemd drop-ins"),
+        ("runtime-root", "service has unreviewed systemd drop-ins"),
+        ("symlink", "is not a regular file"),
+        ("group-writable", "expected 0:0:644:1"),
+        ("two-links", "expected 0:0:644:1"),
+        ("not-root", "expected 0:0:644:1"),
+        ("writable-directory", "group/other-writable directory"),
+    ],
+)
+def test_host_wrapper_accepts_only_the_exact_fleet_guard_self_heal_dropin(
+    tmp_path: Path, case: str, refusal: str | None
+) -> None:
+    text = WRAPPER.read_text(encoding="utf-8")
+    functions = []
+    for name in ("require_root_directory", "require_reviewed_drop_ins"):
+        start = text.index(f"{name}() {{")
+        functions.append(text[start : text.index("\n}\n", start) + 3])
+
+    unit_dir = tmp_path / "etc/systemd/system/palimpsest-mcp.service.d"
+    unit_dir.mkdir(parents=True)
+    reviewed = unit_dir / "zz-fleet-self-heal.conf"
+    body = FLEET_GUARD_SELF_HEAL.read_bytes()
+    file_metadata, dir_owner, dir_mode = "0:0:644:1", "0", "755"
+    drop_ins = [reviewed]
+    if case == "absent":
+        drop_ins = []
+    elif case == "edited":
+        body = body.replace(b"RestartSteps=7", b"RestartSteps=1")
+    elif case == "other-name":
+        drop_ins = [unit_dir / "aa-fleet-self-heal.conf"]
+    elif case == "plus-unreviewed":
+        extra = unit_dir / "unreviewed.conf"
+        extra.write_text("[Service]\nUser=root\n", encoding="utf-8")
+        drop_ins = [reviewed, extra]
+    elif case == "glob-named":
+        # Unquoted, this value would glob-expand to the reviewed path.
+        drop_ins = [unit_dir / "[z]z-fleet-self-heal.conf"]
+    elif case == "star-named":
+        drop_ins = [unit_dir / "*"]
+    elif case == "runtime-root":
+        runtime = tmp_path / "run/systemd/system/palimpsest-mcp.service.d"
+        runtime.mkdir(parents=True)
+        drop_ins = [runtime / "zz-fleet-self-heal.conf"]
+    elif case == "group-writable":
+        file_metadata = "0:0:664:1"
+    elif case == "two-links":
+        file_metadata = "0:0:644:2"
+    elif case == "not-root":
+        file_metadata = "1000:0:644:1"
+    elif case == "writable-directory":
+        dir_mode = "775"
+    if case == "symlink":
+        elsewhere = tmp_path / "elsewhere.conf"
+        elsewhere.write_bytes(body)
+        reviewed.symlink_to(elsewhere)
+    else:
+        reviewed.write_bytes(body)
+    for path in drop_ins:
+        if not path.exists() and not path.is_symlink():
+            path.write_bytes(body)
+
+    shim_dir = tmp_path / "bin"
+    shim_dir.mkdir()
+    shims = {
+        "systemctl": (
+            'test "$*" = "show --property=DropInPaths --value palimpsest-mcp.service"\n'
+            'printf \'%s\\n\' "$DROP_INS"\n'
+        ),
+        # The gate reads the file as %u:%g:%a:%h and the directory as %u and %a.
+        "stat": (
+            'test "$1" = -c\n'
+            'case "$2" in\n'
+            "  '%u:%g:%a:%h') printf '%s\\n' \"$FILE_METADATA\" ;;\n"
+            "  '%u') printf '%s\\n' \"$DIR_OWNER\" ;;\n"
+            "  '%a') printf '%s\\n' \"$DIR_MODE\" ;;\n"
+            "  *) exit 2 ;;\n"
+            "esac\n"
+        ),
+        "sha256sum": (
+            'test "$1" = --\n'
+            "exec python3 -c 'import hashlib, sys; "
+            'p = sys.argv[1]; print(hashlib.sha256(open(p, "rb").read()).hexdigest(), p)\' "$2"\n'
+        ),
+    }
+    for name, source in shims.items():
+        shim = shim_dir / name
+        shim.write_text("#!/usr/bin/env bash\nset -euo pipefail\n" + source, encoding="utf-8")
+        shim.chmod(0o755)
+    script = textwrap.dedent(f"""
+        set -Eeuo pipefail
+        PATH="$1:$PATH"
+        readonly SERVICE="palimpsest-mcp.service"
+        readonly FLEET_GUARD_SELF_HEAL_DROPIN="$2"
+        readonly EXPECTED_FLEET_GUARD_SELF_HEAL_SHA256="$3"
+        fail() {{ printf '%s\n' "$*" >&2; exit 1; }}
+        {functions[0]}
+        {functions[1]}
+        require_reviewed_drop_ins
+        """)
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            script,
+            "dropin-gate",
+            str(shim_dir),
+            str(reviewed),
+            hashlib.sha256(FLEET_GUARD_SELF_HEAL.read_bytes()).hexdigest(),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=dict(
+            os.environ,
+            DROP_INS=" ".join(str(path) for path in drop_ins),
+            FILE_METADATA=file_metadata,
+            DIR_OWNER=dir_owner,
+            DIR_MODE=dir_mode,
+        ),
+    )
+    if refusal is None:
+        assert result.returncode == 0, result.stderr
+    else:
+        assert result.returncode == 1, result.stderr
+        assert refusal in result.stderr
+
+
 def test_workflow_has_separate_verify_gate_and_public_smoke() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "target_sha:" in text
@@ -888,11 +1057,11 @@ def test_controller_upgrade_precedes_forced_deployment() -> None:
         "current runtime digest, and deployed marker",
         "without changing `/opt/palimpsest-mcp/palimpsest_mcp.py`",
         "exact `FragmentPath`",
-        "has no drop-ins",
+        "has no drop-ins other than the pinned fleet-guard self-heal file",
         "expected process user/group",
         "runtime digest and deployed marker did not change",
         "restore its prior active state",
-        "drop-in absence, process identity, hardening, runtime digest, and deployed marker",
+        "the reviewed drop-in set, process identity, hardening, runtime digest, and deployed marker",
     ):
         assert marker in normalized
     signing_key = upgrade.index("signing key `0444`")
