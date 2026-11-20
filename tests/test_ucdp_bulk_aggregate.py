@@ -945,6 +945,47 @@ def test_offline_cli_replay_is_exact_and_never_needs_network(
     assert review_lock.status == "approved"
 
 
+def test_renewal_comparison_is_read_only_and_detects_new_rights(tmp_path, monkeypatch):
+    from scripts import compare_ucdp_renewal as renewal
+
+    registry, archives, receipts = _evidence()
+    lock, lock_raw, snapshot, rights = _review_material(registry, archives, receipts)
+    old_path = tmp_path / "readings" / "ucdp-aggregate-latest.json"
+    old_path.parent.mkdir()
+    old_raw = canonical_json_bytes(_bundle().to_dict())
+    old_path.write_bytes(old_raw)
+    lock_path = tmp_path / "baseline.json"
+    lock_path.write_bytes(lock_raw)
+    monkeypatch.setattr(renewal, "ROOT", tmp_path)
+    monkeypatch.setattr(renewal, "DEFAULT_REVIEW_LOCK", lock_path)
+    evidence = [archives, receipts, snapshot, rights]
+    monkeypatch.setattr(renewal, "_offline_evidence", lambda *_: evidence)
+    report = renewal.compare(tmp_path)
+    assert report["status"] == "comparison_only"
+    assert report["expected_public_aggregate"] == lock.expected_public_aggregate.to_dict()
+    assert [pin.to_dict() for pin in lock.inputs] == report["inputs"]
+    assert "rights_decision" not in report
+    evidence[2] = b"changed rights page"
+    with pytest.raises(UCDPBulkError, match="rights snapshot changed"):
+        renewal.compare(tmp_path)
+    assert old_path.read_bytes() == old_raw
+    assert lock_path.read_bytes() == lock_raw
+
+
+def test_renewal_comparison_rejects_changed_observation_at_equal_count():
+    from scripts.compare_ucdp_renewal import _compare_rows
+
+    row = _bundle().conflict_years[0]
+    original = row.to_dict()
+    identity_fields = {"record_id", "armed_conflict_acquisition_id", "actor_registry_acquisition_id"}
+    previous = [{**original, "armed_conflict_acquisition_id": "earlier-acquisition", "record_id": "earlier-record"}]
+    digest = sha256_bytes(canonical_json_bytes(previous))
+    assert _compare_rows([row], previous, identity_fields, digest) == sha256_bytes(canonical_json_bytes([original]))
+    previous[0]["year"] += 1
+    with pytest.raises(UCDPBulkError, match="annual observations differ"):
+        _compare_rows([row], previous, identity_fields, sha256_bytes(canonical_json_bytes(previous)))
+
+
 def test_cli_refuses_a_caller_selected_self_issued_review_lock(tmp_path: Path) -> None:
     with pytest.raises(SystemExit) as refused:
         pull_main(
