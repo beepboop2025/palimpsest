@@ -1,0 +1,29 @@
+[Unit]
+Description=Verify Palimpsest's historical handover and current native publication
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+UMask=0077
+WorkingDirectory=/usr/local/libexec/palimpsest-native-osint/current
+RuntimeDirectory=palimpsest-private-native-proof
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-native-osint/current/verify-host-bundle.sh
+ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-native-osint/current/REVISION /etc/palimpsest/osint-native-source
+ExecStart=/usr/bin/python3 -EsB /usr/local/libexec/palimpsest-native-osint/current/native_osint_sync.py --collect-lineage
+TimeoutStartSec=8min
+Nice=15
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
