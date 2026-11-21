@@ -168,6 +168,23 @@ def test_stream_contains_each_and_only_china_relevant_wire_item(publication):
     )
 
 
+@pytest.mark.parametrize("source_role", ["primary", "measurement"])
+def test_multi_source_event_with_collector_context_has_a_followup(source_role):
+    event = {
+        "evidence_refs": [{"role": source_role}, {"role": "media"}],
+        "mutation": {"kind": "new"},
+    }
+    analysis = {"evidence_assessment": {"independent_groups": 2}, "collector_context": [{}]}
+    checks = china_article_stream._next_checks(event, analysis)
+    assert len(checks) == 1
+    assert "independent accounts" in checks[0]
+
+    event["mutation"]["kind"] = "updated"
+    assert china_article_stream._next_checks(event, analysis) == [
+        "Compare this dossier revision with its prior version; an update can add evidence or merely alter metadata."
+    ]
+
+
 def test_each_item_reuses_exactly_one_validated_event_analysis(publication):
     wire, _feed, analyses, stream = publication
     items = {item["item_id"]: item for item in wire["items"]}
