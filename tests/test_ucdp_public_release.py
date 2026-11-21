@@ -79,11 +79,11 @@ def test_checked_in_release_receipt_is_exact_closed_and_live() -> None:
     assert receipt_id == sha256_bytes(canonical_json_bytes(payload))
     assert receipt["publication_state"] == "live"
     assert receipt["artifact"] == {
-        "bundle_id": "ea19cbdb30f5b93af3f15b07098fb6d67db1249fdcb7dd305d31e272996eb303",
+        "bundle_id": "737e4496346e6c6254081a1bfc18f2f15d27b1a1dbdc3f5f89aae5460d7a8348",
         "bytes": 260077,
         "media_type": "application/json",
         "path": ARTIFACT_PATH,
-        "sha256": "6ffea3cb75ea7766c6ee72a9296958b2ab227e3b9d8ddbb5880e43f67b74ba21",
+        "sha256": "5bce20b15fa55d2834e0c678c7bdbc413b84b999620a12a54150c736a1e0b752",
         "url": "https://palimpsest.info/readings/ucdp-aggregate-latest.json",
     }
     assert receipt["coverage"] == {
