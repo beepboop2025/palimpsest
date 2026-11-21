@@ -107,6 +107,11 @@ def _next_checks(
         checks.append(
             "Compare same-group updates for corrections, changed wording, and chronology; repetition is not independence."
         )
+    if not checks:
+        checks.append(
+            "Compare the independent accounts with the cited primary record or measurement "
+            "and document any differences in scope, dates, or wording."
+        )
     return checks[:4]
 
 
