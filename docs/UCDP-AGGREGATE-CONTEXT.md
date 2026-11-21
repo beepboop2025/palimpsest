@@ -24,7 +24,7 @@ The lock is closed by
 and independently revalidated by the strict typed parser.
 
 The approved lock SHA-256 is
-`03e1e3dc3b1b9b5e6006197b43c859d34663b682041bcaef43b1b06933ea5bcf`.
+`9dc115f9d4b3f2fa9f4b79f6cec047746b3c5445ad21c7a7cd6ce40b2ba3e2d3`.
 The reviewed Git lock is Palimpsest's explicit approval anchor. It is not a
 cryptographic signature by UCDP, proof that UCDP approved the acquisition, or a
 substitute for checking the captured rights page. The lock permits only annual
@@ -42,15 +42,17 @@ Council national research infrastructure grant 2021-00162. Palimpsest filters
 and aggregates the version 26.1 source data for annual historical context.
 [UCDP Download Center](https://ucdp.uu.se/downloads/)
 
-## November 2026 renewal awaiting independent review
+## November 2026 renewal
 
 The November 20 acquisition reproduced all 331 conflict-year observations,
 74 country-year observations, and 1,928 distinct registry IDs. All three ZIPs,
 decompressed members, and the source terms page matched the October review.
 Acquisition identifiers and the record identifiers derived from them changed.
 The [comparison report](ucdp-renewal-comparison-20261120.json) records the new
-receipt hashes, acquisition clocks and array hashes. The effective rights
-decision expires November 22 at 20:00:23 UTC.
+receipt hashes, acquisition clocks and array hashes. The authorized
+publication reviewer approved the renewal at 2026-11-21T22:34:29Z, recorded on
+[PR #333](https://github.com/beepboop2025/palimpsest/pull/333), and the renewed
+decision is valid until 2026-12-21T20:00:23Z.
 
 The authorized publication reviewer can reproduce the comparison in the
 candidate checkout using the eight files from the November 20 acquisition.
@@ -82,14 +84,15 @@ acquisition files with the reviewer.
 
 ## Evidence boundary
 
-The 23 October 2026 review captured the current Download Center rights page
-with SHA-256 `3e0b317ba88e84b2796efa445c82e1668349086e258c2591f5d98093f8c97346`.
+The 21 November 2026 review used the Download Center rights page captured on
+20 November with SHA-256 `3e0b317ba88e84b2796efa445c82e1668349086e258c2591f5d98093f8c97346`,
+byte-identical to the October capture.
 It still states CC BY 4.0 with the dataset-specific citations. All three newly
 retrieved archives and decompressed members match the previously reviewed
 bytes; all 331 conflict-year and 74 country-year observations are unchanged.
 Only acquisition identities, review clocks, and their derived bindings changed.
-The decision expires at `2026-11-22T20:00:23Z`; arrange the next source review by
-15 November. Extending an expiry without reviewing a fresh rights snapshot is
+The decision expires at `2026-12-21T20:00:23Z`; arrange the next source review by
+15 December. Extending an expiry without reviewing a fresh rights snapshot is
 not a renewal.
 
 The private acquisition layer accepts exactly these versioned archives:
@@ -141,7 +144,7 @@ The public JSON schema is
 The checked-in version 26.1 aggregate contains 331 conflict-year records, 74
 country-year records, and referential-integrity coverage for 1,928 UCDP actor
 IDs over 1948–2025. Its exact SHA-256 is
-`6ffea3cb75ea7766c6ee72a9296958b2ab227e3b9d8ddbb5880e43f67b74ba21`.
+`5bce20b15fa55d2834e0c678c7bdbc413b84b999620a12a54150c736a1e0b752`.
 It permits only:
 
 - Balochistan conflict-year rows where UCDP location is Pakistan and territory
