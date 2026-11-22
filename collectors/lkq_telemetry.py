@@ -53,8 +53,10 @@ SPACING_S = 10.0
 NBS_EN_URL = "https://www.stats.gov.cn/english/PressRelease/"
 PBC_LIST_URL = "https://www.pbc.gov.cn/goutongjiaoliu/113456/113469/index.html"
 NRA_NEWS_URL = "https://www.nra.gov.cn/xwzx/xwxx/xwlb/"
+MOT_STATS_URL = "https://www.mot.gov.cn/tongjishuju/tielu/"
 PBC_MAX_LIST_PAGES = 4
 _REVIEWED_SOURCE_HOSTS = frozenset({
+    "www.mot.gov.cn",
     "www.nra.gov.cn",
     "www.pbc.gov.cn",
     "www.stats.gov.cn",
@@ -355,6 +357,50 @@ def parse_nra_rail(article: str) -> dict:
     return out
 
 
+def parse_mot_rail(article: str) -> dict:
+    """Official Ministry of Transport monthly rail freight fallback parser.
+
+    Invoked ONLY when the primary NRA host (``www.nra.gov.cn``) fails to serve
+    the requested month. Matches MOT's official national railway freight YoY
+    narrative (e.g. ``1—10月，完成铁路货运量...亿吨，同比增长X%`` or
+    ``铁路完成货运量...同比增长X%``). Returns ``{}`` on any wording change.
+    """
+    text = _clean(article)
+    out: dict = {}
+    m = re.search(
+        r"(?:全国)?铁路(?:累计)?完成货[物运](?:发送)?量[0-9.]+亿吨[，,]同比(增长|下降)([0-9.]+)%",
+        text,
+    )
+    if not m:
+        m = re.search(
+            r"完成铁路货[物运](?:发送)?量[0-9.]+亿吨[，,]同比(增长|下降)([0-9.]+)%",
+            text,
+        )
+    if m:
+        v = float(m.group(2))
+        out["rail_freight_yoy"] = v if m.group(1) == "增长" else -v
+    return out
+
+
+def find_mot_rail_article(listing: str) -> tuple[str, str] | None:
+    """Newest MOT railway statistics item from ``www.mot.gov.cn/tongjishuju/tielu/``."""
+    best = None
+    for m in _ANCHOR_TAG.finditer(listing):
+        tag = m.group(0)
+        title = _ATTR_TITLE.search(tag)
+        href = _ATTR_HREF.search(tag)
+        if not title or not href:
+            continue
+        t = title.group(1)
+        if "铁路" not in t or not any(k in t for k in ("货运", "运输", "发送")):
+            continue
+        d = re.search(r"/t(\d{8})_", href.group(1))
+        key = d.group(1) if d else ""
+        if best is None or key > best[0]:
+            best = (key, href.group(1), t)
+    return (best[1], best[2]) if best else None
+
+
 def find_rail_article(listing: str) -> tuple[str, str] | None:
     """Newest NRA item about China's national rail-freight series.
 
@@ -501,9 +547,30 @@ def collect(expected_period: str) -> dict:
                 if rail_period(title, body) == expected_period:
                     if "rail_freight_yoy" in rail:
                         out["components"]["rail_freight_yoy"] = rail["rail_freight_yoy"]
+                        out["rail_basis"] = "nra_primary"
                     if rail.get("rail_month_flat_prose"):
                         out["flags"].append("rail_month_yoy_was_prose_flat")
                     if "rail_freight_month_yoy" in rail:
                         out["telemetry"]["rail_freight_month_yoy"] = \
                             rail["rail_freight_month_yoy"]
+
+    # Official secondary fallback: MOT railway statistics when NRA drops connections.
+    if "rail_freight_yoy" not in out["components"]:
+        got_mot = _get(MOT_STATS_URL)
+        if got_mot:
+            hit = find_mot_rail_article(got_mot)
+            if hit:
+                href, title = hit
+                try:
+                    article_url, source_host = _same_source_url(MOT_STATS_URL, href)
+                except FetchError:
+                    log.warning("lkq_telemetry refused a cross-authority MOT rail link")
+                    return out
+                body = _get(article_url, expected_host=source_host)
+                if body and rail_period(title, body) == expected_period:
+                    mot_rail = parse_mot_rail(body)
+                    if "rail_freight_yoy" in mot_rail:
+                        out["components"]["rail_freight_yoy"] = mot_rail["rail_freight_yoy"]
+                        out["rail_basis"] = "mot_official_fallback"
+                        out["flags"].append("rail_source_mot_fallback")
     return out

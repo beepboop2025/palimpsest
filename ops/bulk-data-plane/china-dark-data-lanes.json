@@ -1,0 +1,82 @@
+{
+  "schema": "palimpsest.bulk-data-plane-lanes.v1",
+  "updated_at": "2026-11-22T00:00:00Z",
+  "storage_guards": {
+    "min_free_bytes": 10737418240,
+    "active_ledger_rollover_bytes": 33554432,
+    "active_ledger_rollover_rows": 75000,
+    "parquet_compression": "zstd",
+    "cold_offload_target": "hel2:/srv/offload/fsn1/palimpsest-china-dark-data"
+  },
+  "lanes": [
+    {
+      "lane_id": "china_bis_shadow_credit",
+      "cadence_seconds": 86400,
+      "module": "collectors.china_dark_data_bis",
+      "rights_tier": "open_attribution",
+      "tables": [
+        "bis_china_observations",
+        "bis_shadow_credit_derived",
+        "bis_offshore_spv_bonds_derived"
+      ]
+    },
+    {
+      "lane_id": "china_portwatch_ais",
+      "cadence_seconds": 86400,
+      "module": "collectors.china_portwatch_ais",
+      "rights_tier": "open_cc_by_4",
+      "tables": [
+        "portwatch_china_ports_catalog",
+        "portwatch_china_daily_ports",
+        "portwatch_china_daily_chokepoints",
+        "portwatch_china_monthly_aggregates"
+      ]
+    },
+    {
+      "lane_id": "china_sanctions_entities",
+      "cadence_seconds": 86400,
+      "module": "collectors.china_sanctions_entities",
+      "rights_tier": "public_domain_and_cc0",
+      "tables": [
+        "us_ita_csl_china_entities",
+        "un_sanctions_china_nexus",
+        "gleif_china_hk_sample_entities"
+      ]
+    },
+    {
+      "lane_id": "china_energy_bri_tech",
+      "cadence_seconds": 86400,
+      "module": "collectors.china_energy_macro_dark",
+      "rights_tier": "open_cc_by_and_cc0",
+      "tables": [
+        "ember_china_monthly_electricity",
+        "imf_china_bri_macro_fiscal",
+        "wb_ids_bri_sovereign_debt",
+        "openalex_china_critical_tech"
+      ]
+    },
+    {
+      "lane_id": "china_gdelt_subnational",
+      "cadence_seconds": 21600,
+      "module": "collectors.china_gdelt_subnational",
+      "rights_tier": "open_public",
+      "tables": [
+        "gdelt_china_subnational_events"
+      ]
+    },
+    {
+      "lane_id": "fleet_cross_product_bridge",
+      "cadence_seconds": 900,
+      "module": "core.fleet_data_bridge",
+      "rights_tier": "first_party_fleet_aggregated",
+      "sources": [
+        "palimpsest_nemesis_local",
+        "palimpsest_bulk_duckdb",
+        "hel1_sec_china_issuers",
+        "seiche_public_api",
+        "liquilens_public_api",
+        "undertow_public_api"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+[Unit]
+Description=Palimpsest Self-Sustaining China Dark Data Warehouse & Fleet Bridge Refresh
+Documentation=file:///opt/palimpsest/docs/CHINA-DARK-DATA.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+WorkingDirectory=/opt/palimpsest/current
+Environment=PYTHONUNBUFFERED=1
+Environment=PALIMPSEST_WAREHOUSE_DIR=/var/lib/palimpsest/china-dark-data
+ExecStart=/opt/palimpsest/venv/bin/python3 -m scripts.china_dark_data_orchestrator \
+  --warehouse-dir /var/lib/palimpsest/china-dark-data \
+  --portwatch-ports 60 \
+  --portwatch-start-year 2020 \
+  --gdelt-intervals 16
+TimeoutStartSec=900
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+MemoryMax=2G
+CPUQuota=150%
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/palimpsest/china-dark-data /var/lib/palimpsest/readings
+ReadOnlyPaths=/var/lib/palimpsest-nemesis/public /var/lib/palimpsest/bulk-data/catalog
+
+[Install]
+WantedBy=multi-user.target

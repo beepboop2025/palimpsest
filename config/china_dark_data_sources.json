@@ -1,0 +1,192 @@
+{
+  "schema": "palimpsest.china-dark-data-sources.v1",
+  "updated_at": "2026-11-22T00:00:00Z",
+  "purpose": "Comprehensive, lawful, rights-verified multi-layer China Dark Data source catalog designed to give Palimpsest broader verifiable signal coverage than or comparable to specialist China intelligence platforms without relying on paywalled redistribution or CFETS-quarantined feeds.",
+  "rights_boundary": {
+    "cfets_segregated": true,
+    "pinned_legacy_policy_file": "config/china_econ_source_policy.json",
+    "note": "CFETS/ChinaMoney benchmarks remain strictly segregated under config/china_econ_source_policy.json. Every source registered here is independently verified public-domain, CC0, CC-BY-4.0, or official free-redistribution with attribution."
+  },
+  "layers": [
+    {
+      "layer_id": "L1_bis_shadow_credit_offshore_finance",
+      "collector": "collectors/china_dark_data_bis.py",
+      "cadence": "daily",
+      "publisher": "Bank for International Settlements (BIS)",
+      "api_base": "https://stats.bis.org/api/v2/data/dataflow/BIS",
+      "auth": "none",
+      "license": "BIS open statistics terms (free use & redistribution with attribution; no fee for raw BIS data)",
+      "terms_url": "https://www.bis.org/terms_conditions.htm",
+      "dataflows": [
+        "WS_TC (Total credit to non-financial sector: private, NFC/LGFV, households, general government, bank vs non-bank shadow credit gap)",
+        "WS_CREDIT_GAP (Credit-to-GDP systemic banking stress gap)",
+        "WS_DSR (Private non-financial debt service ratio)",
+        "WS_SPP (Real & nominal residential property prices)",
+        "WS_EER (Broad 64-economy REER & NEER)",
+        "WS_CBPOL (Central bank policy rate / 1Y LPR)",
+        "WS_LBS_D_PUB (Cross-border international bank claims & liabilities on CN & HK)",
+        "WS_DEBT_SEC2_PUB (Offshore international bonds: Nationality minus Residence = Cayman/BVI/HK SPV & LGFV borrowing gap)"
+      ],
+      "dark_data_blind_spots_illuminated": [
+        "Off-balance-sheet LGFV & non-bank shadow credit excluded from headline bank loan prints",
+        "Offshore Cayman/BVI/HK SPV bond stock hidden by residency-only external debt statistics",
+        "Cross-border bank deleveraging & capital flight via BIS counterparty reporting banks"
+      ]
+    },
+    {
+      "layer_id": "L2_imf_portwatch_ais_trade_chokepoints",
+      "collector": "collectors/china_portwatch_ais.py",
+      "cadence": "daily",
+      "publisher": "IMF PortWatch & University of Oxford Environmental Change Institute",
+      "api_base": "https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services",
+      "auth": "none",
+      "license": "CC-BY-4.0 / IMF PortWatch Open Data",
+      "terms_url": "https://portwatch.imf.org/",
+      "coverage": "100+ Chinese ports (Shanghai, Ningbo-Zhoushan, Shenzhen, Guangzhou, Qingdao, Tianjin, Xiamen, Dalian, Suzhou, Hong Kong, etc.) + 7 China-critical maritime chokepoints (Taiwan Strait, Malacca, Singapore, Hormuz, Suez, Bab el-Mandeb, Panama Canal)",
+      "dark_data_blind_spots_illuminated": [
+        "Independent satellite-AIS physical export & import tonnage before GACC customs prints (or when customs discontinues commodity splits)",
+        "Container vs dry-bulk vs tanker vessel arrivals separating industrial input demand from finished goods exports",
+        "Real-time Taiwan Strait & Malacca Strait maritime disruption telemetry"
+      ]
+    },
+    {
+      "layer_id": "L3_sanctions_export_controls_corporate_registry",
+      "collector": "collectors/china_sanctions_entities.py",
+      "cadence": "daily",
+      "publishers": [
+        "US International Trade Administration (Consolidated Screening List: BIS Entity List, MEU, Denied Persons, Unverified List, OFAC SDN, NS-CMIC, DDTC)",
+        "United Nations Security Council Consolidated Sanctions List",
+        "Global Legal Entity Identifier Foundation (GLEIF Level 1 & Level 2 ownership graph; 107,000+ CN LEIs + HK/MO/KY/VG links)"
+      ],
+      "auth": "none",
+      "license": "US Government public domain (17 USC 105) / UN Open Data / GLEIF CC0",
+      "dark_data_blind_spots_illuminated": [
+        "Entity-level China/HK/Macau military-civil fusion & semiconductor export-control exposure",
+        "Cross-border corporate ownership & offshore Cayman/BVI/HK shell nexus via LEI Level-2 parent/ultimate-parent links",
+        "Sanctions velocity tracking comparable to WireScreen/Kharon open screening layer"
+      ]
+    },
+    {
+      "layer_id": "L4_energy_coal_grid_bri_debt_tech_decoupling",
+      "collector": "collectors/china_energy_macro_dark.py",
+      "cadence": "daily",
+      "publishers": [
+        "Ember Climate (Monthly Global Electricity Data: China total generation, coal, solar, wind, hydro, nuclear, power-sector CO2)",
+        "IMF DataMapper WEO & Fiscal Monitor (China & 24 BRI sovereigns: augmented fiscal deficit, general gov debt, current account, GDP)",
+        "World Bank International Debt Statistics (Source 6: BRI debtor external debt stock, debt service, official bilateral debt)",
+        "OpenAlex (CC0 global scientific graph: China share in semiconductors/EUV, AI/LLMs, quantum, hypersonics, batteries & US-China co-authorship decoupling)"
+      ],
+      "auth": "none",
+      "license": "Ember CC-BY-4.0 / IMF Open Data / World Bank CC-BY-4.0 / OpenAlex CC0",
+      "dark_data_blind_spots_illuminated": [
+        "Thermal vs renewable generation mix cross-checking official NBS industrial output",
+        "BRI sovereign debt distress & bilateral exposure across key Chinese lending corridors",
+        "Dual-use science & technology capability velocity and US-China research decoupling"
+      ]
+    },
+    {
+      "layer_id": "L5_gdelt_subnational_social_industrial_events",
+      "collector": "collectors/china_gdelt_subnational.py",
+      "cadence": "every_6h",
+      "publisher": "GDELT 2.0 Global Knowledge & Events Database",
+      "api_base": "http://data.gdeltproject.org/gdeltv2/masterfilelist.txt",
+      "auth": "none",
+      "license": "GDELT Open Data",
+      "dark_data_blind_spots_illuminated": [
+        "Sub-national China protests, labor unrest, regulatory crackdowns, military/strait coercion, and economic stress mapped to provinces/cities every 15 minutes",
+        "Independent event velocity & Goldstein tension scoring when domestic Chinese media censors local incidents"
+      ]
+    },
+    {
+      "layer_id": "L6_common_crawl_web_mutation_disappearance",
+      "collector": "collectors/common_crawl_lake.py + collectors/china_gdelt_subnational.py",
+      "cadence": "daily",
+      "publisher": "Common Crawl Foundation",
+      "api_base": "https://index.commoncrawl.org/collinfo.json",
+      "auth": "none",
+      "license": "Common Crawl Terms of Use (metadata/index analysis)",
+      "dark_data_blind_spots_illuminated": [
+        "Longitudinal disappearance, HTTP 404/403/5xx spikes, and silent revision of .gov.cn, stats.gov.cn, pbc.gov.cn, mof.gov.cn, ndrc.gov.cn, and 31 provincial statistical portals across 2024-2026 crawls"
+      ]
+    },
+    {
+      "layer_id": "L7_china_official_physical_economy_darkness",
+      "collectors": [
+        "collectors/lkq_telemetry.py",
+        "collectors/data_darkness.py",
+        "collectors/china_publication_watch.py",
+        "collectors/nbs_housing.py",
+        "collectors/mot_transport.py",
+        "collectors/spb_parcels.py",
+        "collectors/nea_electricity.py",
+        "collectors/china_external_accounts.py"
+      ],
+      "cadence": "daily_to_monthly",
+      "dark_data_blind_spots_illuminated": [
+        "Li Keqiang Index vs headline industrial production divergence",
+        "Official release silence, late publication, wording degradation, and discontinued series tracking (youth unemployment, land sales, bond/equity flow disclosures)",
+        "70-city NBS housing prices, SPB parcel volumes, MOT transport, NEA electricity consumption, SAFE/BoP errors & omissions"
+      ]
+    },
+    {
+      "layer_id": "L8_censorship_information_controls_osint",
+      "collectors": [
+        "collectors/ooni_bulk.py",
+        "collectors/bleedthrough.py",
+        "collectors/cdn_edge.py",
+        "collectors/nemesis_watch (bridged via core/fleet_data_bridge.py)",
+        "collectors/wayback_reconstruct.py"
+      ],
+      "cadence": "every_15m_to_daily",
+      "dark_data_blind_spots_illuminated": [
+        "GFW DNS injection bleedthrough, OONI China network blocking, CDN POP anomalies, Nemesis OSINT China discourse & DDTI (186 topics, 10 leads), Wayback archived deleted pages"
+      ]
+    },
+    {
+      "layer_id": "L9_fleet_cross_product_warehouse_bridge",
+      "collector": "core/fleet_data_bridge.py",
+      "cadence": "every_15m_to_hourly",
+      "sources_bridged": [
+        "Palimpsest Bulk Data Plane (fsn1 bulk.duckdb: 12.08M+ rows across 41 tables including WDI, UNODC, OFR STFM, GDELT, UCDP, Eurostat)",
+        "Palimpsest Nemesis Watch (fsn1 /var/lib/palimpsest-nemesis/public/osint-china.json refreshed every 15m)",
+        "Financial Collector Economic Archive (hel1 SEC EDGAR 9,430 companies / 85.3M facts incl. 152+ China/HK/Cayman ADRs & 20-F/6-K filings, FDIC, NCUA, Treasury, ECB)",
+        "Seiche (global money-market stress, China macro structural regime, central bank policy anchors)",
+        "LiquiLens (bank failure radar, global systemically important bank liquidity, cross-border funding)",
+        "Undertow (CN/BSTOCK/EQUITY/FX/HY/IG/UST/CRYPTO cross-market funding & basis regime)"
+      ]
+    }
+  ],
+  "provincial_statistical_bureaus_watch": [
+    {"code": "CN-BJ", "province": "Beijing", "host": "tjj.beijing.gov.cn"},
+    {"code": "CN-TJ", "province": "Tianjin", "host": "stats.tj.gov.cn"},
+    {"code": "CN-HE", "province": "Hebei", "host": "tjj.hebei.gov.cn"},
+    {"code": "CN-SX", "province": "Shanxi", "host": "tjj.shanxi.gov.cn"},
+    {"code": "CN-NM", "province": "Inner Mongolia", "host": "tj.nmg.gov.cn"},
+    {"code": "CN-LN", "province": "Liaoning", "host": "tjj.ln.gov.cn"},
+    {"code": "CN-JL", "province": "Jilin", "host": "tjj.jl.gov.cn"},
+    {"code": "CN-HL", "province": "Heilongjiang", "host": "tjj.hlj.gov.cn"},
+    {"code": "CN-SH", "province": "Shanghai", "host": "tjj.sh.gov.cn"},
+    {"code": "CN-JS", "province": "Jiangsu", "host": "tj.jiangsu.gov.cn"},
+    {"code": "CN-ZJ", "province": "Zhejiang", "host": "tjj.zj.gov.cn"},
+    {"code": "CN-AH", "province": "Anhui", "host": "tjj.ah.gov.cn"},
+    {"code": "CN-FJ", "province": "Fujian", "host": "tjj.fujian.gov.cn"},
+    {"code": "CN-JX", "province": "Jiangxi", "host": "tjj.jiangxi.gov.cn"},
+    {"code": "CN-SD", "province": "Shandong", "host": "tjj.shandong.gov.cn"},
+    {"code": "CN-HA", "province": "Henan", "host": "tjj.henan.gov.cn"},
+    {"code": "CN-HB", "province": "Hubei", "host": "tjj.hubei.gov.cn"},
+    {"code": "CN-HN", "province": "Hunan", "host": "tjj.hunan.gov.cn"},
+    {"code": "CN-GD", "province": "Guangdong", "host": "stats.gd.gov.cn"},
+    {"code": "CN-GX", "province": "Guangxi", "host": "tjj.gxzf.gov.cn"},
+    {"code": "CN-HI", "province": "Hainan", "host": "stats.hainan.gov.cn"},
+    {"code": "CN-CQ", "province": "Chongqing", "host": "tjj.cq.gov.cn"},
+    {"code": "CN-SC", "province": "Sichuan", "host": "tjj.sc.gov.cn"},
+    {"code": "CN-GZ", "province": "Guizhou", "host": "stjj.guizhou.gov.cn"},
+    {"code": "CN-YN", "province": "Yunnan", "host": "stats.yn.gov.cn"},
+    {"code": "CN-XZ", "province": "Tibet", "host": "tjj.xizang.gov.cn"},
+    {"code": "CN-SN", "province": "Shaanxi", "host": "tjj.shaanxi.gov.cn"},
+    {"code": "CN-GS", "province": "Gansu", "host": "tjj.gansu.gov.cn"},
+    {"code": "CN-QH", "province": "Qinghai", "host": "tjj.qh.gov.cn"},
+    {"code": "CN-NX", "province": "Ningxia", "host": "tj.nx.gov.cn"},
+    {"code": "CN-XJ", "province": "Xinjiang", "host": "tjj.xinjiang.gov.cn"}
+  ]
+}
