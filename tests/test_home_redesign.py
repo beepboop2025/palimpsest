@@ -340,3 +340,189 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
 })().catch(error => {console.error(error); process.exitCode=1;});
 """
     subprocess.run([node, "-e", harness, str(ROOT / "assets/home.js")], check=True, capture_output=True, text=True)
+
+
+def _applications_section(page: str) -> str:
+    return page.split('<section class="hm-apps"', 1)[1].split("</section>", 1)[0]
+
+
+def test_home_states_three_applications_with_routes_and_limits():
+    page = (ROOT / "index.html").read_text(encoding="utf-8")
+    apps = _applications_section(page)
+
+    for anchor in ("censorship", "china-economy", "ai-evals"):
+        assert f'id="{anchor}"' in apps
+        assert f'href="#{anchor}"' in page
+    for route in (
+        "/news/",
+        "/news/china/erasure/",
+        "/china/evidence/",
+        "/china/economy/",
+        "/readings/china-publication-rights-latest.json",
+        "/journal/",
+        "/evals/",
+        "/readings/eval-registry.html",
+        "/readings/eval-assurance-latest.json",
+    ):
+        assert f'href="{route}"' in apps, route
+    for route in ("/data.html", "/developers.html#first-result", "/feeds/", "/research/markets/"):
+        assert f'href="{route}"' in page, route
+    assert "never pooled" in apps
+    assert "Integrity is not validity." in apps
+    assert "CFETS and ChinaMoney values" in apps
+    assert "never zero, calm or healthy" in apps
+    assert page.count("<h1") == 1
+
+
+def test_application_cards_carry_no_hand_typed_counts():
+    apps = _applications_section((ROOT / "index.html").read_text(encoding="utf-8"))
+
+    for placeholder in (
+        "data-home-newsroom-stories>checking</strong>",
+        "data-home-evals-runs>checking</strong>",
+        "data-home-assurance-score>checking</strong>",
+        "data-home-rights-label>checking</strong>",
+        "data-home-newsroom-state>checking current edition</code>",
+        "data-home-evals-state>checking current receipt</code>",
+        "data-home-assurance-state>checking current claim ceiling</code>",
+        "data-home-rights-state>checking current rights receipt</code>",
+    ):
+        assert placeholder in apps, placeholder
+    numerals = re.findall(r">\s*([0-9][0-9,.%]*)\s*<", apps)
+    assert numerals == ["01", "02", "03"], numerals
+    for marker in ("data-home-newsroom", "data-home-evals", "data-home-assurance", "data-home-rights"):
+        assert f'{marker} data-feed-state="loading"' in apps
+
+
+def test_application_views_validate_receipts_and_fail_closed():
+    node = shutil.which("node")
+    assert node is not None
+    harness = r"""
+const assert = require("node:assert/strict");
+const h = require(process.argv[1]);
+const now = Date.parse("2026-11-22T11:00:00Z");
+const newsroom = {schema_version: "palimpsest-news.v1", generated_at: "2026-11-22T10:52:03Z", n_stories: 3,
+  stories: [{}, {}, {}], coverage: {total: 5, counts: {stale: 1, live: 3, degraded: 1, missing: 0}}};
+let view = h.newsroomView(newsroom, now);
+assert.equal(view.stories, 3);
+assert.equal(view.state, "live");
+assert.equal(view.asOf, "2026-11-22 10:52 UTC");
+assert.equal(view.sources, "Sources: 3 live; 1 degraded; 1 stale");
+assert.equal(h.newsroomView(newsroom, now + 3 * 3600000).state, "delayed");
+for (const mutate of [
+  d => {d.n_stories = 4;},
+  d => {d.coverage.total = 6;},
+  d => {d.coverage.counts.live = -1;},
+  d => {d.status = "restricted";},
+  d => {d.schema_version = "other";},
+  d => {d.generated_at = "bad";},
+]) {
+  const copy = structuredClone(newsroom); mutate(copy);
+  assert.throws(() => h.newsroomView(copy, now));
+}
+const registry = {runs: 12, preregistrations: 2, verified: true, merkle_root: "a".repeat(64),
+  head_ts: "2026-11-22T08:16:54.326172+00:00"};
+view = h.registryView(registry);
+assert.deepEqual([view.runs, view.preregistrations, view.verified, view.root, view.asOf],
+  [12, 2, true, "aaaaaaaaaaaa", "2026-11-22 08:16 UTC"]);
+assert.equal(h.registryView({...registry, verified: false}).verified, false);
+assert.throws(() => h.registryView({...registry, merkle_root: "short"}));
+assert.throws(() => h.registryView({...registry, runs: 0}));
+const assurance = {schema: "palimpsest.eval-assurance.v1", generated_at: "2026-11-22T08:16:54Z",
+  summary: {checks: 6, pass: 2, fail: 1, open: 1, partial: 1, pending: 1},
+  claim_ceiling: {level: "provisional-measurement", cannot_yet_claim: "No replication is on record."}};
+view = h.assuranceView(assurance);
+assert.equal(view.score, "2 of 6");
+assert.equal(view.level, "provisional measurement");
+assert.equal(view.rest, "Not passed: 1 partial; 1 pending; 1 open; 1 fail.");
+assert.equal(view.ceiling, "No replication is on record.");
+for (const mutate of [
+  d => {d.summary.pass = 3;},
+  d => {d.schema = "other";},
+  d => {d.claim_ceiling.cannot_yet_claim = "";},
+  d => {d.publication_allowed = false;},
+]) {
+  const copy = structuredClone(assurance); mutate(copy);
+  assert.throws(() => h.assuranceView(copy));
+}
+const rights = {schema_version: "palimpsest-restricted-publication-endpoint.v1", status: "restricted",
+  availability: "unavailable", publication_allowed: false, rights_evaluated_at: "2026-11-22T11:17:16Z",
+  counts: {input_records: 9, published_records: 0, restricted_records: 9}, reason: "Policy denies values."};
+view = h.rightsView(rights);
+assert.equal(view.label, "Restricted");
+assert.equal(view.asOf, "2026-11-22 11:17 UTC");
+assert.ok(!/\d+ (records|values)|\b0\b/.test(JSON.stringify([view.label, view.reason])));
+assert.ok(!("counts" in view));
+for (const mutate of [
+  d => {d.publication_allowed = true;},
+  d => {d.schema_version = "palimpsest-news.v1";},
+  d => {d.status = "fresh"; d.availability = "available";},
+  d => {d.rights_evaluated_at = "bad";},
+]) {
+  const copy = structuredClone(rights); mutate(copy);
+  assert.throws(() => h.rightsView(copy));
+}
+"""
+    subprocess.run([node, "-e", harness, str(ROOT / "assets/home.js")], check=True, capture_output=True, text=True)
+
+
+def test_application_tiles_render_text_only_and_mark_failures_unavailable():
+    node = shutil.which("node")
+    assert node is not None
+    harness = r"""
+const assert = require("node:assert/strict");
+const vm = require("node:vm");
+const fs = require("node:fs");
+function run(fail) {
+  const nodes = new Map();
+  const get = key => {if (!nodes.has(key)) nodes.set(key, {textContent: "", setAttribute(k, v) {this[k] = v;}}); return nodes.get(key);};
+  const now = Date.now();
+  const docs = {
+    "/readings/newsroom-latest.json": {schema_version: "palimpsest-news.v1", generated_at: new Date(now - 60000).toISOString(),
+      n_stories: 2, stories: [{}, {}], coverage: {total: 2, counts: {live: 1, degraded: 1}}},
+    "/readings/eval-registry-latest.json": {runs: 5, preregistrations: 2, verified: true, merkle_root: "c".repeat(64),
+      head_ts: new Date(now - 3600000).toISOString()},
+    "/readings/eval-assurance-latest.json": {schema: "palimpsest.eval-assurance.v1", generated_at: new Date(now).toISOString(),
+      summary: {checks: 2, pass: 1, pending: 1}, claim_ceiling: {level: "provisional-measurement", cannot_yet_claim: "Validation is pending."}},
+    "/readings/china-econ-latest.json": {schema_version: "palimpsest-restricted-publication-endpoint.v1", status: "restricted",
+      availability: "unavailable", publication_allowed: false, rights_evaluated_at: new Date(now).toISOString(),
+      counts: {published_records: 0}, reason: "Policy denies values."}
+  };
+  const document = {hidden: false, querySelectorAll: key => [get(key)], addEventListener() {}};
+  const context = {document, setInterval() {}, fetch: async url => {
+    if (fail.has(url)) throw new Error("offline");
+    if (url in docs) return {ok: true, status: 200, json: async () => structuredClone(docs[url])};
+    return {ok: false, status: 503, json: async () => ({})};
+  }};
+  vm.runInNewContext(fs.readFileSync(process.argv[1], "utf8"), context);
+  return new Promise(resolve => setTimeout(() => resolve(get), 20));
+}
+(async () => {
+  let get = await run(new Set());
+  assert.equal(get("[data-home-newsroom-stories]").textContent, "2");
+  assert.equal(get("[data-home-newsroom-status]").textContent, "Current");
+  assert.match(get("[data-home-newsroom-state]").textContent, /^Edition .* UTC\. Sources: 1 live; 1 degraded\.$/);
+  assert.equal(get("[data-home-newsroom]")["data-feed-state"], "live");
+  assert.equal(get("[data-home-evals-runs]").textContent, "5");
+  assert.match(get("[data-home-evals-state]").textContent, /From 2 preregistrations\. Chain verified at build\. Head .* UTC\. Root cccccccccccc\./);
+  assert.equal(get("[data-home-assurance-score]").textContent, "1 of 2");
+  assert.equal(get("[data-home-assurance-status]").textContent, "Claim level: provisional measurement");
+  assert.match(get("[data-home-assurance-state]").textContent, /Not passed: 1 pending\. Cannot yet claim: Validation is pending\./);
+  assert.equal(get("[data-home-rights-status]").textContent, "Restricted");
+  assert.equal(get("[data-home-rights-label]").textContent, "Metadata only");
+  assert.equal(get("[data-home-rights]")["data-feed-state"], "restricted");
+  assert.ok(!/\b0\b/.test(get("[data-home-rights-state]").textContent));
+  get = await run(new Set(["/readings/newsroom-latest.json", "/readings/eval-registry-latest.json",
+    "/readings/eval-assurance-latest.json", "/readings/china-econ-latest.json"]));
+  for (const name of ["newsroom", "evals", "assurance", "rights"]) {
+    assert.equal(get(`[data-home-${name}]`)["data-feed-state"], "unavailable", name);
+    assert.equal(get(`[data-home-${name}-status]`).textContent, "Unavailable", name);
+  }
+  assert.equal(get("[data-home-newsroom-stories]").textContent, "unavailable");
+  assert.equal(get("[data-home-evals-runs]").textContent, "unavailable");
+  assert.equal(get("[data-home-assurance-score]").textContent, "unavailable");
+  assert.equal(get("[data-home-rights-label]").textContent, "Unavailable");
+})().catch(error => {console.error(error); process.exitCode = 1;});
+"""
+    result = subprocess.run([node, "-e", harness, str(ROOT / "assets/home.js")], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
