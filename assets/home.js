@@ -105,11 +105,120 @@
       coverage: coverageText(states, summary.n_datasets) };
   }
 
+  function utcMinute(value) {
+    var time = typeof value === "number" ? value : Date.parse(value);
+    if (!Number.isFinite(time)) throw new Error("invalid clock");
+    return new Date(time).toISOString().slice(0, 16).replace("T", " ") + " UTC";
+  }
+
+  function isCount(value) { return Number.isInteger(value) && value >= 0; }
+
+  // Newsroom source states in reading order; a state added later still shows.
+  var NEWSROOM_ORDER = ["live", "degraded", "stale", "missing", "corrupt"];
+
+  function newsroomView(feed, now) {
+    if (!isPublicDocument(feed, "palimpsest-news.v1")) throw new Error("invalid newsroom edition");
+    var stories = Array.isArray(feed.stories) ? feed.stories : [];
+    var coverage = feed.coverage || {};
+    var counts = coverage.counts || {};
+    var names = Object.keys(counts);
+    var age = now - Date.parse(feed.generated_at);
+    if (!stories.length || feed.n_stories !== stories.length
+        || !Number.isFinite(age) || age < -120000
+        || !names.length || !names.every(function (name) { return isCount(counts[name]); })
+        || names.reduce(function (sum, name) { return sum + counts[name]; }, 0) !== coverage.total) {
+      throw new Error("invalid newsroom counts");
+    }
+    names = names.filter(function (name) { return counts[name] > 0; });
+    names.sort(function (a, b) {
+      var left = NEWSROOM_ORDER.indexOf(a);
+      var right = NEWSROOM_ORDER.indexOf(b);
+      if (left === -1 && right === -1) return a < b ? -1 : (a > b ? 1 : 0);
+      if (left === -1) return 1;
+      if (right === -1) return -1;
+      return left - right;
+    });
+    return {
+      state: age <= 7200000 ? "live" : "delayed",
+      stories: stories.length,
+      asOf: utcMinute(feed.generated_at),
+      sources: "Sources: " + names.map(function (name) { return counts[name] + " " + name; }).join("; ")
+    };
+  }
+
+  function registryView(registry) {
+    if (!isPublicDocument(registry) || !isCount(registry.runs) || registry.runs < 1
+        || !isCount(registry.preregistrations)
+        || !/^[a-f0-9]{64}$/.test(registry.merkle_root || "")) {
+      throw new Error("invalid registry receipt");
+    }
+    return {
+      runs: registry.runs,
+      preregistrations: registry.preregistrations,
+      verified: registry.verified === true,
+      asOf: utcMinute(registry.head_ts || registry.generated_at),
+      root: registry.merkle_root.slice(0, 12)
+    };
+  }
+
+  // Every assurance state is shown; a pass count is never shown on its own.
+  var ASSURANCE_STATES = ["pass", "partial", "pending", "open", "fail"];
+
+  function assuranceView(report) {
+    if (!isPublicDocument(report) || report.schema !== "palimpsest.eval-assurance.v1") {
+      throw new Error("invalid assurance report");
+    }
+    var summary = report.summary || {};
+    var ceiling = report.claim_ceiling || {};
+    var states = Object.keys(summary).filter(function (name) { return name !== "checks"; });
+    if (!isCount(summary.checks) || summary.checks < 1 || !isCount(summary.pass)
+        || !states.every(function (name) { return isCount(summary[name]); })
+        || states.reduce(function (sum, name) { return sum + summary[name]; }, 0) !== summary.checks
+        || typeof ceiling.level !== "string" || !ceiling.level
+        || typeof ceiling.cannot_yet_claim !== "string" || !ceiling.cannot_yet_claim) {
+      throw new Error("invalid assurance summary");
+    }
+    var other = states.filter(function (name) { return name !== "pass" && summary[name] > 0; });
+    other.sort(function (a, b) {
+      var left = ASSURANCE_STATES.indexOf(a);
+      var right = ASSURANCE_STATES.indexOf(b);
+      return (left === -1 ? 99 : left) - (right === -1 ? 99 : right) || (a < b ? -1 : 1);
+    });
+    return {
+      score: summary.pass + " of " + summary.checks,
+      level: ceiling.level.replace(/[-_]+/g, " "),
+      rest: other.length ? "Not passed: " + other.map(function (name) { return summary[name] + " " + name; }).join("; ") + "." : "",
+      ceiling: ceiling.cannot_yet_claim,
+      asOf: utcMinute(report.generated_at)
+    };
+  }
+
+  // A restricted endpoint describes withheld values. It is read for its state
+  // and clock only; no count from it is shown, because restricted is never zero.
+  function rightsView(receipt) {
+    if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)
+        || receipt.schema_version !== "palimpsest-restricted-publication-endpoint.v1"
+        || receipt.publication_allowed !== false
+        || (receipt.status !== "restricted" && receipt.availability !== "unavailable")) {
+      throw new Error("unrecognised rights receipt");
+    }
+    return {
+      state: "restricted",
+      label: receipt.status === "restricted" ? "Restricted" : "Unavailable",
+      asOf: utcMinute(receipt.rights_evaluated_at),
+      reason: typeof receipt.reason === "string" ? receipt.reason.slice(0, 280) : ""
+    };
+  }
+
   if (typeof module === "object" && module && module.exports) {
     module.exports = {
       countPublicReports: countPublicReports,
       publicationView: publicationView,
       collectorView: collectorView,
+      newsroomView: newsroomView,
+      registryView: registryView,
+      assuranceView: assuranceView,
+      rightsView: rightsView,
       isPublicDocument: isPublicDocument
     };
     return;
@@ -128,7 +237,8 @@
     });
   }
 
-  read("/readings/eval-registry-latest.json").then(function (registry) {
+  var registryRead = read("/readings/eval-registry-latest.json");
+  registryRead.then(function (registry) {
     setText("[data-home-registry-runs]", registry.runs);
     setText("[data-home-registry-root]", String(registry.merkle_root || "").slice(0, 12));
     mark("[data-home-registry]", "live");
@@ -136,6 +246,65 @@
     mark("[data-home-registry]", "unavailable");
     setText("[data-home-registry-runs]", "unavailable");
     setText("[data-home-registry-root]", "Current receipt unavailable");
+  });
+
+  registryRead.then(function (registry) {
+    var view = registryView(registry);
+    setText("[data-home-evals-runs]", view.runs);
+    setText("[data-home-evals-status]", view.verified ? "Verified" : "Not verified");
+    setText("[data-home-evals-state]", "From " + view.preregistrations + " preregistrations. Chain "
+      + (view.verified ? "verified" : "not verified") + " at build. Head " + view.asOf + ". Root " + view.root + ".");
+    mark("[data-home-evals]", view.verified ? "live" : "failed");
+  }).catch(function () {
+    mark("[data-home-evals]", "unavailable");
+    setText("[data-home-evals-status]", "Unavailable");
+    setText("[data-home-evals-runs]", "unavailable");
+    setText("[data-home-evals-state]", "Registry receipt unavailable. Verify the chain from the registry page.");
+  });
+
+  read("/readings/eval-assurance-latest.json").then(function (report) {
+    var view = assuranceView(report);
+    setText("[data-home-assurance-score]", view.score);
+    setText("[data-home-assurance-status]", "Claim level: " + view.level);
+    setText("[data-home-assurance-state]", "As of " + view.asOf + ". " + view.rest + " Cannot yet claim: " + view.ceiling);
+    mark("[data-home-assurance]", "live");
+  }).catch(function () {
+    mark("[data-home-assurance]", "unavailable");
+    setText("[data-home-assurance-status]", "Unavailable");
+    setText("[data-home-assurance-score]", "unavailable");
+    setText("[data-home-assurance-state]", "Assurance report unavailable. Open the JSON report directly.");
+  });
+
+  read("/readings/newsroom-latest.json", "palimpsest-news.v1").then(function (feed) {
+    var view = newsroomView(feed, Date.now());
+    var current = view.state === "live";
+    setText("[data-home-newsroom-stories]", view.stories);
+    setText("[data-home-newsroom-label]", current ? "stories in the current edition" : "stories in the last edition");
+    setText("[data-home-newsroom-status]", current ? "Current" : "Delayed");
+    setText("[data-home-newsroom-state]", "Edition " + view.asOf + ". " + view.sources + ".");
+    mark("[data-home-newsroom]", view.state);
+  }).catch(function () {
+    mark("[data-home-newsroom]", "unavailable");
+    setText("[data-home-newsroom-status]", "Unavailable");
+    setText("[data-home-newsroom-stories]", "unavailable");
+    setText("[data-home-newsroom-state]", "Newsroom edition unavailable. Open the newsroom to read the last published edition.");
+  });
+
+  // Restricted endpoints answer with a metadata-only receipt; read() would
+  // reject it, so this reader accepts only that restriction schema.
+  fetch("/readings/china-econ-latest.json", { cache: "no-store" }).then(function (response) {
+    return response.json();
+  }).then(function (receipt) {
+    var view = rightsView(receipt);
+    setText("[data-home-rights-status]", view.label);
+    setText("[data-home-rights-label]", "Metadata only");
+    setText("[data-home-rights-state]", "Rights evaluated " + view.asOf + ". " + view.reason);
+    mark("[data-home-rights]", view.state);
+  }).catch(function () {
+    mark("[data-home-rights]", "unavailable");
+    setText("[data-home-rights-status]", "Unavailable");
+    setText("[data-home-rights-label]", "Unavailable");
+    setText("[data-home-rights-state]", "Rights receipt unavailable. Inspect the rights decision directly.");
   });
 
   var collector = null;
