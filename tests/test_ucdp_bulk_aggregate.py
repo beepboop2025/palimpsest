@@ -447,11 +447,11 @@ def test_registry_pins_rights_version_encodings_and_approved_release_status() ->
     review_lock = load_review_lock(REVIEW_LOCK)
     assert review_lock.status == "approved"
     assert review_lock.raw_sha256 == (
-        "03e1e3dc3b1b9b5e6006197b43c859d34663b682041bcaef43b1b06933ea5bcf"
+        "9dc115f9d4b3f2fa9f4b79f6cec047746b3c5445ad21c7a7cd6ce40b2ba3e2d3"
     )
     assert review_lock.rights_decision is not None
     assert review_lock.rights_decision.decision_id == (
-        "dffed4370a04c6982be7affb22c2527346a9c00c3092864253435e6dbae57c44"
+        "70534d32c68c4ca527ddff7f961c9b2c310e4c54b14e4ee9c8ef30eec32cc7ba"
     )
     assert tuple(pin.input_id for pin in review_lock.inputs) == (
         "actor_registry",
@@ -465,10 +465,10 @@ def test_registry_pins_rights_version_encodings_and_approved_release_status() ->
             "e818085eb8dc15595ccc391da8c53612afd3acc58118e71e2baa2373bf22947d"
         ),
         "conflict_years_sha256": (
-            "b1636637a069cf2ec6a15b4b8aca1353cbe0f85b050b5c491ff1b2d22a66a0f1"
+            "49b935073053595fbfcf2e6bcbfeb16a4f109f7c4773794de6e4619304b2071d"
         ),
         "country_years_sha256": (
-            "717bda9b2b4f32d78cf11c1197dddc63d2557b7d23cd52f36a32b2216b18abe2"
+            "c4014180dfd783da1bc522505ddebe27d76158b5c49eecc5c5b8edc3d178da6f"
         ),
     }
 
@@ -943,6 +943,47 @@ def test_offline_cli_replay_is_exact_and_never_needs_network(
     assert pull_main(["archive-check", "--input-dir", str(evidence_dir)]) == 0
     assert pull_main(["check"]) == 0
     assert review_lock.status == "approved"
+
+
+def test_renewal_comparison_is_read_only_and_detects_new_rights(tmp_path, monkeypatch):
+    from scripts import compare_ucdp_renewal as renewal
+
+    registry, archives, receipts = _evidence()
+    lock, lock_raw, snapshot, rights = _review_material(registry, archives, receipts)
+    old_path = tmp_path / "readings" / "ucdp-aggregate-latest.json"
+    old_path.parent.mkdir()
+    old_raw = canonical_json_bytes(_bundle().to_dict())
+    old_path.write_bytes(old_raw)
+    lock_path = tmp_path / "baseline.json"
+    lock_path.write_bytes(lock_raw)
+    monkeypatch.setattr(renewal, "ROOT", tmp_path)
+    monkeypatch.setattr(renewal, "DEFAULT_REVIEW_LOCK", lock_path)
+    evidence = [archives, receipts, snapshot, rights]
+    monkeypatch.setattr(renewal, "_offline_evidence", lambda *_: evidence)
+    report = renewal.compare(tmp_path)
+    assert report["status"] == "comparison_only"
+    assert report["expected_public_aggregate"] == lock.expected_public_aggregate.to_dict()
+    assert [pin.to_dict() for pin in lock.inputs] == report["inputs"]
+    assert "rights_decision" not in report
+    evidence[2] = b"changed rights page"
+    with pytest.raises(UCDPBulkError, match="rights snapshot changed"):
+        renewal.compare(tmp_path)
+    assert old_path.read_bytes() == old_raw
+    assert lock_path.read_bytes() == lock_raw
+
+
+def test_renewal_comparison_rejects_changed_observation_at_equal_count():
+    from scripts.compare_ucdp_renewal import _compare_rows
+
+    row = _bundle().conflict_years[0]
+    original = row.to_dict()
+    identity_fields = {"record_id", "armed_conflict_acquisition_id", "actor_registry_acquisition_id"}
+    previous = [{**original, "armed_conflict_acquisition_id": "earlier-acquisition", "record_id": "earlier-record"}]
+    digest = sha256_bytes(canonical_json_bytes(previous))
+    assert _compare_rows([row], previous, identity_fields, digest) == sha256_bytes(canonical_json_bytes([original]))
+    previous[0]["year"] += 1
+    with pytest.raises(UCDPBulkError, match="annual observations differ"):
+        _compare_rows([row], previous, identity_fields, sha256_bytes(canonical_json_bytes(previous)))
 
 
 def test_cli_refuses_a_caller_selected_self_issued_review_lock(tmp_path: Path) -> None:
