@@ -1,0 +1,70 @@
+{
+  "version": "v1.0.0",
+  "entity": {
+    "type": "organisation",
+    "role": "owner",
+    "name": "LIQUILENS PRIVATE LIMITED",
+    "email": "mrinal@liquilens.in",
+    "description": "Registered private limited company in Jaipur, India (CIN U62011RJ2026PTC116792; DPIIT DIPP290644) maintaining Palimpsest, an open-source, revision-safe China economic observatory and verifiable AI/censorship measurement registry.",
+    "webpageUrl": {
+      "url": "https://www.palimpsest.info/"
+    }
+  },
+  "projects": [
+    {
+      "guid": "palimpsest",
+      "name": "Palimpsest",
+      "description": "Open-source public-good observatory for revision-safe China economic observations, censorship and erasure measurements, reproducible AI evaluations, downloadable datasets, offline verification, and keyless MCP.",
+      "webpageUrl": {
+        "url": "https://www.palimpsest.info/"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/beepboop2025/palimpsest",
+        "wellKnown": "https://raw.githubusercontent.com/beepboop2025/palimpsest/main/funding.json"
+      },
+      "licenses": [
+        "spdx:MIT"
+      ],
+      "tags": [
+        "open-data",
+        "censorship",
+        "china",
+        "osint",
+        "provenance",
+        "ai-evaluations",
+        "mcp"
+      ]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "github-sponsors",
+        "type": "payment-provider",
+        "address": "https://github.com/sponsors/beepboop2025",
+        "description": "GitHub Sponsors supporting Palimpsest public datasets, sealed measurement feeds, and open-source maintenance."
+      },
+      {
+        "guid": "institutional-grant",
+        "type": "other",
+        "address": "https://www.palimpsest.info/",
+        "description": "Public-interest, internet-freedom, and open-data grant inquiries via mrinal@liquilens.in."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "palimpsest-observatory-maintenance",
+        "status": "active",
+        "name": "Palimpsest continuous collectors, archival sealing, and public MCP",
+        "description": "Supports open-source censorship and China economic revision measurement pipelines, cryptographic sealing, and keyless public access for journalists, researchers, and AI agents.",
+        "amount": 25000,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": [
+          "institutional-grant",
+          "github-sponsors"
+        ]
+      }
+    ]
+  }
+}
