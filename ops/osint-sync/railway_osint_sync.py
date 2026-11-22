@@ -59,7 +59,21 @@ UCDP_RENEWAL_FORK = {
     "archive_path": "readings/audit/readings-ledger-build-fork-20261023.jsonl",
     "admission_path": "readings/audit/readings-ledger-admission-20261023.json",
 }
-REVIEWED_FORKS = (SEPTEMBER_FORK, UCDP_RENEWAL_FORK)
+# Commit e9f4b67a61 (the 22 November UCDP rights renewal, PR 333) appended one
+# more seal to the October fork, and PR 337 admitted it in the producer. This
+# is the matching consumer pin: 5,127 entries whose first 5,126 are exactly the
+# October fork, with the same collector prefix and split, under its own names.
+UCDP_RENEWAL_20261122_FORK = {
+    "target_sha256": "b2638dc6c84e85fea1e49d7634b1ad59ca111042b73674f4f2ef4ed35a295a44",
+    "target_entries": 5127,
+    "host_prefix_sha256": "9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee",
+    "host_prefix_entries": 5537,
+    "common_entries": 5102,
+    "source_commit": "e9f4b67a611bfce76907ebda6b8bbfddc367deb0",
+    "archive_path": "readings/audit/readings-ledger-build-fork-20261122.jsonl",
+    "admission_path": "readings/audit/readings-ledger-admission-20261122.json",
+}
+REVIEWED_FORKS = (SEPTEMBER_FORK, UCDP_RENEWAL_FORK, UCDP_RENEWAL_20261122_FORK)
 
 
 @dataclass(frozen=True)
