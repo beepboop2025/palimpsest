@@ -245,6 +245,9 @@ def collect_fleet_bridge_snapshot(
     nemesis_path: Path = DEFAULT_NEMESIS_SNAPSHOT,
     bulk_metrics_path: Path = DEFAULT_BULK_METRICS,
     sec_china_extract_path: Path | None = None,
+    seiche_mm_path: Path | None = None,
+    seiche_cm_path: Path | None = None,
+    undertow_summary_path: Path | None = None,
     timeout: float = 20.0,
     fetcher: Callable[..., bytes] = safe_fetch_bytes,
     now: str | None = None,
@@ -255,14 +258,22 @@ def collect_fleet_bridge_snapshot(
     errors: list[dict[str, str]] = []
 
     remote_specs = (
-        ("seiche_money_markets", SEICHE_MM_URL, _summarize_seiche_money_markets),
-        ("seiche_capital_markets", SEICHE_CM_URL, _summarize_seiche_capital_markets),
-        ("liquilens_board", LIQUILENS_BOARD_URL, _summarize_liquilens),
-        ("undertow_summary", UNDERTOW_SUMMARY_URL, _summarize_undertow),
+        ("seiche_money_markets", SEICHE_MM_URL, seiche_mm_path, _summarize_seiche_money_markets),
+        ("seiche_capital_markets", SEICHE_CM_URL, seiche_cm_path, _summarize_seiche_capital_markets),
+        ("liquilens_board", LIQUILENS_BOARD_URL, None, _summarize_liquilens),
+        ("undertow_summary", UNDERTOW_SUMMARY_URL, undertow_summary_path, _summarize_undertow),
     )
-    for name, url, summarizer in remote_specs:
+    for name, url, local_override, summarizer in remote_specs:
         try:
-            payload, sha, byte_len = _fetch_json(url, timeout=timeout, fetcher=fetcher)
+            if local_override is not None and local_override.exists():
+                raw = local_override.read_bytes()
+                payload = json.loads(raw.decode("utf-8"))
+                if not isinstance(payload, dict):
+                    raise ValueError(f"local fleet snapshot {local_override} is not a JSON object")
+                sha = hashlib.sha256(raw).hexdigest()
+                byte_len = len(raw)
+            else:
+                payload, sha, byte_len = _fetch_json(url, timeout=timeout, fetcher=fetcher)
             surfaces[name] = summarizer(payload, sha, byte_len, retrieved_at)
         except Exception as exc:  # noqa: BLE001
             log.warning("Fleet bridge %s failed: %s", name, exc)

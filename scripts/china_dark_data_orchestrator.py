@@ -183,6 +183,9 @@ def run_warehouse_refresh(
     sec_china_extract_path: Path | None = None,
     nemesis_path: Path = DEFAULT_NEMESIS_SNAPSHOT,
     bulk_metrics_path: Path = DEFAULT_BULK_METRICS,
+    seiche_mm_path: Path | None = None,
+    seiche_cm_path: Path | None = None,
+    undertow_summary_path: Path | None = None,
     min_free_bytes: int = MIN_FREE_BYTES,
     now: str | None = None,
 ) -> dict[str, Any]:
@@ -228,6 +231,9 @@ def run_warehouse_refresh(
             nemesis_path=nemesis_path,
             bulk_metrics_path=bulk_metrics_path,
             sec_china_extract_path=sec_china_extract_path,
+            seiche_mm_path=seiche_mm_path,
+            seiche_cm_path=seiche_cm_path,
+            undertow_summary_path=undertow_summary_path,
             now=generated_at,
         ),
     )
@@ -339,6 +345,9 @@ def main() -> None:
     parser.add_argument("--sec-china-extract", type=Path, default=None)
     parser.add_argument("--nemesis-path", type=Path, default=DEFAULT_NEMESIS_SNAPSHOT)
     parser.add_argument("--bulk-metrics-path", type=Path, default=DEFAULT_BULK_METRICS)
+    parser.add_argument("--seiche-mm-path", type=Path, default=None)
+    parser.add_argument("--seiche-cm-path", type=Path, default=None)
+    parser.add_argument("--undertow-summary-path", type=Path, default=None)
     args = parser.parse_args()
 
     manifest = run_warehouse_refresh(
@@ -349,6 +358,9 @@ def main() -> None:
         sec_china_extract_path=args.sec_china_extract,
         nemesis_path=args.nemesis_path,
         bulk_metrics_path=args.bulk_metrics_path,
+        seiche_mm_path=args.seiche_mm_path,
+        seiche_cm_path=args.seiche_cm_path,
+        undertow_summary_path=args.undertow_summary_path,
     )
     print(json.dumps({
         "status": "ok",
