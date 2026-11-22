@@ -11,6 +11,7 @@ from scripts import admit_publication_ledger as recovery
 ROOT = Path(__file__).resolve().parents[1]
 SEPTEMBER = recovery.SEPTEMBER_BUILD_FORK
 RENEWAL = recovery.UCDP_RENEWAL_BUILD_FORK
+NOVEMBER = recovery.UCDP_RENEWAL_20261122_BUILD_FORK
 
 
 def fixture(tmp_path):
@@ -38,6 +39,18 @@ def renewal_fixture(tmp_path):
                       target_entries=3, host_prefix_sha256=september.host_prefix_sha256,
                       host_prefix_entries=2, common_entries=1, source_commit="b" * 40)
     return host, target, september, renewal, september_raw
+
+
+def november_fixture(tmp_path):
+    """The November renewal fork is the October renewal fork plus one more seal."""
+    host, target, september, renewal, september_raw = renewal_fixture(tmp_path)
+    renewal_raw = target.read_bytes()
+    ledger.append_seal(str(target), "ucdp-aggregate", {"n": 7},
+                       now=datetime(2026, 11, 21, tzinfo=timezone.utc))
+    november = replace(NOVEMBER, target_sha256=recovery.digest(target.read_bytes()),
+                       target_entries=4, host_prefix_sha256=september.host_prefix_sha256,
+                       host_prefix_entries=2, common_entries=1, source_commit="c" * 40)
+    return host, target, (september, renewal, november), renewal_raw
 
 
 def audit_names(target):
@@ -123,8 +136,8 @@ def test_conflicting_audit_evidence_is_not_overwritten(tmp_path):
     assert archive.read_bytes() == b"different incident"
 
 
-def test_reviewed_forks_are_exactly_the_september_pin_and_the_ucdp_renewal():
-    assert recovery.REVIEWED_FORKS == (SEPTEMBER, RENEWAL)
+def test_reviewed_forks_are_exactly_the_september_pin_and_the_ucdp_renewals():
+    assert recovery.REVIEWED_FORKS == (SEPTEMBER, RENEWAL, NOVEMBER)
     # The September repair keeps the pins, names and receipt it shipped with.
     assert SEPTEMBER == recovery.ReviewedFork(
         target_sha256="9a54fa4f296d215837778d70bcef8e4e4c53e7e92f1828be4c5e7f5643815df8",
@@ -146,24 +159,61 @@ def test_reviewed_forks_are_exactly_the_september_pin_and_the_ucdp_renewal():
         archive_name="readings-ledger-build-fork-20261023.jsonl",
         receipt_name="readings-ledger-admission-20261023.json",
     )
+    assert NOVEMBER == recovery.ReviewedFork(
+        target_sha256="b2638dc6c84e85fea1e49d7634b1ad59ca111042b73674f4f2ef4ed35a295a44",
+        target_entries=5127,
+        host_prefix_sha256=SEPTEMBER.host_prefix_sha256,
+        host_prefix_entries=SEPTEMBER.host_prefix_entries,
+        common_entries=SEPTEMBER.common_entries,
+        source_commit="e9f4b67a611bfce76907ebda6b8bbfddc367deb0",
+        archive_name="readings-ledger-build-fork-20261122.jsonl",
+        receipt_name="readings-ledger-admission-20261122.json",
+    )
     names = [name for spec in recovery.REVIEWED_FORKS
              for name in (spec.archive_name, spec.receipt_name)]
     assert len(set(names)) == len(names)
     assert all(Path(name).name == name for name in names)
 
 
-def test_checked_in_build_chain_is_the_reviewed_ucdp_renewal_fork():
+def test_checked_in_build_chain_is_the_reviewed_november_ucdp_renewal_fork():
     """Any other Git ledger diverges from the collector chain and stops publication."""
     entries, raw = ledger.read_ledger_snapshot(ROOT / "readings/readings-ledger.jsonl")
     assert ledger.verify(entries) == (True, [])
-    assert recovery.reviewed_fork(len(entries), raw, recovery.REVIEWED_FORKS) is RENEWAL
-    september = b"".join(raw.splitlines(keepends=True)[:SEPTEMBER.target_entries])
-    assert recovery.reviewed_fork(SEPTEMBER.target_entries, september,
-                                  recovery.REVIEWED_FORKS) is SEPTEMBER
-    assert {key: entries[-1][key] for key in ("seq", "source", "entry_hash")} == {
-        "seq": 5125, "source": "ucdp-aggregate",
-        "entry_hash": "6e63e3c89427b704d4e3170af7caf45cc58e39f8fb625d90823c537915513b24",
-    }
+    assert recovery.reviewed_fork(len(entries), raw, recovery.REVIEWED_FORKS) is NOVEMBER
+    lines = raw.splitlines(keepends=True)
+    for earlier in (SEPTEMBER, RENEWAL):
+        prefix = b"".join(lines[:earlier.target_entries])
+        assert recovery.reviewed_fork(earlier.target_entries, prefix,
+                                      recovery.REVIEWED_FORKS) is earlier
+    assert [{key: row[key] for key in ("seq", "source", "entry_hash")} for row in entries[-2:]] == [
+        {"seq": 5125, "source": "ucdp-aggregate",
+         "entry_hash": "6e63e3c89427b704d4e3170af7caf45cc58e39f8fb625d90823c537915513b24"},
+        {"seq": 5126, "source": "ucdp-aggregate",
+         "entry_hash": "ca6e1db5df02863be55c904bfa33cecb3afb428525fb3442e5d2016ca952ab74"},
+    ]
+
+
+def test_november_renewal_fork_is_archived_under_its_own_names(tmp_path):
+    host, target, forks, renewal_raw = november_fixture(tmp_path)
+    november_raw = target.read_bytes()
+    assert november_raw.startswith(renewal_raw)
+    receipt = recovery.admit(host, target, forks)
+    assert target.read_bytes() == host.read_bytes()
+    assert audit_names(target) == sorted([NOVEMBER.archive_name, NOVEMBER.receipt_name])
+    audit = target.parent / "audit"
+    assert (audit / NOVEMBER.archive_name).read_bytes() == november_raw
+    assert json.loads((audit / NOVEMBER.receipt_name).read_text()) == receipt
+    assert receipt["archived_build_chain"]["entries"] == 4
+    assert receipt["reviewed_source_commit"] == "c" * 40
+
+
+def test_october_renewal_still_admits_beside_the_november_fork(tmp_path):
+    host, target, forks, renewal_raw = november_fixture(tmp_path)
+    target.write_bytes(renewal_raw)
+    receipt = recovery.admit(host, target, forks)
+    assert target.read_bytes() == host.read_bytes()
+    assert audit_names(target) == sorted([RENEWAL.archive_name, RENEWAL.receipt_name])
+    assert receipt["reviewed_source_commit"] == "b" * 40
 
 
 def test_renewal_fork_is_archived_under_its_own_names(tmp_path):
