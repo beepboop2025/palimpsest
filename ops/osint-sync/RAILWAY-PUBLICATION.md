@@ -35,7 +35,11 @@ and remain byte-identical at
 renewal fork is that chain plus one seal from `35bd6808b0`: 5,126 entries with
 SHA-256 `6a084ee215642b886c9eae1da309a51a77bfb3d7115d25b48b3b3919e4bb701f`,
 archived at `readings/audit/readings-ledger-build-fork-20261023.jsonl` with its
-receipt at `readings/audit/readings-ledger-admission-20261023.json`. Either way
+receipt at `readings/audit/readings-ledger-admission-20261023.json`. The 22
+November renewal fork appends one more seal from `e9f4b67a61`: 5,127 entries
+with SHA-256 `b2638dc6c84e85fea1e49d7634b1ad59ca111042b73674f4f2ef4ed35a295a44`,
+archived at `readings/audit/readings-ledger-build-fork-20261122.jsonl` with its
+receipt at `readings/audit/readings-ledger-admission-20261122.json`. In every case
 the candidate must extend the reviewed 5,537-entry collector prefix with SHA-256
 `9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee`.
 Both chains are verified, their common 5,102 entries must match, and the sealed

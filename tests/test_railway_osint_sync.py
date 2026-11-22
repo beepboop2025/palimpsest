@@ -511,7 +511,8 @@ def test_unproved_renewal_admission_keeps_every_authority_byte(tmp_path, monkeyp
 
 def test_reviewed_forks_match_the_producer_pins_exactly():
     from scripts import admit_publication_ledger as producer
-    assert adapter.REVIEWED_FORKS == (adapter.SEPTEMBER_FORK, adapter.UCDP_RENEWAL_FORK)
+    assert adapter.REVIEWED_FORKS == (adapter.SEPTEMBER_FORK, adapter.UCDP_RENEWAL_FORK,
+                                      adapter.UCDP_RENEWAL_20261122_FORK)
     assert [{"target_sha256": spec.target_sha256, "target_entries": spec.target_entries,
              "host_prefix_sha256": spec.host_prefix_sha256, "host_prefix_entries": spec.host_prefix_entries,
              "common_entries": spec.common_entries, "source_commit": spec.source_commit,
