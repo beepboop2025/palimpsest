@@ -1,0 +1,46 @@
+{
+  "schema": "palimpsest.china-dark-data-policy.v1",
+  "updated_at": "2026-11-22T00:00:00Z",
+  "rights_isolation_contract": {
+    "cfets_policy_untouched": "config/china_econ_source_policy.json",
+    "cfets_markers_forbidden_in_open_observatory": [
+      "cfets_benchmarks",
+      "chinamoney.com.cn",
+      "shibor_on",
+      "fdr007",
+      "usdcny_parity"
+    ],
+    "rule": "Rights-cleared China Dark Data artifacts must never import or embed CFETS/ChinaMoney benchmarks so that the public China Dark Data Observatory remains 100% redistributable without collateral quarantine."
+  },
+  "honest_competitor_coverage_matrix": [
+    {
+      "platform": "China Beige Book (CBB)",
+      "cbb_core_moat": "Proprietary paid quarterly firm-level survey of ~4,300 mainland firms & bankers",
+      "palimpsest_equivalent_or_broader": "Physical satellite-AIS port & chokepoint flows (100+ Chinese ports daily), Ember monthly coal/power generation, NBS/MOT/SPB/NEA physical series, BIS shadow credit & DSR, GDELT sub-national industrial/labor unrest, plus GFW/censorship telemetry CBB does not track.",
+      "honest_boundary": "Public physical & international counterparty datasets do NOT substitute for CBB proprietary firm-level survey microdata; Palimpsest labels them explicitly as independent physical/macro/counterparty layers."
+    },
+    {
+      "platform": "Rhodium Group / Gavekal Dragonomics",
+      "core_moat": "China macro/FDI/LGFV/offshore investment & policy research",
+      "palimpsest_equivalent_or_broader": "BIS total vs bank credit shadow-credit spread, BIS nationality-vs-residence Cayman/BVI/HK SPV bond gap, IMF augmented fiscal & BRI debt, WB IDS bilateral debt, SEC 20-F/6-K China ADR/VIE filings (hel1), Common Crawl .gov.cn deletion tracking, live Seiche/Undertow/LiquiLens market stress.",
+      "honest_boundary": "Automated open-source pipelines provide broader continuous telemetry and reproducible provenance; bespoke transaction-level M&A/FDI deal logs require separate deal curation."
+    },
+    {
+      "platform": "WireScreen / Sayari / Kharon",
+      "core_moat": "Sanctions, military-civil fusion, export controls, corporate ownership graphs (SAMR/GSXT)",
+      "palimpsest_equivalent_or_broader": "Live US ITA Consolidated Screening List (BIS Entity List, MEU, OFAC SDN, NS-CMIC, DDTC, UVL), UN Consolidated Sanctions, GLEIF 107,000+ CN LEI entities + Level-2 ownership graph, SEC EDGAR China/HK/Cayman foreign private issuers.",
+      "honest_boundary": "Domestic mainland SAMR/GSXT corporate registry bulk scraping is CAPTCHA/access-restricted and excluded by Palimpsest's lawful-access policy; GLEIF + SEC + ITA CSL + UN Sanctions cover the cross-border & sanctioned universe cleanly."
+    },
+    {
+      "platform": "Wind / CEIC",
+      "core_moat": "Licensed domestic Chinese financial & macro data terminal",
+      "palimpsest_equivalent_or_broader": "Broader international-counterparty, satellite-AIS, censorship/disappearance, sanctions, scientific decoupling, and cross-fleet liquidity coverage; official NBS/PBC/MOF/GACC/BIS/IMF/WB/Ember series with full bitemporal revision & disappearance audit trails.",
+      "honest_boundary": "Wind/CEIC licensed onshore bond/interbank feeds (including CFETS) cannot be redistributed publicly without commercial license."
+    },
+    {
+      "platform": "CDT / GreatFire / Freedom House / CLB / ASPI",
+      "core_moat": "Censorship, information controls, dissent/labor events, critical tech tracker",
+      "palimpsest_equivalent_or_broader": "Unified in ONE warehouse with macro/credit/port/sanctions/financial stress: OONI China bulk, GFW DNS bleedthrough, CDN POP probes, Nemesis China discourse/DDTI, Wayback + Common Crawl multi-crawl .gov.cn disappearance index, GDELT 15-min sub-national protest/coercion events, OpenAlex critical-tech decoupling."
+    }
+  ]
+}
