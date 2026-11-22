@@ -111,8 +111,17 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> tuple[int, str]:
 def materialize_duckdb_and_parquet(
     warehouse_dir: Path,
     datasets: dict[str, list[dict[str, Any]]],
+    *,
+    sec_china_facts_path: Path | None = None,
+    bulk_duckdb_path: Path | None = None,
+    bulk_slices_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Write every collected dataset to JSONL, Parquet, and a unified DuckDB database."""
+    """Write every collected dataset to JSONL, Parquet, and a unified DuckDB database.
+
+    Also supports zero-copy native DuckDB ingestion of large gzipped JSONL
+    archives (e.g. ``hel1`` SEC EDGAR China/HK financial facts) and read-only
+    attached local ``bulk.duckdb`` China/BRI corridor slices.
+    """
     jsonl_dir = warehouse_dir / "jsonl"
     parquet_dir = warehouse_dir / "parquet"
     jsonl_dir.mkdir(parents=True, exist_ok=True)
@@ -158,6 +167,140 @@ def materialize_duckdb_and_parquet(
                 table_stats[table_name]["parquet_path"] = str(ppath)
                 table_stats[table_name]["parquet_bytes"] = ppath.stat().st_size
                 table_stats[table_name]["parquet_sha256"] = hashlib.sha256(ppath.read_bytes()).hexdigest()
+
+            # Layer 11: Native DuckDB ingestion of audited hel1 SEC China/HK financial facts
+            if sec_china_facts_path is not None and sec_china_facts_path.exists():
+                tname = "sec_china_hk_financial_facts"
+                ppath = parquet_dir / f"{tname}.parquet"
+                con.execute(
+                    f"CREATE OR REPLACE TABLE {tname} AS "
+                    f"SELECT * FROM read_json_auto(?, maximum_object_size=33554432)",
+                    [str(sec_china_facts_path)],
+                )
+                cnt = int(con.execute(f"SELECT COUNT(*) FROM {tname}").fetchone()[0])
+                if cnt > 0:
+                    con.execute(
+                        f"COPY {tname} TO ? (FORMAT PARQUET, COMPRESSION ZSTD)",
+                        [str(ppath)],
+                    )
+                    table_stats[tname] = {
+                        "rows": cnt,
+                        "source_path": str(sec_china_facts_path),
+                        "jsonl_bytes": sec_china_facts_path.stat().st_size,
+                        "parquet_path": str(ppath),
+                        "parquet_bytes": ppath.stat().st_size,
+                        "parquet_sha256": hashlib.sha256(ppath.read_bytes()).hexdigest(),
+                    }
+
+            # Layer 10a: Pre-staged read-only China/BRI Parquet slices from fsn1 bulk.duckdb
+            if bulk_slices_dir is not None and bulk_slices_dir.is_dir():
+                for slice_pq in sorted(bulk_slices_dir.glob("*.parquet")):
+                    tname = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in slice_pq.stem)
+                    try:
+                        con.execute(
+                            f"CREATE OR REPLACE TABLE {tname} AS SELECT * FROM read_parquet(?)",
+                            [str(slice_pq)],
+                        )
+                        cnt = int(con.execute(f"SELECT COUNT(*) FROM {tname}").fetchone()[0])
+                        if cnt > 0:
+                            ppath = parquet_dir / f"{tname}.parquet"
+                            con.execute(
+                                f"COPY {tname} TO ? (FORMAT PARQUET, COMPRESSION ZSTD)",
+                                [str(ppath)],
+                            )
+                            table_stats[tname] = {
+                                "rows": cnt,
+                                "source_path": str(slice_pq),
+                                "jsonl_bytes": 0,
+                                "parquet_path": str(ppath),
+                                "parquet_bytes": ppath.stat().st_size,
+                                "parquet_sha256": hashlib.sha256(ppath.read_bytes()).hexdigest(),
+                            }
+                    except Exception as exc:  # noqa: BLE001
+                        log.warning("Pre-staged bulk slice %s skipped: %s", slice_pq, exc)
+
+            # Layer 10b: Native read-only DuckDB extraction from fsn1 bulk.duckdb (China & BRI slices)
+            if bulk_duckdb_path is not None and bulk_duckdb_path.exists():
+                try:
+                    con.execute(f"ATTACH ? AS bulk_lake (READ_ONLY)", [str(bulk_duckdb_path)])
+                    bulk_tables = {
+                        r[0]
+                        for r in con.execute(
+                            "SELECT table_name FROM information_schema.tables WHERE table_catalog = 'bulk_lake'"
+                        ).fetchall()
+                    }
+                    bulk_queries: list[tuple[str, str, str]] = [
+                        (
+                            "bulk_wdi_china_bri",
+                            "palimpsest_wdi_observations",
+                            """
+                            SELECT country_code, country_name, indicator_code, indicator_name, value, period
+                            FROM bulk_lake.palimpsest_wdi_observations
+                            WHERE country_code IN (
+                                'CHN','HKG','MAC','PAK','LKA','AGO','KEN','ZMB','LAO','ETH',
+                                'MMR','KHM','BGD','EGY','ARG','ECU','NGA','TZA','UGA','GHA',
+                                'IDN','VNM','KAZ','UZB','SRB','MNE','DJI'
+                            )
+                            """,
+                        ),
+                        (
+                            "bulk_unodc_china_corridor",
+                            "palimpsest_unodc_reports",
+                            """
+                            SELECT seizure_year, seizure_date, country_territory, iso3, region,
+                                   source_asset_id, source_record_sha256
+                            FROM bulk_lake.palimpsest_unodc_reports
+                            WHERE iso3 IN ('CHN','HKG','MAC','MMR','LAO','KHM','THA','VNM','MYS','MEX')
+                            """,
+                        ),
+                        (
+                            "bulk_ucdp_china_bri_corridor",
+                            "palimpsest_ucdp_events",
+                            """
+                            SELECT id, year, type_of_violence, conflict_name, country, region,
+                                   best, low, high, date_start, date_end, latitude, longitude
+                            FROM bulk_lake.palimpsest_ucdp_events
+                            WHERE country IN (
+                                'China','Myanmar (Burma)','Pakistan','Sri Lanka','Laos',
+                                'Cambodia','Kazakhstan','Ethiopia','Kenya','Djibouti','Taiwan'
+                            )
+                            """,
+                        ),
+                        (
+                            "bulk_ofr_funding_stress",
+                            "ofr_observations",
+                            """
+                            SELECT dataset, observed_on, series_id, value
+                            FROM bulk_lake.ofr_observations
+                            WHERE CAST(observed_on AS VARCHAR) >= '2020-01-01'
+                            """,
+                        ),
+                    ]
+                    for out_table, req_table, sql in bulk_queries:
+                        if req_table not in bulk_tables:
+                            continue
+                        try:
+                            con.execute(f"CREATE OR REPLACE TABLE {out_table} AS {sql}")
+                            cnt = int(con.execute(f"SELECT COUNT(*) FROM {out_table}").fetchone()[0])
+                            if cnt > 0:
+                                ppath = parquet_dir / f"{out_table}.parquet"
+                                con.execute(
+                                    f"COPY {out_table} TO ? (FORMAT PARQUET, COMPRESSION ZSTD)",
+                                    [str(ppath)],
+                                )
+                                table_stats[out_table] = {
+                                    "rows": cnt,
+                                    "source_path": str(bulk_duckdb_path),
+                                    "jsonl_bytes": 0,
+                                    "parquet_path": str(ppath),
+                                    "parquet_bytes": ppath.stat().st_size,
+                                    "parquet_sha256": hashlib.sha256(ppath.read_bytes()).hexdigest(),
+                                }
+                        except Exception as exc:  # noqa: BLE001
+                            log.warning("Bulk lake slice %s skipped: %s", out_table, exc)
+                    con.execute("DETACH bulk_lake")
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("Could not attach bulk_duckdb_path %s: %s", bulk_duckdb_path, exc)
         finally:
             con.close()
     except ImportError:
@@ -181,6 +324,9 @@ def run_warehouse_refresh(
     portwatch_start_year: int = 2022,
     gdelt_intervals: int = 8,
     sec_china_extract_path: Path | None = None,
+    sec_china_facts_path: Path | None = None,
+    bulk_duckdb_path: Path | None = None,
+    bulk_slices_dir: Path | None = None,
     nemesis_path: Path = DEFAULT_NEMESIS_SNAPSHOT,
     bulk_metrics_path: Path = DEFAULT_BULK_METRICS,
     seiche_mm_path: Path | None = None,
@@ -266,7 +412,13 @@ def run_warehouse_refresh(
         sec_doc = json.loads(sec_china_extract_path.read_text(encoding="utf-8"))
         datasets["sec_china_hk_issuers"] = list(sec_doc.get("companies") or [])
 
-    storage = materialize_duckdb_and_parquet(warehouse_dir, datasets)
+    storage = materialize_duckdb_and_parquet(
+        warehouse_dir,
+        datasets,
+        sec_china_facts_path=sec_china_facts_path,
+        bulk_duckdb_path=bulk_duckdb_path,
+        bulk_slices_dir=bulk_slices_dir,
+    )
 
     # Build 100% CFETS-free public China Dark Data Observatory summary
     public_observatory = {
@@ -277,7 +429,7 @@ def run_warehouse_refresh(
             "policy_basis": "All included layers are public-domain, CC0, CC-BY-4.0, or official free-redistribution datasets with explicit attribution. Denied CFETS/ChinaMoney benchmarks remain strictly segregated.",
         },
         "warehouse_totals": {
-            "tables": len(datasets),
+            "tables": len(storage["tables"]),
             "total_records_materialized": storage["total_rows"],
             "total_parquet_bytes": storage["total_parquet_bytes"],
             "total_jsonl_bytes": storage["total_jsonl_bytes"],
@@ -343,6 +495,9 @@ def main() -> None:
     parser.add_argument("--portwatch-start-year", type=int, default=2022)
     parser.add_argument("--gdelt-intervals", type=int, default=8)
     parser.add_argument("--sec-china-extract", type=Path, default=None)
+    parser.add_argument("--sec-china-facts", type=Path, default=None)
+    parser.add_argument("--bulk-duckdb-path", type=Path, default=None)
+    parser.add_argument("--bulk-slices-dir", type=Path, default=None)
     parser.add_argument("--nemesis-path", type=Path, default=DEFAULT_NEMESIS_SNAPSHOT)
     parser.add_argument("--bulk-metrics-path", type=Path, default=DEFAULT_BULK_METRICS)
     parser.add_argument("--seiche-mm-path", type=Path, default=None)
@@ -356,6 +511,9 @@ def main() -> None:
         portwatch_start_year=args.portwatch_start_year,
         gdelt_intervals=args.gdelt_intervals,
         sec_china_extract_path=args.sec_china_extract,
+        sec_china_facts_path=args.sec_china_facts,
+        bulk_duckdb_path=args.bulk_duckdb_path,
+        bulk_slices_dir=args.bulk_slices_dir,
         nemesis_path=args.nemesis_path,
         bulk_metrics_path=args.bulk_metrics_path,
         seiche_mm_path=args.seiche_mm_path,

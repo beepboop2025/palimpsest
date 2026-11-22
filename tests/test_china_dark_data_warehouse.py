@@ -564,6 +564,39 @@ def test_fleet_bridge_orchestrator_and_cfets_isolation_guard(tmp_path: Path):
         _assert_cfets_free({"layers": {"bad": "contains cfets_benchmarks"}}, "dirty_test")
 
 
+def test_orchestrator_ingests_sec_facts_and_bulk_duckdb_slices(tmp_path: Path):
+    duckdb = pytest.importorskip("duckdb")
+    import gzip
+
+    facts_gz = tmp_path / "sec_china_facts.jsonl.gz"
+    facts_gz.write_bytes(
+        gzip.compress(
+            (
+                json.dumps({"cik": "0001577552", "company_name": "Alibaba Group Holding Ltd", "concept": "Revenues", "period_end": "2025-03-31", "value_text": "996347000000"})
+                + "\n"
+            ).encode("utf-8")
+        )
+    )
+    bulk_db = tmp_path / "bulk.duckdb"
+    con = duckdb.connect(str(bulk_db))
+    con.execute("CREATE TABLE palimpsest_wdi_observations (country_code VARCHAR, country_name VARCHAR, indicator_code VARCHAR, indicator_name VARCHAR, value DOUBLE, period VARCHAR)")
+    con.execute("INSERT INTO palimpsest_wdi_observations VALUES ('CHN', 'China', 'NY.GDP.MKTP.CD', 'GDP', 18.7e12, '2024'), ('FRA', 'France', 'NY.GDP.MKTP.CD', 'GDP', 3.1e12, '2024')")
+    con.execute("CREATE TABLE ofr_observations (dataset VARCHAR, observed_on VARCHAR, series_id VARCHAR, value DOUBLE)")
+    con.execute("INSERT INTO ofr_observations VALUES ('stfm', '2026-11-19', 'NYPD-SOFR', 3.91)")
+    con.close()
+
+    wh = materialize_duckdb_and_parquet(
+        tmp_path / "wh_expanded",
+        {"bis_china_observations": [{"series_id": "cn.bis.test", "value": 12.3}]},
+        sec_china_facts_path=facts_gz,
+        bulk_duckdb_path=bulk_db,
+    )
+    assert wh["tables"]["sec_china_hk_financial_facts"]["rows"] == 1
+    assert wh["tables"]["bulk_wdi_china_bri"]["rows"] == 1
+    assert wh["tables"]["bulk_ofr_funding_stress"]["rows"] == 1
+    assert wh["total_rows"] == 4
+
+
 # ── 9. Fleet Data Health Guard ────────────────────────────────────────────────
 
 
