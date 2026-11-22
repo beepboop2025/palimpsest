@@ -34,6 +34,7 @@ SCHEMA = "palimpsest.fleet-data-health-guard.v1"
 USER_AGENT = "palimpsest.info observatory (fleet health guard; desk@palimpsest.info)"
 ALLOWED_HOSTS = frozenset({
     "palimpsest.info",
+    "www.palimpsest.info",
     "api.seiche.info",
     "api.liquilens.in",
 })

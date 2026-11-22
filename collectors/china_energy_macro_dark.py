@@ -412,6 +412,7 @@ def collect_openalex_china_tech(
                 "search": query,
                 "filter": f"{country_filter},publication_year:2018-2026",
                 "group_by": "publication_year",
+                "mailto": "desk@palimpsest.info",
             }
             url = f"{OPENALEX_API_BASE}?{urlencode(params)}"
             try:
