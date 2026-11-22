@@ -59,7 +59,23 @@ UCDP_RENEWAL_BUILD_FORK = ReviewedFork(
     receipt_name="readings-ledger-admission-20261023.json",
 )
 
-REVIEWED_FORKS = (SEPTEMBER_BUILD_FORK, UCDP_RENEWAL_BUILD_FORK)
+# Commit e9f4b67a61 (the 22 November UCDP rights renewal, PR 333) appended one
+# ucdp-aggregate seal, seq 5126, to the 23 October renewal fork in Git. Its first
+# 5,126 entries are exactly that fork, and it splits from the same retained
+# collector prefix after the same 5,102 entries. It is archived under its own
+# names so the September and October evidence is never rewritten.
+UCDP_RENEWAL_20261122_BUILD_FORK = ReviewedFork(
+    target_sha256="b2638dc6c84e85fea1e49d7634b1ad59ca111042b73674f4f2ef4ed35a295a44",
+    target_entries=5127,
+    host_prefix_sha256="9c33d2f89feb4682d2ff6b61ac5ef48026ffea02891cdffd98d160f00adfe8ee",
+    host_prefix_entries=5537,
+    common_entries=5102,
+    source_commit="e9f4b67a611bfce76907ebda6b8bbfddc367deb0",
+    archive_name="readings-ledger-build-fork-20261122.jsonl",
+    receipt_name="readings-ledger-admission-20261122.json",
+)
+
+REVIEWED_FORKS = (SEPTEMBER_BUILD_FORK, UCDP_RENEWAL_BUILD_FORK, UCDP_RENEWAL_20261122_BUILD_FORK)
 
 
 def digest(raw: bytes) -> str:
