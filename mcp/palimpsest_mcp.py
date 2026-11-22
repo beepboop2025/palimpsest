@@ -41,8 +41,8 @@ from datetime import date, datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
-PROTOCOL_VERSION = "2025-06-18"
-SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", PROTOCOL_VERSION})
+PROTOCOL_VERSION = "2025-11-25"
+SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", "2025-06-18", PROTOCOL_VERSION})
 SERVER_NAME = "palimpsest"
 SERVER_VERSION = "1.9.3"
 SITE = "https://www.palimpsest.info"
