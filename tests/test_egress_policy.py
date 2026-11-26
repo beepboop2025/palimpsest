@@ -132,6 +132,9 @@ _ALLOWED = {
     "ops/osint-sync/railway_osint_sync.py": "Standalone host synchronizer reads four bounded publication artifacts from two fixed first-party HTTPS origins. "
     "Redirects and other URLs are refused; exact release-manifest bytes and append-only ledger proofs are required. "
     "It intentionally remains independent of the application package and its fetch runtime.",
+    "ops/osint-sync/native_osint_sync.py": "Standalone host reader GETs four bounded artifacts, pinned to one release, from two fixed first-party HTTPS origins. "
+    "Only those exact URLs pass, each path has a byte cap, redirects are refused and every response must carry the expected native origin header. "
+    "Live bytes only witness the retained build; like the Railway adapter it stays independent of the application package.",
     "ops/osint-sync/public_osint_sync.py": "Immutable host bundle GET of the one fixed first-party palimpsest.info OSINT object; "
     "production refuses authority overrides, redirects are disabled, the response is "
     "capped at 4 MiB, and its bytes must exactly match the fetched Git blob plus verified "

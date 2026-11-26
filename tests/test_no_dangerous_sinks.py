@@ -102,8 +102,14 @@ _SINKS = re.compile(
 #   in a private proof repository. Hooks, replacement objects and network Git
 #   transports are disabled; argv uses validated object IDs and controlled local
 #   paths, stdin is closed, output is bounded, and credentials are not inherited.
+#   native_osint_sync.py: runs only the fixed /usr/bin/python3 -I -B on the
+#   absolute root-owned lineage validator, after its SHA-256 equals the operator
+#   admission pin, and rechecks that file afterwards. Argv holds no runtime input,
+#   stdin is closed, stderr is discarded, stdout is parsed under a 32 KiB strict
+#   JSON bound and the timeout is fixed. Its Git proof reuses railway_osint_sync.
 _ALLOWED = {
     ("ops/osint-sync/railway_osint_sync.py", "subprocess."),
+    ("ops/osint-sync/native_osint_sync.py", "subprocess."),
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
     ("ops/mcp-deploy/verify_release.py", "subprocess."),
@@ -410,6 +416,47 @@ def test_public_osint_sync_keeps_fixed_no_shell_git_boundary():
         "_prepare_repository:run",
         "_git_blob:run",
     ], "every subprocess call site must be individually reviewed and inventoried"
+
+
+def test_native_osint_sync_keeps_a_fixed_no_shell_validator_boundary():
+    source = (ROOT / "ops" / "osint-sync" / "native_osint_sync.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "shell=True" not in source
+    assert (
+        'VALIDATOR = Path("/usr/local/lib/palimpsest-native/verify_native_lineage.py")'
+        in source
+    )
+    # The validator's bytes must match the admission pin before it can run.
+    assert source.index('"native-validator-mismatch"') < source.index(
+        "subprocess.run("
+    )
+    tree = ast.parse(source)
+    calls = [
+        (function.name, node)
+        for function in ast.walk(tree)
+        if isinstance(function, ast.FunctionDef)
+        for node in ast.walk(function)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "subprocess"
+    ]
+    assert [(name, call.func.attr) for name, call in calls] == [
+        ("collect_lineage", "run")
+    ], "every subprocess call site must be individually reviewed and inventoried"
+    call = calls[0][1]
+    assert ast.unparse(call.args[0]) == (
+        "['/usr/bin/python3', '-I', '-B', str(VALIDATOR)]"
+    )
+    assert {keyword.arg: ast.unparse(keyword.value) for keyword in call.keywords} == {
+        "stdin": "subprocess.DEVNULL",
+        "stdout": "subprocess.PIPE",
+        "stderr": "subprocess.DEVNULL",
+        "timeout": "420",
+        "check": "False",
+    }
 
 
 def test_reproduce_all_keeps_a_fixed_no_shell_python_boundary():

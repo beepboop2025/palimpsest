@@ -1,11 +1,14 @@
 """A private native receiver must prove both live publications and retain the old authority."""
 
+import functools
 import importlib.util
 import json
 import os
 import pwd
+import shutil
 import sys
 from dataclasses import replace
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -517,3 +520,242 @@ def test_separate_publisher_cannot_supply_root_bridge(edition):
     with pytest.raises(legacy.SyncFailure, match="unsafe-input-owner"):
         native.synchronize(c, lineage=native.read_lineage, fetcher=e.fetch)
     assert state(e) == before
+
+
+# Refusal, freshness and rollback contracts for the native reader. The two hour
+# bound is the shared reviewed limit in public_osint_sync; nothing here widens it.
+
+SYNCHRONIZE = native.synchronize
+BUNDLE = "/usr/local/libexec/palimpsest-native-osint/current"
+SOURCE_MARKER_CHECK = (
+    f"/usr/bin/cmp -s {BUNDLE}/REVISION /etc/palimpsest/osint-native-source"
+)
+
+
+def stamp(offset):
+    return (NOW + offset).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def parse_clock(value):
+    return legacy._utc_timestamp(value, code="fixture-clock-invalid")
+
+
+def untouched(edition, before):
+    c = edition.config
+    assert state(edition) == before
+    assert not (c.authority / native.NATIVE_LAYOUT.receipt).exists()
+    for name in (native.NATIVE_LAYOUT.history, native.NATIVE_LAYOUT.transaction):
+        assert not (c.state / name).exists()
+
+
+def run_cli(monkeypatch, capsys, edition, *arguments):
+    """Run the unit's entry point on fixture state, with fixture origin bytes."""
+    monkeypatch.setattr(native, "Config", lambda: edition.config)
+    monkeypatch.setattr(
+        native, "synchronize", functools.partial(SYNCHRONIZE, fetcher=edition.fetch)
+    )
+    monkeypatch.setattr(sys, "argv", ["native_osint_sync.py", *arguments])
+    code = native.main()
+    return code, json.loads(capsys.readouterr().out)
+
+
+def test_the_two_hour_bound_is_the_shared_reviewed_limit():
+    assert native.legacy is legacy and native.previous is old
+    assert legacy.MAX_GENERATION_AGE == timedelta(hours=2)
+    assert legacy.MAX_FUTURE_SKEW == timedelta(minutes=5)
+    assert not hasattr(native, "MAX_GENERATION_AGE")
+    assert not hasattr(native, "MAX_FUTURE_SKEW")
+
+
+@pytest.mark.parametrize(
+    "offset,accepted",
+    [
+        (-legacy.MAX_GENERATION_AGE, True),
+        (-legacy.MAX_GENERATION_AGE - timedelta(seconds=1), False),
+        (legacy.MAX_FUTURE_SKEW, True),
+        (legacy.MAX_FUTURE_SKEW + timedelta(seconds=1), False),
+    ],
+)
+def test_stale_or_future_native_build_is_refused_at_the_bound(edition, offset, accepted):
+    e = edition
+    raw_json(e.slot / "build.json", dict(e.build, built_at=stamp(offset)))
+    before = state(e)
+    if accepted:
+        assert sync(e)["release_sha"] == e.release
+    else:
+        with pytest.raises(legacy.SyncFailure, match="native-build-stale"):
+            sync(e)
+        untouched(e, before)
+
+
+@pytest.mark.parametrize("late", [False, True])
+def test_native_generation_is_accepted_only_within_two_hours(edition, monkeypatch, late):
+    e, c = edition, edition.config
+    generated = parse_clock(json.loads(e.artifact)["generated_at"])
+    now = generated + legacy.MAX_GENERATION_AGE + timedelta(seconds=1 if late else 0)
+    monkeypatch.setattr(legacy, "_now", lambda: now)
+    before = state(e)
+    if late:
+        with pytest.raises(legacy.SyncFailure, match="generation-stale"):
+            sync(e)
+        untouched(e, before)
+    else:
+        receipt = sync(e)
+        assert parse_clock(receipt["generated_at"]) == generated
+        assert native.verify_installed(c) == receipt
+
+
+def test_installed_native_receipt_expires_at_the_two_hour_bound(edition, monkeypatch):
+    e, c = edition, edition.config
+    receipt = sync(e)
+    generated = parse_clock(receipt["generated_at"])
+    checked = parse_clock(receipt["checked_at"])
+    second = timedelta(seconds=1)
+    for now, reason in (
+        (generated + legacy.MAX_GENERATION_AGE, None),
+        (generated + legacy.MAX_GENERATION_AGE + second, "generation-stale"),
+        (checked + legacy.MAX_GENERATION_AGE + second, "installed-proof-stale"),
+    ):
+        monkeypatch.setattr(legacy, "_now", lambda now=now: now)
+        if reason is None:
+            assert native.verify_installed(c) == receipt
+        else:
+            with pytest.raises(legacy.SyncFailure, match=reason):
+                native.verify_installed(c)
+        # Prior-state reads make no freshness claim and leave the receipt as is.
+        assert native.verify_installed(c, fresh=False) == receipt
+
+
+@pytest.mark.parametrize(
+    "age,accepted", [(600, True), (601, False), (-5, True), (-6, False)]
+)
+def test_lineage_proof_is_accepted_only_within_ten_minutes(edition, age, accepted):
+    e, c = edition, edition.config
+    envelope = json.loads(c.proof.read_bytes())
+    checked_at = (NOW - timedelta(seconds=age)).isoformat()
+    raw_json(c.proof, dict(envelope, checked_at=checked_at))
+    if accepted:
+        assert native.read_lineage(c) == e.proof
+    else:
+        with pytest.raises(legacy.SyncFailure, match="native-proof-stale"):
+            native.read_lineage(c)
+
+
+@pytest.mark.parametrize(
+    "missing,reason",
+    [
+        ("release", "unsafe-input-directory"),
+        ("build.json", "operational-failure"),
+        ("source.bundle", "operational-failure"),
+        ("lineage-proof", "operational-failure"),
+        ("admission", "operational-failure"),
+        ("bridge", "operational-failure"),
+    ],
+)
+def test_missing_native_source_refuses_through_the_unit_entry_point(
+    edition, monkeypatch, capsys, missing, reason
+):
+    e, c = edition, edition.config
+    if missing == "release":
+        shutil.rmtree(e.slot)
+    elif missing in ("build.json", "source.bundle"):
+        (e.slot / missing).unlink()
+    else:
+        {"lineage-proof": c.proof, "admission": c.admission, "bridge": c.bridge}[
+            missing
+        ].unlink()
+    before = state(e)
+    assert run_cli(monkeypatch, capsys, e) == (
+        1,
+        {"reason": reason, "schema_version": native.SCHEMA, "status": "refused"},
+    )
+    untouched(e, before)
+
+
+@pytest.mark.parametrize(
+    "unit,command",
+    [
+        ("native-publication.conf", "native_osint_sync.py"),
+        (
+            "palimpsest-native-osint-lineage.service",
+            "native_osint_sync.py --collect-lineage",
+        ),
+    ],
+)
+def test_units_refuse_to_start_without_the_selected_native_source(unit, command):
+    lines = [
+        line.strip()
+        for line in (railway.ROOT / "ops/osint-sync" / unit).read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith(("#", ";"))
+    ]
+    entries = {
+        key: [line.split("=", 1)[1] for line in lines if line.split("=", 1)[0] == key]
+        for key in ("ExecStartPre", "ExecStart", "ExecStartPost")
+    }
+    start = f"/usr/bin/python3 -EsB {BUNDLE}/{command}"
+    assert [value for value in entries["ExecStart"] if value] == [start]
+    # A missing or different source marker makes cmp exit non-zero, so systemd
+    # never runs the reader and every Requires= dependent keeps its last edition.
+    pre = entries["ExecStartPre"]
+    for check in (f"/bin/sh {BUNDLE}/verify-host-bundle.sh", SOURCE_MARKER_CHECK):
+        assert pre.count(check) == 1
+    assert not any(v.startswith("-") for values in entries.values() for v in values)
+    if unit.endswith(".conf"):
+        # The drop-in clears every inherited Railway command before its own.
+        assert all(values[0] == "" for values in entries.values())
+        assert f"/bin/sh {BUNDLE}/verify-history-mount.sh" in pre
+        assert entries["ExecStartPost"] == ["", start + " --verify-installed"]
+
+
+def test_rollback_before_any_native_edition_changes_nothing(edition):
+    e = edition
+    before = state(e)
+    assert native.rollback(e.config) == e.old
+    untouched(e, before)
+
+
+def test_rollback_refuses_when_the_retained_railway_authority_changed(edition):
+    e, c = edition, edition.config
+    sync(e)
+    path = c.authority / old.RECEIPT_NAME
+    path.chmod(0o644)
+    path.write_bytes(path.read_bytes() + b" ")
+    path.chmod(0o444)
+    before = state(e)
+    with pytest.raises(legacy.SyncFailure, match="historical-authority-changed"):
+        native.rollback(c)
+    assert state(e) == before
+    assert not (c.state / native.NATIVE_LAYOUT.transaction).exists()
+
+
+def test_rollback_restores_railway_bytes_without_refreshing_their_clock(
+    edition, monkeypatch
+):
+    e, c = edition, edition.config
+    original = {p: meta[0] for p, meta in state(e)[0].items()}
+    sync(e)
+    late = parse_clock(e.old["checked_at"]) + legacy.MAX_GENERATION_AGE
+    monkeypatch.setattr(legacy, "_now", lambda: late + timedelta(seconds=1))
+    assert native.rollback(c) == e.old
+    assert {p: meta[0] for p, meta in files(c.authority).items()} == original
+    assert not (c.authority / native.NATIVE_LAYOUT.receipt).exists()
+    with pytest.raises(legacy.SyncFailure, match="installed-proof-stale"):
+        old.verify_installed(c)
+    assert old.verify_installed(c, fresh=False) == e.old
+
+
+def test_unit_entry_points_check_install_verify_and_roll_back(
+    edition, monkeypatch, capsys
+):
+    e = edition
+    before = state(e)
+    code, checked = run_cli(monkeypatch, capsys, e, "--check")
+    assert code == 0 and checked["status"] == "checked"
+    untouched(e, before)
+    code, receipt = run_cli(monkeypatch, capsys, e)
+    assert code == 0 and receipt["status"] == "installed"
+    assert receipt["release_sha"] == e.release
+    assert run_cli(monkeypatch, capsys, e, "--verify-installed") == (0, receipt)
+    assert run_cli(monkeypatch, capsys, e, "--rollback-to-railway") == (0, e.old)
+    code, refused = run_cli(monkeypatch, capsys, e, "--verify-installed")
+    assert code == 1 and refused["status"] == "refused"
