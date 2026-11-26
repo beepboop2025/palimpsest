@@ -607,7 +607,13 @@ def test_financial_landing_pages_have_canonical_metadata_and_visible_faqs():
             assert question["acceptedAnswer"]["text"] in page
 
         for dataset in (node for node in graph if node["@type"] == "Dataset"):
-            assert "license" not in dataset
+            # Rights stay dataset-specific: each mixed-rights reading cites the
+            # licence its catalog entry records, never the repository's MIT
+            # licence (tests/test_dataset_structured_data.py checks the value).
+            assert dataset["license"].startswith("https://")
+            assert dataset["license"] != (
+                "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+            )
             assert dataset["usageInfo"] == "https://palimpsest.info/data.html#rights"
 
 

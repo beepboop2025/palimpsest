@@ -473,6 +473,7 @@ def render_html(report: Mapping[str, Any]) -> str:
   "url": "https://palimpsest.info/weekly-situation.html",
   "dateModified": "{generated}",
   "identifier": "{_esc(seal[:24])}",
+  "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
   "creator": {{"@type": "Organization", "@id": "https://palimpsest.info/#org", "name": "Palimpsest", "url": "https://palimpsest.info/"}}
 }}
 </script>

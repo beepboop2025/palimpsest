@@ -5549,6 +5549,9 @@ def render_economic_page(
                 "description": pulse["scope"],
                 "dateModified": pulse["generated_at"],
                 "url": f"{SITE}/readings/china-economic-pulse-latest.json",
+                # The licence that config/public_data_catalog.json records for
+                # the china-economic-pulse dataset.
+                "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
                 "creator": _dataset_organization(),
             },
             image_url=share_card.url if share_card is not None else OG_IMAGE,

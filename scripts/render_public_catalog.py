@@ -113,7 +113,7 @@ def jsonld(item: dict) -> dict:
         "@context": "https://schema.org", "@type": "Dataset", "@id": SITE + route(item) + "#dataset",
         "name": item["name"], "description": item["description"], "url": SITE + route(item),
         "identifier": item["id"], "isAccessibleForFree": True,
-        "creator": {"@type": "Organization", "name": "Palimpsest", "url": SITE + "/"},
+        "creator": {"@type": "Organization", "@id": "https://palimpsest.info/#org", "name": "Palimpsest", "url": "https://palimpsest.info/"},
         "license": item["license"]["url"], "spatialCoverage": item["geography"],
         "measurementTechnique": item["collection_mode"],
         "isBasedOn": item["urls"]["method"],
