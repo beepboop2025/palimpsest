@@ -1,5 +1,8 @@
 # Private OSINT authority after direct Railway publication
 
+Railway is retired. This adapter now only verifies the historical handover;
+`NATIVE-PUBLICATION.md` describes the adapter that advances authority.
+
 The earlier synchronizer required generated publication commits to be ancestors
 of GitHub `main`. Direct Railway releases are instead generated locally from a
 reviewed source base and retained as exact incremental Git bundles. Reinstalling

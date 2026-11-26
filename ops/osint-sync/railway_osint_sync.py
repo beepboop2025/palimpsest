@@ -28,9 +28,6 @@ PROTECTED_SHA = "b22d809bca5ca8aed8255e8a89a06a88dc9cbcb9"
 RECEIPT_NAME = "railway-receipt.json"
 HISTORY_NAME = "railway-history"
 TRANSACTION_NAME = "railway-transaction.json"
-STATE_FILES = {legacy.OSINT_FILENAME: legacy.MAX_OSINT_BYTES,
-               legacy.LEDGER_FILENAME: legacy.MAX_LEDGER_BYTES,
-               RECEIPT_NAME: 64 * 1024}
 ADMISSION_PATH = "readings/audit/readings-ledger-admission-20260925.json"
 BUILD_FORK_PATH = "readings/audit/readings-ledger-build-fork-20260925.jsonl"
 # The producer's exact, reviewed repairs (scripts/admit_publication_ledger.py).
@@ -159,14 +156,15 @@ def directory(path, *, owner=None, mode=None):
         require(stat.S_IMODE(metadata.st_mode) == mode, "unsafe-directory-mode")
 
 
-def preflight(config):
+def preflight(config, *, publication=True):
     require(not config.require_root or os.geteuid() == 0, "root-required")
     require(legacy.HEX_40.fullmatch(config.protected_sha) is not None, "protected-sha-invalid")
     directory(config.state, owner=0 if config.require_root else None, mode=0o700)
     directory(config.authority, owner=0 if config.require_root else None, mode=0o755)
-    directory(config.publication, owner=config.publisher_uid if config.require_root else None)
-    for name in ("release-bundles", "release-manifests"):
-        directory(config.publication / name, owner=config.publisher_uid if config.require_root else None)
+    if publication:
+        directory(config.publication, owner=config.publisher_uid if config.require_root else None)
+        for name in ("release-bundles", "release-manifests"):
+            directory(config.publication / name, owner=config.publisher_uid if config.require_root else None)
     directory(config.source_git)
     directory(config.source_git / "objects")
     require(not os.path.lexists(config.source_git / "objects/info/alternates"), "source-alternates-refused")
@@ -231,8 +229,23 @@ def reviewed_fork(base_ledger):
     return matches[0]
 
 
+def source_ancestry(repo, spec, base):
+    """The reviewed producer commit must be in the release base's own history."""
+    require(git(repo, ["merge-base", "--is-ancestor", spec["source_commit"], base],
+                maximum=4096, allowed_failure=True)[0] == 0, "admission-source-ancestry-invalid")
+
+
 def admitted_prefix(repo, base, release, base_ledger, candidate):
     """Prove the finite reviewed repair from immutable release Git objects."""
+    return admitted_capture(repo, base, release, base_ledger, candidate)[0]
+
+
+def admitted_capture(repo, base, release, base_ledger, candidate, *, provenance=source_ancestry):
+    """Return the reviewed collector prefix and the verified captured chain.
+
+    `provenance` proves where the reviewed fork entered the base. Only the
+    native adapter supplies another proof, for owner-selected source bases.
+    """
     spec = reviewed_fork(base_ledger)
     archived = git(repo, ["show", release + ":" + spec["archive_path"]])[1]
     require(archived == base_ledger, "admission-archive-mismatch")
@@ -244,8 +257,7 @@ def admitted_prefix(repo, base, release, base_ledger, candidate):
             and proof.get("historical_records_rewritten") is False
             and proof.get("derived_readings_require_final_sealing") is True
             and proof.get("reviewed_source_commit") == spec["source_commit"], "admission-contract-invalid")
-    require(git(repo, ["merge-base", "--is-ancestor", spec["source_commit"], base],
-                maximum=4096, allowed_failure=True)[0] == 0, "admission-source-ancestry-invalid")
+    provenance(repo, spec, base)
     require(proof.get("archived_build_chain") == {
         "path": spec["archive_path"], "sha256": spec["target_sha256"],
         "entries": spec["target_entries"], "head": old_entries[-1]["entry_hash"],
@@ -268,7 +280,7 @@ def admitted_prefix(repo, base, release, base_ledger, candidate):
         "reviewed_prefix_sha256": spec["host_prefix_sha256"],
         "reviewed_prefix_entries": spec["host_prefix_entries"],
     }, "admission-capture-mismatch")
-    return prefix
+    return prefix, retained
 
 
 def extract(config, receipt, bundle, work, previous=None):
@@ -318,10 +330,10 @@ def pair(artifact, ledger, *, newest):
     return legacy._validate_authority_pair(legacy.FileSnapshot(artifact, metadata), legacy.FileSnapshot(ledger, metadata), artifact_code="osint-invalid", ledger_code="ledger-invalid", require_newest_seal=newest)
 
 
-def verify_public(receipt, artifact, ledger, manifest_raw, fetcher):
+def verify_public(receipt, artifact, ledger, manifest_raw, fetcher, *, origins=ORIGINS):
     release = receipt["release_sha"]
     evidence = None
-    for origin in ORIGINS:
+    for origin in origins:
         raws = {relative: fetcher(origin + "/" + relative, release) for relative in ("railway-release.json", legacy.OSINT_REPOSITORY_PATH, legacy.LEDGER_REPOSITORY_PATH, "readings/china-publication-rights-latest.json")}
         require(raws["railway-release.json"] == manifest_raw, "live-manifest-mismatch")
         require(raws[legacy.LEDGER_REPOSITORY_PATH] == ledger, "live-ledger-mismatch")
@@ -398,11 +410,31 @@ def verify_predecessor(config, receipt, receipt_snapshot, previous):
     raise legacy.SyncFailure("publication-predecessor-too-long")
 
 
-def state_snapshot(config):
+@dataclass(frozen=True)
+class ArchiveLayout:
+    """Names of one adapter's receipt, retained history and transaction."""
+    receipt: str
+    history: str
+    transaction: str
+    history_schema: str
+    transaction_schema: str
+
+    @property
+    def files(self):
+        return {legacy.OSINT_FILENAME: legacy.MAX_OSINT_BYTES,
+                legacy.LEDGER_FILENAME: legacy.MAX_LEDGER_BYTES, self.receipt: 64 * 1024}
+
+
+RAILWAY_LAYOUT = ArchiveLayout(RECEIPT_NAME, HISTORY_NAME, TRANSACTION_NAME,
+                               "palimpsest.railway-osint-history.v1",
+                               "palimpsest.railway-osint-transaction.v1")
+
+
+def state_snapshot(config, layout=RAILWAY_LAYOUT):
     result = {}
-    for name, maximum in STATE_FILES.items():
+    for name, maximum in layout.files.items():
         path = config.authority / name
-        if name == RECEIPT_NAME and not os.path.lexists(path):
+        if name == layout.receipt and not os.path.lexists(path):
             result[name] = None
             continue
         item = read(path, maximum, owner=0 if config.require_root else None)
@@ -411,15 +443,19 @@ def state_snapshot(config):
     return result
 
 
-def archive_state(config, files):
+def history_manifest(files, layout=RAILWAY_LAYOUT):
+    identities = {name: None if raw is None else {"sha256": legacy._sha256(raw), "bytes": len(raw)} for name, raw in files.items()}
+    return legacy._canonical({"schema_version": layout.history_schema, "files": identities}) + b"\n"
+
+
+def archive_state(config, files, layout=RAILWAY_LAYOUT):
     """Durably retain exact complete branches; existing history is never replaced."""
-    root = config.state / HISTORY_NAME
+    root = config.state / layout.history
     if not os.path.lexists(root):
         root.mkdir(mode=0o700)
         legacy._fsync_directory(config.state)
     directory(root, owner=0 if config.require_root else None, mode=0o700)
-    identities = {name: None if raw is None else {"sha256": legacy._sha256(raw), "bytes": len(raw)} for name, raw in files.items()}
-    manifest = legacy._canonical({"schema_version": "palimpsest.railway-osint-history.v1", "files": identities}) + b"\n"
+    manifest = history_manifest(files, layout)
     digest = legacy._sha256(manifest)
     target = root / digest
     if not os.path.lexists(target):
@@ -431,25 +467,25 @@ def archive_state(config, files):
             # Rename the complete, fsynced directory while holding sync.lock.
             stage.rename(target)
             legacy._fsync_directory(root)
-    require(read_archive(config, digest) == files, "history-state-mismatch")
+    require(read_archive(config, digest, layout) == files, "history-state-mismatch")
     return digest
 
 
-def read_archive(config, digest):
+def read_archive(config, digest, layout=RAILWAY_LAYOUT):
     require(isinstance(digest, str) and legacy.HEX_64.fullmatch(digest) is not None, "history-identity-invalid")
-    root = config.state / HISTORY_NAME
+    root = config.state / layout.history
     directory(root, owner=0 if config.require_root else None, mode=0o700)
     target = root / digest
     directory(target, owner=0 if config.require_root else None, mode=0o700)
     manifest = read(target / "manifest.json", 64 * 1024, owner=0 if config.require_root else None)
     require(stat.S_IMODE(manifest.metadata.st_mode) == 0o444 and legacy._sha256(manifest.raw) == digest, "history-manifest-invalid")
     value = document(manifest.raw)
-    require(set(value) == {"schema_version", "files"} and value["schema_version"] == "palimpsest.railway-osint-history.v1" and isinstance(value["files"], dict) and set(value["files"]) == set(STATE_FILES), "history-manifest-invalid")
+    require(set(value) == {"schema_version", "files"} and value["schema_version"] == layout.history_schema and isinstance(value["files"], dict) and set(value["files"]) == set(layout.files), "history-manifest-invalid")
     files = {}
-    for name, maximum in STATE_FILES.items():
+    for name, maximum in layout.files.items():
         expected = value["files"][name]
         if expected is None:
-            require(name == RECEIPT_NAME and not os.path.lexists(target / name), "history-state-mismatch")
+            require(name == layout.receipt and not os.path.lexists(target / name), "history-state-mismatch")
             files[name] = None
             continue
         require(isinstance(expected, dict) and set(expected) == {"sha256", "bytes"}, "history-manifest-invalid")
@@ -461,27 +497,27 @@ def read_archive(config, digest):
     return files
 
 
-def recover_transaction(config, *, check):
-    path = config.state / TRANSACTION_NAME
+def recover_transaction(config, *, check, layout=RAILWAY_LAYOUT):
+    path = config.state / layout.transaction
     if not os.path.lexists(path):
         return
     transaction = read(path, 64 * 1024, owner=0 if config.require_root else None)
     require(stat.S_IMODE(transaction.metadata.st_mode) == 0o600, "transaction-mode-invalid")
     value = document(transaction.raw)
-    require(set(value) == {"schema_version", "before", "candidate"} and value["schema_version"] == "palimpsest.railway-osint-transaction.v1", "transaction-invalid")
-    before = read_archive(config, value["before"])
-    candidate = read_archive(config, value["candidate"])
-    current = state_snapshot(config)
+    require(set(value) == {"schema_version", "before", "candidate"} and value["schema_version"] == layout.transaction_schema, "transaction-invalid")
+    before = read_archive(config, value["before"], layout)
+    candidate = read_archive(config, value["candidate"], layout)
+    current = state_snapshot(config, layout)
     # Prove every member before writing any member. Unknown bytes are never
     # overwritten, even if another member is an interrupted adapter write.
     for name, item in current.items():
         require((None if item is None else item.raw) in (before[name], candidate[name]), "transaction-foreign-state")
     require(not check, "transaction-recovery-required")
     oldconfig = legacy.Config(state_directory=config.state, deployed_receipt=config.marker, require_root=config.require_root)
-    for name in (legacy.LEDGER_FILENAME, legacy.OSINT_FILENAME, RECEIPT_NAME):
+    for name in (legacy.LEDGER_FILENAME, legacy.OSINT_FILENAME, layout.receipt):
         if before[name] is None:
             if current[name] is not None:
-                unchanged(config.authority / name, current[name], STATE_FILES[name], owner=0 if config.require_root else None)
+                unchanged(config.authority / name, current[name], layout.files[name], owner=0 if config.require_root else None)
                 (config.authority / name).unlink()
                 legacy._fsync_directory(config.authority)
         else:
@@ -491,9 +527,35 @@ def recover_transaction(config, *, check):
     legacy._fsync_directory(config.state)
 
 
+def install_checked(config, before, artifact, ledger, values, marker, *, layout, recheck_source, verifier):
+    """Retain both complete states, then switch under a durable transaction."""
+    oldconfig = legacy.Config(state_directory=config.state, deployed_receipt=config.marker, require_root=config.require_root)
+    # Never copy to the legacy shared readings paths. Consumers receive the
+    # private authority only through their existing read-only namespace bind.
+    candidate = {legacy.LEDGER_FILENAME: ledger, legacy.OSINT_FILENAME: artifact,
+                 layout.receipt: legacy._canonical(values) + b"\n"}
+    prior_files = {name: None if item is None else item.raw for name, item in before.items()}
+    retained = archive_state(config, prior_files, layout)
+    staged = archive_state(config, candidate, layout)
+    for name, item in before.items():
+        if item is not None:
+            unchanged(config.authority / name, item, layout.files[name], owner=0 if config.require_root else None)
+        else:
+            require(not os.path.lexists(config.authority / name), "managed-file-appeared")
+    recheck_source()
+    unchanged(config.marker, marker, 128, owner=0 if config.require_root else None)
+    transaction = config.state / layout.transaction
+    legacy._atomic_state_document(transaction, {"schema_version": layout.transaction_schema, "before": retained, "candidate": staged})
+    for name in (legacy.LEDGER_FILENAME, legacy.OSINT_FILENAME, layout.receipt):
+        legacy._install_authority_file(oldconfig, config.authority / name, candidate[name], expected=before[name])
+    result = verifier(config)
+    transaction.unlink()
+    legacy._fsync_directory(config.state)
+    return result
+
+
 def synchronize(config, *, fetcher=fetch_public, check=False):
     marker = preflight(config)
-    oldconfig = legacy.Config(state_directory=config.state, deployed_receipt=config.marker, require_root=config.require_root)
     with legacy._lock(config.state):
         recover_transaction(config, check=check)
         before = state_snapshot(config)
@@ -524,28 +586,9 @@ def synchronize(config, *, fetcher=fetch_public, check=False):
             # Public proof still ran; an unchanged edition needs no new history
             # directory or receipt clock. Publication freshness bounds still apply.
             return verify_installed(config)
-        # Never copy to the legacy shared readings paths. Consumers receive the
-        # private authority only through their existing read-only namespace bind.
-        candidate = {legacy.LEDGER_FILENAME: ledger, legacy.OSINT_FILENAME: artifact,
-                     RECEIPT_NAME: legacy._canonical(values) + b"\n"}
-        prior_files = {name: None if item is None else item.raw for name, item in before.items()}
-        retained = archive_state(config, prior_files)
-        staged = archive_state(config, candidate)
-        for name, item in before.items():
-            if item is not None:
-                unchanged(config.authority / name, item, STATE_FILES[name], owner=0 if config.require_root else None)
-            else:
-                require(not os.path.lexists(config.authority / name), "managed-file-appeared")
-        unchanged(config.publication / "latest-success.json", receipt_snapshot, 1024 * 1024, owner=config.publisher_uid if config.require_root else None, hardlinks=True)
-        unchanged(config.marker, marker, 128, owner=0 if config.require_root else None)
-        transaction = config.state / TRANSACTION_NAME
-        legacy._atomic_state_document(transaction, {"schema_version": "palimpsest.railway-osint-transaction.v1", "before": retained, "candidate": staged})
-        for name in (legacy.LEDGER_FILENAME, legacy.OSINT_FILENAME, RECEIPT_NAME):
-            legacy._install_authority_file(oldconfig, config.authority / name, candidate[name], expected=before[name])
-        result = verify_installed(config)
-        transaction.unlink()
-        legacy._fsync_directory(config.state)
-        return result
+        return install_checked(config, before, artifact, ledger, values, marker,
+                               layout=RAILWAY_LAYOUT, verifier=verify_installed,
+                               recheck_source=lambda: unchanged(config.publication / "latest-success.json", receipt_snapshot, 1024 * 1024, owner=config.publisher_uid if config.require_root else None, hardlinks=True))
 
 
 def main(argv=None):

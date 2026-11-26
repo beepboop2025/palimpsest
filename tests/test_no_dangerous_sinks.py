@@ -102,8 +102,12 @@ _SINKS = re.compile(
 #   in a private proof repository. Hooks, replacement objects and network Git
 #   transports are disabled; argv uses validated object IDs and controlled local
 #   paths, stdin is closed, output is bounded, and credentials are not inherited.
+#   native_osint_sync.py: makes no subprocess call of its own. It names only
+#   subprocess.SubprocessError, to report a refusal; every Git proof step goes
+#   through the reviewed railway_osint_sync git() boundary above.
 _ALLOWED = {
     ("ops/osint-sync/railway_osint_sync.py", "subprocess."),
+    ("ops/osint-sync/native_osint_sync.py", "subprocess."),
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
     ("ops/mcp-deploy/verify_release.py", "subprocess."),
@@ -410,6 +414,26 @@ def test_public_osint_sync_keeps_fixed_no_shell_git_boundary():
         "_prepare_repository:run",
         "_git_blob:run",
     ], "every subprocess call site must be individually reviewed and inventoried"
+
+
+def test_native_osint_sync_makes_no_subprocess_call_of_its_own():
+    """Its exemption covers one exception name; Git runs only through railway git()."""
+    source = (ROOT / "ops" / "osint-sync" / "native_osint_sync.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "shell=True" not in source
+    uses = [
+        node
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "subprocess"
+    ]
+    assert [node.attr for node in uses] == ["SubprocessError"], (
+        "native_osint_sync.py must not call subprocess directly"
+    )
+    assert "railway.git(" in source
 
 
 def test_reproduce_all_keeps_a_fixed_no_shell_python_boundary():
