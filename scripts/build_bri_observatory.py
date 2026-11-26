@@ -2583,6 +2583,12 @@ def _render_html(
         "url": "https://palimpsest.info/belt-and-road/",
         "dateModified": artifact["as_of"],
         "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+        "creator": {
+            "@type": "Organization",
+            "@id": "https://palimpsest.info/#org",
+            "name": "Palimpsest",
+            "url": "https://palimpsest.info/",
+        },
         "distribution": {
             "@type": "DataDownload",
             "encodingFormat": "application/json",

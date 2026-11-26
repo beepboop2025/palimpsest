@@ -544,6 +544,12 @@ def build_catalog(
         "datasets": datasets,
     }
 
+    organization = {
+        "@type": "Organization",
+        "@id": urljoin(SITE, "#org"),
+        "name": "Palimpsest",
+        "url": SITE,
+    }
     jsonld_datasets = []
     resources = []
     for item in datasets:
@@ -609,6 +615,7 @@ def build_catalog(
                 "description": item["description"],
                 "url": urljoin(SITE, item["landing_page"]),
                 "license": item["license"]["url"],
+                "creator": dict(organization),
                 "spatialCoverage": item["geography"],
                 "dateModified": item["artifacts"]["observed_at"],
                 "isAccessibleForFree": item.get("publication_allowed") is not False,
@@ -622,12 +629,7 @@ def build_catalog(
         "name": config["catalog"]["name"],
         "description": config["catalog"]["description"],
         "url": config["catalog"]["homepage"],
-        "publisher": {
-            "@type": "Organization",
-            "@id": urljoin(SITE, "#org"),
-            "name": "Palimpsest",
-            "url": SITE,
-        },
+        "publisher": dict(organization),
         "dateModified": _iso(build_time),
         "dataset": jsonld_datasets,
     }

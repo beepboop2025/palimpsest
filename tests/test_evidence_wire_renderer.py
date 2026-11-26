@@ -643,6 +643,13 @@ def test_economic_dataset_uses_the_canonical_google_organization(publication) ->
     metadata = json.loads(match.group(1))
     assert metadata["@type"] == "Dataset"
     assert metadata["creator"] == build_newsroom._dataset_organization()
+    catalog = json.loads(
+        (ROOT / "config" / "public_data_catalog.json").read_text(encoding="utf-8")
+    )
+    [pulse_entry] = [
+        row for row in catalog["datasets"] if row["id"] == "china-economic-pulse"
+    ]
+    assert metadata["license"] == pulse_entry["license"]["url"]
 
 
 def test_unified_machine_feeds_have_stable_unique_dossier_ids(publication) -> None:

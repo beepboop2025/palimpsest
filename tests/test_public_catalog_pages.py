@@ -29,6 +29,18 @@ def test_dataset_html_and_schema_share_exact_downloads_and_clock():
     assert "123" in soup.get_text() and "Cite this dataset" in soup.get_text()
 
 
+def test_every_catalog_dataset_page_names_its_own_license_and_canonical_creator():
+    config = json.loads(atlas.CONFIG.read_text())
+    assert config["datasets"]
+    for row in config["datasets"]:
+        item = copy.deepcopy(row)
+        item["urls"] = {key: pages.SITE + "/" + row[key] for key in ("latest", "history", "method", "landing_page") if key in row}
+        item["artifacts"] = {"evidence_state": "fresh", "observed_at": "2026-09-27T00:00:00Z", "latest_available": True, "history_available": False}
+        schema = pages.jsonld(item)
+        assert schema["license"] == row["license"]["url"], row["id"]
+        assert schema["creator"] == {"@type": "Organization", "@id": "https://palimpsest.info/#org", "name": "Palimpsest", "url": "https://palimpsest.info/"}, row["id"]
+
+
 def test_withheld_dataset_has_no_downloads_or_numeric_counts_or_indexing():
     item = example()
     item["publication_allowed"] = False

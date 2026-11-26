@@ -59,6 +59,16 @@ IMPLEMENTATIONS = {
     "out_of_scope",
 }
 ALIAS_RELATIONSHIPS = {"exact_dataset", "publisher_family", "unregistered_release_surface"}
+# Dataset pages mix Palimpsest metadata with official-source observations, so
+# they cite the mixed-rights statement that config/public_data_catalog.json
+# records for the China Observatory datasets (landing page china/).
+DATASET_LICENSE = "https://palimpsest.info/data.html#rights"
+DATASET_CREATOR = {
+    "@type": "Organization",
+    "@id": "https://palimpsest.info/#org",
+    "name": "Palimpsest",
+    "url": "https://palimpsest.info/",
+}
 CFETS_CURVE = (
     ("fdr001", "FDR001", "pledged repo", "%"),
     ("fdr007", "FDR007", "pledged repo", "%"),
@@ -738,6 +748,9 @@ def _page(
             "url": "https://palimpsest.info/",
         },
     }
+    if page_type == "Dataset":
+        structured["license"] = DATASET_LICENSE
+        structured["creator"] = dict(DATASET_CREATOR)
     json_ld = json.dumps(structured, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     document = f'''<!doctype html>
 <html lang="en" data-tk-theme="light" data-cn-schema-version="{INDEX_SCHEMA}">

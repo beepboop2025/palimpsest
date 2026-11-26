@@ -7,6 +7,7 @@ import html as html_lib
 import io
 import json
 import hashlib
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -31,6 +32,7 @@ from scripts.build_bri_observatory import (
     _regional_events,
     _render_analysis_html,
     _render_gwadar_html,
+    _render_html,
     _render_captured_archive_section,
     _render_region_section,
     _translation_index,
@@ -1091,3 +1093,27 @@ def test_coverage_contract_is_context_not_independent_evidence() -> None:
     assert resource["allowed_role"] == "context"
     assert resource["evidence_class"] == "METHOD_OR_ASSUMPTION"
     assert resource["independence_eligible"] is False
+
+
+def test_generated_page_dataset_carries_its_catalog_license_and_creator() -> None:
+    artifact = json.loads(READING.read_text(encoding="utf-8"))
+    page = _render_html(artifact, wire=_synthetic_regional_wire()).decode("utf-8")
+    match = re.search(
+        r'<script type="application/ld\+json">(.*?)</script>', page, flags=re.DOTALL
+    )
+    assert match is not None
+    dataset = json.loads(match.group(1))
+    catalog = json.loads(
+        (ROOT / "config" / "public_data_catalog.json").read_text(encoding="utf-8")
+    )
+    [entry] = [
+        row for row in catalog["datasets"] if row["id"] == "belt-and-road-observatory"
+    ]
+    assert dataset["@type"] == "Dataset"
+    assert dataset["license"] == entry["license"]["url"]
+    assert dataset["creator"] == {
+        "@type": "Organization",
+        "@id": "https://palimpsest.info/#org",
+        "name": "Palimpsest",
+        "url": "https://palimpsest.info/",
+    }
