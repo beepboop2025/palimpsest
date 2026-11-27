@@ -8,7 +8,10 @@ from types import SimpleNamespace
 
 import pytest
 
-import test_railway_osint_sync as railway_tests
+try:
+    from tests import test_railway_osint_sync as railway_tests
+except ImportError:  # run from inside tests/ (unittest discover -s tests)
+    import test_railway_osint_sync as railway_tests
 
 fixtures = railway_tests.fixtures
 SPEC = importlib.util.spec_from_file_location("native_osint_sync", railway_tests.ROOT / "ops/osint-sync/native_osint_sync.py")
